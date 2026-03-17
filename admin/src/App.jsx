@@ -1,26 +1,76 @@
+// import { Routes, Route, Navigate } from 'react-router-dom';
+// import AdminLogin from './pages/AdminAuth/AdminLogin';
+// import Dashboard from './pages/Dashboard';
+// import Products from './pages/Products';
+// import ProductEdit from './pages/ProductEdit';
+// import Categories from './pages/Categories';
+// import Orders from './pages/Orders';
+// import Users from './pages/Users';
+// import Protected from './components/Protected';
+// import AdminLayout from './components/AdminLayout';
+
+// function App() {
+//   return (
+//     <Routes>
+//       {/* Public Route */}
+//       <Route path="/admin-login" element={<AdminLogin />} />
+
+//       {/* Protected Routes */}
+//       <Route
+//         path="/"
+//         element={
+//           <Protected>
+//             <AdminLayout /> {/* Sidebar + TopBar wrapper */}
+//           </Protected>
+//         }
+//       >
+//         {/* Redirect default to dashboard */}
+//         <Route index element={<Navigate to="/dashboard" replace />} />
+//         <Route path="dashboard" element={<Dashboard />} />
+//         <Route path="products" element={<Products />} />
+//         <Route path="products/new" element={<ProductEdit />} />
+//         <Route path="products/:id" element={<ProductEdit />} />
+//         <Route path="categories" element={<Categories />} />
+//         <Route path="orders" element={<Orders />} />
+//         <Route path="users" element={<Users />} />
+//       </Route>
+
+//       {/* Redirect unknown paths */}
+//       <Route path="*" element={<Navigate to="/admin-login" replace />} />
+//     </Routes>
+//   );
+// }
+
+// export default App;
+
 import { Routes, Route, Navigate } from 'react-router-dom';
-import AdminLayout from './components/AdminLayout';
-import AdminLogin from './pages/AdminLogin';
+import AdminLogin from './pages/AdminAuth/AdminLogin';
+import AdminLayout from './components/AdminLayout'; // sidebar + topbar wrapper
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import ProductEdit from './pages/ProductEdit';
 import Categories from './pages/Categories';
 import Orders from './pages/Orders';
 import Users from './pages/Users';
-
-const Protected = ({ children }) => {
-  const token = localStorage.getItem('rentpay_token');
-  const user = JSON.parse(localStorage.getItem('rentpay_user') || 'null');
-  if (!token || user?.role !== 'admin') return <Navigate to="/login" replace />;
-  return children;
-};
+import Protected from './components/Protected';
 
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<AdminLogin />} />
-      <Route path="/" element={<Protected><AdminLayout /></Protected>}>
-        <Route index element={<Dashboard />} />
+      {/* Public */}
+      <Route path="/admin-login" element={<AdminLogin />} />
+
+      {/* Protected admin area */}
+      <Route
+        path="/"
+        element={
+          <Protected>
+            <AdminLayout /> {/* Sidebar + Topbar */}
+          </Protected>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<Products />} />
         <Route path="products/new" element={<ProductEdit />} />
         <Route path="products/:id" element={<ProductEdit />} />
@@ -28,7 +78,9 @@ function App() {
         <Route path="orders" element={<Orders />} />
         <Route path="users" element={<Users />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+
+      {/* Redirect unknown paths */}
+      <Route path="*" element={<Navigate to="/admin-login" replace />} />
     </Routes>
   );
 }
