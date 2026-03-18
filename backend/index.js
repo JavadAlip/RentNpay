@@ -6,6 +6,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 
 import adminRoutes from './routes/admin.js';
+import vendorRoutes from './routes/vendor.js';
 import productRoutes from './routes/products.js';
 import categoryRoutes from './routes/categories.js';
 import cartRoutes from './routes/cart.js';
@@ -21,6 +22,7 @@ app.use(express.static('uploads'));
 
 // Routes
 app.use('/api/admin', adminRoutes);
+app.use('/api/vendor', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
