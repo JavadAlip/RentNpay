@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { adminLogin, clearError } from '../../redux/adminSlice';
+import { adminLogin, clearError } from '../../../redux/slices/adminSlice';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({

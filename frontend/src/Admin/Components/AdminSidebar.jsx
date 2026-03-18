@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { adminLogout } from '../redux/adminSlice';
+import { adminLogout } from '../../redux/slices/adminSlice';
 
-const Sidebar = () => {
+const AdminSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -73,4 +73,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default AdminSidebar;

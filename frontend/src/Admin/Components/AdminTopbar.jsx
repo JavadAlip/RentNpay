@@ -1,4 +1,4 @@
-const Topbar = ({ title = 'Master Dashboard' }) => {
+const AdminTopbar = ({ title = 'Master Dashboard' }) => {
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
       <div>
@@ -45,4 +45,4 @@ const Topbar = ({ title = 'Master Dashboard' }) => {
   );
 };
 
-export default Topbar;
+export default AdminTopbar;
