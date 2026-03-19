@@ -4,10 +4,9 @@ import { useDispatch } from 'react-redux';
 import { vendorLogout } from '../../../redux/slices/vendorSlice';
 
 const navItems = [
-  { to: '/vendor/dashboard', label: 'Dashboard' },
-  { to: '/vendor/kyc', label: 'KYC & Verification' },
-  { to: '/vendor/stores', label: 'Stores' },
-  { to: '/vendor/products', label: 'Products' },
+  // { to: '/vendor/kyc', label: 'KYC & Verification' },
+  { to: '/vendor-dashboard', label: 'Dashboard' },
+  { to: '/vendor-products', label: 'Products' },
   { to: '/vendor/orders', label: 'Orders' },
   { to: '/vendor/customers', label: 'Customers' },
   { to: '/vendor/tickets', label: 'Tickets' },

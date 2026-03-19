@@ -67,6 +67,7 @@ import VendorSignup from './Vendor/Pages/VendorAuth/VendorSignup';
 import VendorWelcome from './Vendor/Pages/VendorAuth/VendorWelcome';
 import VendorOtpVerification from './Vendor/Pages/VendorAuth/VendorOtpVerification';
 import VendorDashboard from './Vendor/Pages/Dashboard/VendorDashboard';
+import VendorProducts from './Vendor/Pages/Dashboard/Products';
 
 function App() {
   return (
@@ -103,6 +104,7 @@ function App() {
       <Route path="/vendor-welcome" element={<VendorWelcome />} />
       <Route path="/vendor-otp" element={<VendorOtpVerification />} />
       <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+      <Route path="/vendor-products" element={<VendorProducts />} />
 
       {/* ================= FALLBACK ================= */}
 
