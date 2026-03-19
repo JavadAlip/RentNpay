@@ -1,9 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import sofa from './../../assets/images/sofa.png';
 import washing from './../../assets/images/washing-machine.png';
 import tools from './../../assets/images/tools.png';
+import { apiGetCategories } from '../../../../frontend/src/service/api';
 
 const BotherSection = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await apiGetCategories();
+        // Adjust to your backend response shape
+        const list = Array.isArray(res.data)
+          ? res.data
+          : res.data.categories || [];
+        setCategories(list);
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
   return (
     <section className="w-full py-16 px-4 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -20,24 +41,23 @@ const BotherSection = () => {
               <p className="text-xs bg-orange-100 text-orange-600 px-3 py-1 rounded-full inline-block mb-4">
                 Starts @ ₹99/mo
               </p>
-
               <h3 className="text-xl font-semibold mb-2">Renting →</h3>
-
               <p className="text-sm text-gray-600 mb-4">
                 Upgrade your lifestyle without the commitment. Free relocation &
                 maintenance included.
               </p>
-
               <ul className="text-sm text-gray-700 space-y-1">
-                <li>Bedroom Packages</li>
-                <li>Living Room</li>
-                <li>Office</li>
-                <li>Workstations</li>
-                <li>Home Appliances</li>
-                <li>Fitness Gear</li>
+                {loading ? (
+                  <li className="text-gray-500">Loading categories...</li>
+                ) : categories.length === 0 ? (
+                  <li className="text-gray-500">No categories available.</li>
+                ) : (
+                  categories.map((c) => (
+                    <li key={c._id || c.slug || c.name}>{c.name}</li>
+                  ))
+                )}
               </ul>
             </div>
-
             {/* Image */}
             <img
               src={sofa}
