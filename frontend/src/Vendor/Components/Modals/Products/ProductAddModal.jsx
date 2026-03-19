@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  getCategories,
+  getSubCategories,
+} from '../../../../redux/slices/categorySlice';
 
 const defaultForm = {
   productName: '',
   type: 'Rental',
-  category: 'Furniture',
-  subCategory: 'Sofa',
+  category: '',
+  subCategory: '',
   price: '',
   stock: '',
   status: 'Active',
@@ -18,18 +23,24 @@ const ProductAddModal = ({
   mode = 'create',
   initialData = null,
 }) => {
-  const [form, setForm] = useState({
-    ...defaultForm,
-  });
+  const dispatch = useDispatch();
+  const { categories, subCategories } = useSelector((state) => state.category);
+
+  const [form, setForm] = useState({ ...defaultForm });
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Load categories whenever modal opens
+    dispatch(getCategories());
+
     if (initialData) {
       setForm({
         productName: initialData.productName || '',
         type: initialData.type || 'Rental',
-        category: initialData.category || 'Furniture',
-        subCategory: initialData.subCategory || 'Sofa',
+        category: initialData.category || '',
+        subCategory: initialData.subCategory || '',
         price: initialData.price || '',
         stock:
           initialData.stock === undefined || initialData.stock === null
@@ -40,8 +51,20 @@ const ProductAddModal = ({
       });
     } else {
       setForm({ ...defaultForm });
+      setSelectedCategoryId('');
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, dispatch]);
+
+  // When categories are loaded and we are editing, map category name -> id and load subcategories
+  useEffect(() => {
+    if (!isOpen || !initialData || !categories.length) return;
+
+    const matched = categories.find((c) => c.name === initialData.category);
+    if (matched) {
+      setSelectedCategoryId(matched._id);
+      dispatch(getSubCategories(matched._id));
+    }
+  }, [isOpen, initialData, categories, dispatch]);
 
   if (!isOpen) return null;
 
@@ -52,6 +75,35 @@ const ProductAddModal = ({
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCategoryChange = (e) => {
+    const id = e.target.value;
+    setSelectedCategoryId(id);
+
+    const cat = categories.find((c) => c._id === id);
+    const categoryName = cat?.name || '';
+
+    setForm((prev) => ({
+      ...prev,
+      category: categoryName,
+      subCategory: '',
+    }));
+
+    if (id) {
+      dispatch(getSubCategories(id));
+    }
+  };
+
+  const handleSubCategoryChange = (e) => {
+    const id = e.target.value;
+    const sub = subCategories.find((s) => s._id === id);
+    const subName = sub?.name || '';
+
+    setForm((prev) => ({
+      ...prev,
+      subCategory: subName,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -95,28 +147,37 @@ const ProductAddModal = ({
             <option>Rental</option>
             <option>Sell</option>
           </select>
+          {/* Category (dynamic) */}
           <select
             name="category"
-            value={form.category}
-            onChange={handleChange}
+            value={selectedCategoryId}
+            onChange={handleCategoryChange}
             className="border rounded-lg px-3 py-2"
           >
-            <option>Furniture</option>
-            <option>Electronics</option>
-            <option>Appliances</option>
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
           </select>
+
+          {/* Subcategory (depends on category) */}
           <select
             name="subCategory"
-            value={form.subCategory}
-            onChange={handleChange}
+            value={
+              subCategories.find((s) => s.name === form.subCategory)?._id || ''
+            }
+            onChange={handleSubCategoryChange}
             className="border rounded-lg px-3 py-2"
+            disabled={!selectedCategoryId}
           >
-            <option>Sofa</option>
-            <option>Table</option>
-            <option>Washing Machine</option>
-            <option>Chair</option>
-            <option>Bed</option>
-            <option>TV</option>
+            <option value="">Select subcategory</option>
+            {subCategories.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
           </select>
           <input
             name="price"

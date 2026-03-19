@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiAdminLogin } from '../../service/api';
+import { apiAdminLogin, apiGetAllVendors } from '../../service/api';
 
 // Login
 export const adminLogin = createAsyncThunk(
@@ -15,6 +15,18 @@ export const adminLogin = createAsyncThunk(
     }
   },
 );
+export const getAllVendors = createAsyncThunk(
+  'admin/getVendors',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().admin.token;
+      const res = await apiGetAllVendors(token);
+      return res.data.vendors;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  },
+);
 
 // Logout (no need to call backend unless session exists server-side)
 export const adminLogout = createAsyncThunk('admin/logout', async () => {
@@ -27,6 +39,7 @@ const initialState = {
   isAuthenticated: !!localStorage.getItem('adminToken'),
   token: localStorage.getItem('adminToken') || null,
   user: JSON.parse(localStorage.getItem('adminUser') || 'null'),
+  vendors: [],
   loading: false,
   error: null,
 };
@@ -63,6 +76,17 @@ const adminSlice = createSlice({
         state.token = null;
         state.user = null;
         state.error = null;
+      })
+      .addCase(getAllVendors.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getAllVendors.fulfilled, (state, action) => {
+        state.loading = false;
+        state.vendors = action.payload;
+      })
+      .addCase(getAllVendors.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

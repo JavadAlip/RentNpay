@@ -55,4 +55,61 @@ export const apiDeleteProduct = (id, token) =>
     },
   });
 
+// ── CATEGORY APIs ─────────────────────────
+
+// Create Category
+export const apiCreateCategory = (data, token) =>
+  API.post('/admin/create-category', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Get Categories
+export const apiGetCategories = () => API.get('/admin/get-categories');
+
+// Delete Category
+export const apiDeleteCategory = (id, token) =>
+  API.delete(`/admin/delete-category/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// ── SUBCATEGORY APIs ─────────────────────────
+
+// Create SubCategory
+export const apiCreateSubCategory = (data, token) =>
+  API.post('/admin/create-sub-category', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Get SubCategories
+export const apiGetSubCategories = (categoryId, token) =>
+  API.get(`/admin/get-sub-categories/${categoryId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Delete SubCategory
+export const apiDeleteSubCategory = (id, token) =>
+  API.delete(`/admin/delete-sub-category/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// ── ADMIN VENDOR APIs ─────────────────────────
+
+// Get All Vendors
+export const apiGetAllVendors = (token) =>
+  API.get('/admin/get-vendors', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export default API;

@@ -58,6 +58,7 @@ import Categories from './pages/Categories';
 import Orders from './pages/Orders';
 import Users from './pages/Users';
 import Protected from './Admin/Components/Protected';
+import AllVendors from './Admin/Pages/Dashboard/AllVendors';
 import NotFound from './Common/Notfound';
 
 // ---------------- VENDOR ----------------
@@ -87,6 +88,7 @@ function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="all-vendors" element={<AllVendors />} />
         <Route path="products" element={<Products />} />
         <Route path="products/new" element={<ProductEdit />} />
         <Route path="products/:id" element={<ProductEdit />} />
