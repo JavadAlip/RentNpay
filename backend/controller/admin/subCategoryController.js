@@ -1,13 +1,24 @@
 import SubCategory from '../../models/SubCategory.js';
+import { uploadImageToCloudinary } from '../../config/cloudinaryUpload.js';
 
-// Create SubCategory
 export const createSubCategory = async (req, res) => {
   try {
     const { name, categoryId } = req.body;
 
+    let image = null; // ✅ better than empty string
+
+    if (req.file) {
+      const imgRes = await uploadImageToCloudinary(
+        req.file.buffer,
+        'subcategories',
+      );
+      image = imgRes.secure_url;
+    }
+
     const subCategory = await SubCategory.create({
       name,
       category: categoryId,
+      image, // ✅ optional now
     });
 
     res.status(201).json({

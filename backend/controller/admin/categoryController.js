@@ -1,12 +1,31 @@
 import Category from '../../models/Category.js';
 import SubCategory from '../../models/SubCategory.js';
 
-// Create Category
+import { uploadImageToCloudinary } from '../../config/cloudinaryUpload.js';
+
 export const createCategory = async (req, res) => {
   try {
     const { name, slug } = req.body;
 
-    const category = await Category.create({ name, slug });
+    let image = '';
+
+    if (req.file) {
+      const imgRes = await uploadImageToCloudinary(
+        req.file.buffer,
+        'categories',
+      );
+      image = imgRes.secure_url;
+    }
+
+    if (!image) {
+      return res.status(400).json({ message: 'Image required' });
+    }
+
+    const category = await Category.create({
+      name,
+      slug,
+      image,
+    });
 
     res.status(201).json({
       message: 'Category created',
@@ -16,7 +35,6 @@ export const createCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 // Get All Categories
 export const getCategories = async (req, res) => {
   try {

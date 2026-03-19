@@ -1,4 +1,6 @@
 import jwt from 'jsonwebtoken';
+import Vendor from '../../models/vendorAuthModel.js';
+import Product from '../../models/Product.js';
 
 export const adminLogin = async (req, res) => {
   try {
@@ -61,5 +63,43 @@ export const adminLogout = async (req, res) => {
     res.status(500).json({
       message: 'Server error',
     });
+  }
+};
+
+export const getAllVendors = async (req, res) => {
+  try {
+    const vendors = await Vendor.find()
+      .select('-password -otp -otpExpire') // 🔥 hide sensitive data
+      .sort({ createdAt: -1 });
+
+    res.json({
+      vendors,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllProducts = async (req, res) => {
+  try {
+    const { page = 1, limit = 12, search, category } = req.query;
+
+    const query = {};
+    if (search) query.productName = { $regex: search, $options: 'i' };
+    if (category) query.category = category;
+
+    const total = await Product.countDocuments(query);
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    res.status(200).json({
+      products,
+      pages: Math.ceil(total / limit),
+      total,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
