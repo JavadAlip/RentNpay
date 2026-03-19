@@ -1,6 +1,6 @@
 import express from 'express';
 import Category from '../models/Category.js';
-import { protect, admin } from '../middleware/auth.js';
+import { adminAuth } from '../middleware/Auth.js';
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', adminAuth, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ message: 'Name required' });
@@ -25,10 +25,11 @@ router.post('/', protect, admin, async (req, res) => {
   }
 });
 
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', adminAuth, async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ message: 'Category not found' });
+    if (!category)
+      return res.status(404).json({ message: 'Category not found' });
     if (req.body.name) {
       category.name = req.body.name;
       category.slug = req.body.name.toLowerCase().replace(/\s+/g, '-');
@@ -40,10 +41,11 @@ router.put('/:id', protect, admin, async (req, res) => {
   }
 });
 
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', adminAuth, async (req, res) => {
   try {
     const category = await Category.findByIdAndDelete(req.params.id);
-    if (!category) return res.status(404).json({ message: 'Category not found' });
+    if (!category)
+      return res.status(404).json({ message: 'Category not found' });
     res.json({ message: 'Category deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
