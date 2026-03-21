@@ -155,7 +155,7 @@ const FeaturedCategories = () => {
             onClick={() => navigate('/rent')}
             className="bg-black text-white px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm w-fit whitespace-nowrap"
           >
-            View All Deals
+            View All
           </button>
         </div>
 

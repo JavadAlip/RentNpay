@@ -137,7 +137,7 @@ const RentalCategories = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 sm:mb-10 gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-900">
-              Featured Categories
+              Rental Categories
             </h2>
             <p className="text-gray-600 text-sm sm:text-base mt-2 max-w-lg">
               Explore the most popular rentals, verified used electronics, and
