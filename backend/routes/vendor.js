@@ -12,15 +12,19 @@ import {
   verifyOTP,
   loginVendor,
   vendorLogout,
+  getAllVendors,
+  deleteVendor,
 } from '../controller/vendor/vendorController.js';
 
 const router = express.Router();
 
 // auth
-router.post('/vednor-signup', signupVendor);
+router.post('/vendor-signup', signupVendor);
 router.post('/verify-otp', verifyOTP);
 router.post('/vendor-login', loginVendor);
 router.post('/vendor-logout', vendorAuth, vendorLogout);
+router.get('/all-vendors', getAllVendors);
+router.delete('/delete-vendor/:id', deleteVendor);
 
 // product
 // Create

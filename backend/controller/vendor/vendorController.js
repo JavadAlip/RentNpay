@@ -120,3 +120,38 @@ export const vendorLogout = async (req, res) => {
     });
   }
 };
+
+// ✅ Get All Vendors
+export const getAllVendors = async (req, res) => {
+  try {
+    const vendors = await Vendor.find().select('-password -otp -otpExpire');
+
+    res.status(200).json({
+      message: 'All vendors fetched successfully',
+      vendors,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ❌ Delete Vendor
+export const deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const vendor = await Vendor.findById(id);
+
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    await Vendor.findByIdAndDelete(id);
+
+    res.status(200).json({
+      message: 'Vendor deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
