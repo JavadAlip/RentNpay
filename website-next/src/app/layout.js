@@ -1,17 +1,18 @@
-import { Manrope } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Manrope } from 'next/font/google';
+import './globals.css';
+import { Providers } from '@/providers';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import AuthModal from '@/components/AuthModal';
 
 const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
+  subsets: ['latin'],
+  variable: '--font-manrope',
 });
 
 export const metadata = {
-  title: "Rentnpay",
-  description: "Rent and buy products",
+  title: 'Rentnpay',
+  description: 'Rent and buy products',
 };
 
 export default function RootLayout({ children }) {
@@ -24,6 +25,7 @@ export default function RootLayout({ children }) {
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
+          <AuthModal />
         </Providers>
       </body>
     </html>

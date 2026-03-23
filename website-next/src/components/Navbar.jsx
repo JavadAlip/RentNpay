@@ -1,114 +1,13 @@
-// import { useState } from 'react';
-// import { Link, useNavigate } from 'react-router-dom';
-// import { useSelector, useDispatch } from 'react-redux';
-// import { logout } from '../store/slices/authSlice';
-
-// const Navbar = () => {
-//   const [search, setSearch] = useState('');
-//   const [menuOpen, setMenuOpen] = useState(false);
-//   const { user, isAuthenticated } = useSelector((s) => s.auth);
-//   const cartCount = useSelector((s) => s.cart.items.reduce((a, i) => a + i.quantity, 0));
-//   const dispatch = useDispatch();
-//   const navigate = useNavigate();
-
-//   const handleSearch = (e) => {
-//     e.preventDefault();
-//     if (search.trim()) navigate(`/products?search=${encodeURIComponent(search.trim())}`);
-//   };
-
-//   return (
-//     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-//         <div className="flex items-center justify-between h-16">
-//           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary">
-//             Rentpay
-//           </Link>
-
-//           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-4">
-//             <input
-//               type="text"
-//               placeholder="Search products, rentals, services..."
-//               value={search}
-//               onChange={(e) => setSearch(e.target.value)}
-//               className="w-full px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-//             />
-//             <button type="submit" className="px-4 py-2 bg-primary text-white rounded-r-lg hover:bg-primary-700">
-//               Search
-//             </button>
-//           </form>
-
-//           <nav className="hidden md:flex items-center gap-4">
-//             <Link to="/products" className="text-gray-600 hover:text-primary">Products</Link>
-//             <Link to="/cart" className="relative p-2 text-gray-600 hover:text-primary">
-//               Cart
-//               {cartCount > 0 && (
-//                 <span className="absolute -top-1 -right-1 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-//                   {cartCount}
-//                 </span>
-//               )}
-//             </Link>
-//             {isAuthenticated ? (
-//               <div className="relative group">
-//                 <button className="flex items-center gap-1 text-gray-600 hover:text-primary">
-//                   {user?.name}
-//                 </button>
-//                 <div className="absolute right-0 mt-1 w-40 bg-white border rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-//                   <Link to="/profile" className="block px-4 py-2 text-sm hover:bg-gray-100">Profile</Link>
-//                   {user?.role === 'admin' && (
-//                     <a href={import.meta.env.VITE_ADMIN_URL || '/admin'} target="_blank" rel="noopener noreferrer" className="block px-4 py-2 text-sm hover:bg-gray-100">Admin</a>
-//                   )}
-//                   <button onClick={() => dispatch(logout())} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600">
-//                     Logout
-//                   </button>
-//                 </div>
-//               </div>
-//             ) : (
-//               <Link to="/login" className="text-gray-600 hover:text-primary">Login</Link>
-//             )}
-//           </nav>
-
-//           <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)}>
-//             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-//           </button>
-//         </div>
-
-//         {menuOpen && (
-//           <div className="md:hidden py-4 border-t">
-//             <form onSubmit={handleSearch} className="mb-4">
-//               <input
-//                 type="text"
-//                 placeholder="Search..."
-//                 value={search}
-//                 onChange={(e) => setSearch(e.target.value)}
-//                 className="w-full px-3 py-2 border rounded"
-//               />
-//               <button type="submit" className="mt-2 w-full py-2 bg-primary text-white rounded">Search</button>
-//             </form>
-//             <Link to="/products" className="block py-2" onClick={() => setMenuOpen(false)}>Products</Link>
-//             <Link to="/cart" className="block py-2" onClick={() => setMenuOpen(false)}>Cart ({cartCount})</Link>
-//             {isAuthenticated ? (
-//               <>
-//                 <Link to="/profile" className="block py-2" onClick={() => setMenuOpen(false)}>Profile</Link>
-//                 <button onClick={() => { dispatch(logout()); setMenuOpen(false); }} className="block py-2 text-red-600">Logout</button>
-//               </>
-//             ) : (
-//               <Link to="/login" className="block py-2" onClick={() => setMenuOpen(false)}>Login</Link>
-//             )}
-//           </div>
-//         )}
-//       </div>
-//     </header>
-//   );
-// };
-
-// export default Navbar;
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useAuthModal } from '@/contexts/AuthModalContext';
+import { logout as logoutAction } from '@/store/slices/authSlice';
+import { api } from '@/lib/axios';
+import { USER_AUTH } from '@/lib/userAuthApi';
 import {
   MapPin,
   Search,
@@ -118,18 +17,56 @@ import {
   X,
   LocateFixed,
   User,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 
 const Navbar = () => {
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
+  const dropdownRef = useRef(null);
   const router = useRouter();
+  const dispatch = useDispatch();
+  const { openAuth } = useAuthModal();
+
+  const { user, isAuthenticated } = useSelector((s) => s.auth);
   const cartCount = useSelector((s) =>
     s.cart.items.reduce((a, i) => a + i.quantity, 0),
   );
+
+  const firstLetter = user?.fullName?.charAt(0)?.toUpperCase() || '';
+  const firstName = user?.fullName?.split(' ')[0] || '';
+
+  // ✅ Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ✅ Logout handler
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await api.post(USER_AUTH.logout);
+    } catch (err) {
+      // Even if API fails, clear local state
+      console.error('Logout API error:', err);
+    } finally {
+      dispatch(logoutAction());
+      setShowProfileDropdown(false);
+      setLoggingOut(false);
+      router.push('/');
+    }
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -150,7 +87,7 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Location – click opens modal */}
+          {/* Location */}
           <button
             type="button"
             onClick={() => setShowLocationModal(true)}
@@ -201,15 +138,71 @@ const Navbar = () => {
               <span className="hidden md:inline text-sm">Wishlist</span>
             </Link>
 
-            <Link
-              href="/"
-              className="flex items-center gap-1 hover:text-black p-1"
-            >
-              <User size={18} className="w-5 h-5 " />
-              <span className="hidden md:inline text-sm">Profile</span>
-            </Link>
+            {/* ✅ Profile with dropdown — only when logged in */}
+            {isAuthenticated && user ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileDropdown((prev) => !prev)}
+                  className="flex items-center gap-2 hover:text-black p-1"
+                >
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    {firstLetter}
+                  </div>
+                  <span className="hidden md:inline text-sm font-medium">
+                    {firstName}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className="hidden md:block text-gray-400"
+                  />
+                </button>
 
-            {/* Mobile menu button (optional) */}
+                {/* ✅ Dropdown */}
+                {showProfileDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                    {/* User info */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                          {firstLetter}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {user.fullName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu items */}
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <User size={15} />
+                      My Profile
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <LogOut size={15} />
+                      {loggingOut ? 'Logging out…' : 'Logout'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Mobile menu button */}
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -221,7 +214,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile extra content (optional search / location) */}
+        {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden border-t bg-white px-3 py-4 space-y-3">
             <button
@@ -232,6 +225,7 @@ const Navbar = () => {
               <MapPin size={14} className="text-orange-500" />
               <span>Choose your location</span>
             </button>
+
             <form onSubmit={handleSearch} className="flex gap-2">
               <input
                 type="text"
@@ -247,26 +241,58 @@ const Navbar = () => {
                 Search
               </button>
             </form>
+
+            {/* ✅ Mobile — profile + logout */}
+            {isAuthenticated && user && (
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50">
+                  <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    {firstLetter}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {user.fullName}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  <User size={15} />
+                  My Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100 disabled:opacity-50"
+                >
+                  <LogOut size={15} />
+                  {loggingOut ? 'Logging out…' : 'Logout'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </header>
 
-      {/* Location Modal */}
+      {/* Location Modal — unchanged */}
       {showLocationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3 sm:px-4">
           <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-            {/* Close button row */}
             <div className="flex justify-end p-3">
               <button
                 onClick={() => setShowLocationModal(false)}
                 className="text-gray-400 hover:text-gray-600 text-lg leading-none"
-                aria-label="Close location modal"
               >
                 ×
               </button>
             </div>
-
-            {/* Modal content */}
             <div className="px-5 pb-5 sm:px-6 sm:pb-6">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 text-center">
                 Choose your location
@@ -274,8 +300,6 @@ const Navbar = () => {
               <p className="mt-1 text-xs sm:text-sm text-gray-500 text-center">
                 Please select a location to view products near you.
               </p>
-
-              {/* Search location field */}
               <div className="mt-5">
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
                   Search Location
@@ -289,97 +313,24 @@ const Navbar = () => {
                   />
                 </div>
               </div>
-
-              {/* Primary button */}
               <button className="mt-5 w-full flex items-center justify-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium py-2.5 sm:py-3 shadow-[0_10px_22px_rgba(249,115,22,0.45)]">
                 <LocateFixed className="w-4 h-4" />
                 Fetch my location
               </button>
-
-              {/* Secondary button */}
               <button
                 onClick={() => {
                   setShowLocationModal(false);
-                  setShowLoginModal(true);
+                  openAuth('login');
                 }}
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-xs sm:text-sm text-gray-700 py-2.5 sm:py-3 hover:bg-gray-50"
               >
                 <User className="w-4 h-4" />
                 Login for saved addresses
               </button>
-
-              {/* Info line */}
               <div className="mt-4 text-[10px] sm:text-xs text-gray-500 text-center px-3">
                 We deliver within <span className="font-semibold">50km</span>{' '}
                 radius from your location.
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-2xl flex">
-            {/* Left Image */}
-            <div className="hidden md:block w-1/2">
-              <img
-                src="https://images.unsplash.com/photo-1616627987949-9c0f1c4a0e90"
-                alt="furniture"
-                className="h-full w-full object-cover"
-              />
-            </div>
-
-            {/* Right Content */}
-            <div className="w-full md:w-1/2 p-6 relative">
-              {/* Close */}
-              <button
-                onClick={() => setShowLoginModal(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-
-              <h2 className="text-xl font-semibold text-gray-900">
-                Login or Sign up to Rentnpay
-              </h2>
-
-              <p className="text-sm text-gray-500 mt-1">
-                Enter your phone number to continue
-              </p>
-
-              {/* Phone input */}
-              <div className="mt-6">
-                <label className="text-sm font-medium text-gray-700">
-                  Phone Number
-                </label>
-
-                <div className="flex items-center border rounded-lg mt-2 overflow-hidden">
-                  <span className="px-3 bg-gray-100 text-sm">+91</span>
-
-                  <input
-                    type="text"
-                    placeholder="Enter your phone number"
-                    className="flex-1 px-3 py-2 outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Terms */}
-              <p className="text-xs text-gray-500 mt-4">
-                I agree to the{' '}
-                <span className="text-orange-500">Terms & Conditions</span> and{' '}
-                <span className="text-orange-500">Privacy Policies</span>
-              </p>
-
-              {/* OTP button */}
-              <button className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2">
-                Get OTP →
-              </button>
-
-              <p className="text-xs text-gray-400 mt-4">
-                By continuing, you agree to receive promotional messages
-              </p>
             </div>
           </div>
         </div>
