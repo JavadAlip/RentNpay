@@ -31,3 +31,13 @@ export const apiGetAllProducts = (queryString = '') =>
   api.get(`/admin/products${queryString ? `?${queryString}` : ''}`);
 
 export const apiGetProductById = (id) => api.get(`/vendor/product/${id}`);
+
+// ── USER ADDRESSES ────────────────────────────
+export const apiGetMyAddresses = () => api.get('/users/addresses');
+export const apiCreateAddress = (data) => api.post('/users/addresses', data);
+export const apiUpdateAddress = (id, data) => api.put(`/users/addresses/${id}`, data);
+export const apiDeleteAddress = (id) => api.delete(`/users/addresses/${id}`);
+
+// ── USER ORDERS ───────────────────────────────
+export const apiCreateOrder = (data) => api.post('/orders', data);
+export const apiGetMyOrders = () => api.get('/orders/my');
