@@ -5,6 +5,7 @@ import { Provider, useDispatch } from 'react-redux';
 import { store } from '@/store';
 import { rehydrateAuth } from '@/store/slices/authSlice';
 import { AuthModalProvider } from '@/contexts/AuthModalContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 // Rehydrates auth from localStorage on first render
 function AuthRehydrator({ children }) {
@@ -19,7 +20,9 @@ export function Providers({ children }) {
   return (
     <Provider store={store}>
       <AuthRehydrator>
-        <AuthModalProvider>{children}</AuthModalProvider>
+        <AuthModalProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthModalProvider>
       </AuthRehydrator>
     </Provider>
   );

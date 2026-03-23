@@ -14,6 +14,7 @@ import {
   Search,
   Heart,
   ShoppingCart,
+  Truck,
   Menu,
   X,
   LocateFixed,
@@ -196,6 +197,15 @@ const Navbar = () => {
                       My Profile
                     </Link>
 
+                    <Link
+                      href="/orders"
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Truck size={15} className="text-orange-500" />
+                      My Orders
+                    </Link>
+
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -273,6 +283,15 @@ const Navbar = () => {
                 >
                   <User size={15} />
                   My Profile
+                </Link>
+
+                <Link
+                  href="/orders"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  <Truck size={15} className="text-orange-500" />
+                  My Orders
                 </Link>
                 <button
                   type="button"

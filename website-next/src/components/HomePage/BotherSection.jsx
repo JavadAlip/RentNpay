@@ -1,8 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { IMG_SOFA as sofa, IMG_WASHING as washing, IMG_TOOLS as tools } from '@/lib/assetPlaceholders';
-import { apiGetCategories } from '@/helper/api';
+import {
+  IMG_SOFA as sofa,
+  IMG_WASHING as washing,
+  IMG_TOOLS as tools,
+} from '@/lib/assetPlaceholders';
+import { apiGetCategories } from '@/lib/api';
 
 const BotherSection = () => {
   const [categories, setCategories] = useState([]);

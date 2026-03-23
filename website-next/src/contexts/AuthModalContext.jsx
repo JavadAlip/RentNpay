@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 
 export const HOME_AUTH_PROMPT_SESSION_KEY = 'home_auth_prompted';
+export const AUTH_REDIRECT_SESSION_KEY = 'rentpay_auth_redirect';
 
 const AuthModalContext = createContext(null);
 

@@ -8,7 +8,8 @@ export default function ProtectedRoute({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('rentpay_token')) {
+    // Your auth persistence uses `userToken` / `userData`.
+    if (!localStorage.getItem('userToken')) {
       router.replace('/login');
     } else {
       setReady(true);

@@ -100,7 +100,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiGetCategories } from '@/helper/api';
+import { apiGetCategories } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 const FeaturedCategories = () => {

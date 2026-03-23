@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { api } from '../lib/axios';
+import { apiGetMyOrders } from '@/lib/api';
 
 const Profile = () => {
   const { user } = useSelector((s) => s.auth);
@@ -10,8 +10,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get('/api/orders')
+    setLoading(true);
+    apiGetMyOrders()
       .then((r) => setOrders(r.data || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));

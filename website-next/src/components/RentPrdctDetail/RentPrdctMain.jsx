@@ -157,10 +157,13 @@
 
 'use client';
 
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { addToCart } from '@/store/slices/cartSlice';
+import { useAuthModal, AUTH_REDIRECT_SESSION_KEY } from '@/contexts/AuthModalContext';
+import { apiGetProductById } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 
 // ─── Static fallback data (shown when API field is missing) ──────────────────
 const FALLBACK_IMAGES = [
@@ -196,6 +199,10 @@ function buildPlans(basePrice) {
 const RentPrdctMain = ({ product }) => {
   const dispatch = useDispatch();
   const router = useRouter();
+  const { openAuth } = useAuthModal();
+  const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
+  const { items } = useSelector((s) => s.cart);
+  const { pushToast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState('6');
 
   // ── Real data first, static fallback second ──────────────────────────────
@@ -218,21 +225,135 @@ const RentPrdctMain = ({ product }) => {
   // Highest plan price for strikethrough (3-month = most expensive)
   const strikePrice = plans[0].price;
 
-  const handleAddToCart = () => {
-    const productId = product?._id;
-    if (!productId) return;
+  const [currentStock, setCurrentStock] = useState(
+    typeof product?.stock === 'number' ? product.stock : 0,
+  );
 
-    const months = parseInt(selectedPlan, 10) || 1;
-    dispatch(
-      addToCart({
-        productId,
-        quantity: months,
-        pricePerDay: plan.price,
-        title: productName,
-        image: images?.[0] || '',
-      }),
-    );
-    router.push('/cart');
+  useEffect(() => {
+    let isMounted = true;
+    const id = product?._id;
+    if (!id) return;
+
+    // Refresh stock dynamically when opening product details.
+    apiGetProductById(id)
+      .then((res) => {
+        const stock = res.data?.product?.stock;
+        if (!isMounted) return;
+        setCurrentStock(typeof stock === 'number' ? stock : 0);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setCurrentStock(typeof product?.stock === 'number' ? product.stock : 0);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [product?._id]);
+
+  const activeRentalMonths = useMemo(
+    () => parseInt(selectedPlan, 10) || 1,
+    [selectedPlan],
+  );
+
+  const handleAddToCart = () => {
+    (async () => {
+      const productId = product?._id;
+      if (!productId) return;
+
+      if (items?.length) {
+        const cartRentalMonths = items?.[0]?.rentalMonths;
+        if (cartRentalMonths && cartRentalMonths !== activeRentalMonths) {
+          pushToast(
+            'Please clear cart to choose a different rental duration.',
+            'warning',
+          );
+          return;
+        }
+      }
+
+      const existingQty = items.find((i) => i.productId === productId)?.quantity || 0;
+      const res = await apiGetProductById(productId);
+      const stock = res.data?.product?.stock ?? currentStock ?? 0;
+
+      if (!stock || stock <= 0) {
+        pushToast('Sorry, this product is out of stock.', 'error');
+        return;
+      }
+
+      if (existingQty + 1 > stock) {
+        pushToast(`Only ${stock} available in stock for this product.`, 'error');
+        return;
+      }
+
+      dispatch(
+        addToCart({
+          productId,
+          quantity: 1,
+          rentalMonths: activeRentalMonths,
+          pricePerDay: plan.price,
+          title: productName,
+          image: images?.[0] || '',
+        }),
+      );
+
+      if (!isAuthenticated) {
+        sessionStorage.setItem(AUTH_REDIRECT_SESSION_KEY, '/cart');
+        openAuth('login');
+      }
+
+      router.push('/cart');
+    })();
+  };
+
+  const handleRentNow = () => {
+    (async () => {
+      const productId = product?._id;
+      if (!productId) return;
+
+      if (items?.length) {
+        const cartRentalMonths = items?.[0]?.rentalMonths;
+        if (cartRentalMonths && cartRentalMonths !== activeRentalMonths) {
+          pushToast(
+            'Please clear cart to choose a different rental duration.',
+            'warning',
+          );
+          return;
+        }
+      }
+
+      const existingQty = items.find((i) => i.productId === productId)?.quantity || 0;
+      const res = await apiGetProductById(productId);
+      const stock = res.data?.product?.stock ?? currentStock ?? 0;
+
+      if (!stock || stock <= 0) {
+        pushToast('Sorry, this product is out of stock.', 'error');
+        return;
+      }
+
+      if (existingQty + 1 > stock) {
+        pushToast(`Only ${stock} available in stock for this product.`, 'error');
+        return;
+      }
+
+      dispatch(
+        addToCart({
+          productId,
+          quantity: 1,
+          rentalMonths: activeRentalMonths,
+          pricePerDay: plan.price,
+          title: productName,
+          image: images?.[0] || '',
+        }),
+      );
+
+      if (!isAuthenticated) {
+        sessionStorage.setItem(AUTH_REDIRECT_SESSION_KEY, '/checkout');
+        openAuth('login');
+      }
+
+      router.push('/checkout');
+    })();
   };
 
   return (
@@ -288,18 +409,18 @@ const RentPrdctMain = ({ product }) => {
         </div>
 
         {/* Stock badge */}
-        {product?.status && (
+        {Number.isFinite(currentStock) && (
           <span
             className={`inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded-full
             ${
-              product.status === 'Active'
-                ? 'bg-green-100 text-green-700'
-                : product.status === 'Low Stock'
+              currentStock > 0
+                ? currentStock <= 3
                   ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
+                  : 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
             }`}
           >
-            {product.status === 'Active' ? 'In Stock' : product.status}
+            {currentStock > 0 ? `${currentStock} in stock` : 'Out of stock'}
           </span>
         )}
 
@@ -375,13 +496,19 @@ const RentPrdctMain = ({ product }) => {
         </div>
 
         {/* ── CTA Buttons ── */}
-        <button className="w-full bg-orange-500 text-white py-2.5 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium text-sm sm:text-base hover:bg-orange-600 transition-colors">
+        <button
+          type="button"
+          onClick={handleRentNow}
+          disabled={currentStock <= 0}
+          className="w-full bg-orange-500 text-white py-2.5 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium text-sm sm:text-base hover:bg-orange-600 transition-colors"
+        >
           Rent Now
         </button>
 
         <button
           type="button"
           onClick={handleAddToCart}
+          disabled={currentStock <= 0}
           className="w-full border border-orange-500 text-orange-500 py-2.5 sm:py-3 rounded-lg mt-3 sm:mt-4 font-medium text-sm sm:text-base hover:bg-orange-50 transition-colors"
         >
           Add to Cart

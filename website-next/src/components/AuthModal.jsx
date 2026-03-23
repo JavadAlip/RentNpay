@@ -7,7 +7,10 @@ import { X, ArrowRight } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { setCredentials } from '@/store/slices/authSlice';
 import { USER_AUTH, normalizeUserFromApi } from '@/lib/api';
-import { useAuthModal } from '@/contexts/AuthModalContext';
+import {
+  AUTH_REDIRECT_SESSION_KEY,
+  useAuthModal,
+} from '@/contexts/AuthModalContext';
 
 // ── OTP Input component ───────────────────────────────────────────────────────
 function OtpInputs({ value, onChange, disabled }) {
@@ -143,7 +146,10 @@ export default function AuthModal() {
       dispatch(setCredentials({ user, token: data.token }));
 
       closeAuth();
-      router.push('/');
+      const redirect =
+        sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
+      sessionStorage.removeItem(AUTH_REDIRECT_SESSION_KEY);
+      router.push(redirect);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -167,7 +173,10 @@ export default function AuthModal() {
       const user = normalizeUserFromApi(data.user);
       dispatch(setCredentials({ user, token: data.token }));
       closeAuth();
-      router.push('/');
+      const redirect =
+        sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
+      sessionStorage.removeItem(AUTH_REDIRECT_SESSION_KEY);
+      router.push(redirect);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed.');
     } finally {
