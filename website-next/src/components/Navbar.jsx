@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import { logout as logoutAction } from '@/store/slices/authSlice';
+import { clearCart, syncCart } from '@/store/slices/cartSlice';
 import { api } from '@/lib/axios';
 import { USER_AUTH } from '@/lib/userAuthApi';
 import {
@@ -41,6 +42,12 @@ const Navbar = () => {
   const firstLetter = user?.fullName?.charAt(0)?.toUpperCase() || '';
   const firstName = user?.fullName?.split(' ')[0] || '';
 
+  // Keep cart UI in sync when user logs in/out without a full refresh.
+  // (Cart state is stored in localStorage, scoped per user.)
+  useEffect(() => {
+    dispatch(syncCart());
+  }, [dispatch, isAuthenticated, user?.id, user?._id, user?.email]);
+
   // ✅ Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -62,6 +69,7 @@ const Navbar = () => {
       console.error('Logout API error:', err);
     } finally {
       dispatch(logoutAction());
+      dispatch(clearCart());
       setShowProfileDropdown(false);
       setLoggingOut(false);
       router.push('/');

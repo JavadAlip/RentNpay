@@ -6,6 +6,7 @@ import {
   getMyProducts,
   updateProduct,
   deleteProduct,
+  getProductById,
 } from '../controller/vendor/productController.js';
 import {
   signupVendor,
@@ -48,5 +49,6 @@ router.put(
 
 // Delete
 router.delete('/delete-product/:id', vendorAuth, deleteProduct);
+router.get('/product/:id', getProductById);
 
 export default router;

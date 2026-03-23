@@ -1,9 +1,25 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+function getCartStorageKey() {
+  if (typeof window === 'undefined') return 'rentpay_cart_guest';
+  try {
+    // Your current auth persistence uses `userToken` + `userData`.
+    // Cart should follow the logged-in user stored in `userData`.
+    const userStr = localStorage.getItem('userData');
+    if (!userStr) return 'rentpay_cart_guest';
+    const user = JSON.parse(userStr);
+    const userId = user?.id || user?._id;
+    return userId ? `rentpay_cart_${userId}` : 'rentpay_cart_guest';
+  } catch {
+    return 'rentpay_cart_guest';
+  }
+}
+
 const loadCart = () => {
   if (typeof window === 'undefined') return [];
   try {
-    const s = localStorage.getItem('rentpay_cart');
+    const key = getCartStorageKey();
+    const s = localStorage.getItem(key);
     return s ? JSON.parse(s) : [];
   } catch {
     return [];
@@ -12,7 +28,8 @@ const loadCart = () => {
 
 const saveCart = (cart) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('rentpay_cart', JSON.stringify(cart));
+    const key = getCartStorageKey();
+    localStorage.setItem(key, JSON.stringify(cart));
   }
 };
 
@@ -41,6 +58,10 @@ const cartSlice = createSlice({
       } else item.quantity = payload.quantity;
       saveCart(state.items);
     },
+    // Reload cart from localStorage for the currently logged-in user.
+    syncCart: (state) => {
+      state.items = loadCart();
+    },
     clearCart: (state) => {
       state.items = [];
       saveCart([]);
@@ -48,5 +69,11 @@ const cartSlice = createSlice({
   }
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions;
+export const {
+  addToCart,
+  removeFromCart,
+  updateQuantity,
+  syncCart,
+  clearCart,
+} = cartSlice.actions;
 export default cartSlice.reducer;

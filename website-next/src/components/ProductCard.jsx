@@ -8,7 +8,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <Link
-      href={`/products/${_id}`}
+      href={`/rent-product-details/${_id}`}
       className="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-orange-300 transition-all"
     >
       {/* Image */}
@@ -34,18 +34,15 @@ const ProductCard = ({ product }) => {
 
       {/* Details */}
       <div className="p-4">
-        {/* Name */}
         <h3 className="font-semibold text-gray-900 truncate group-hover:text-orange-500 transition-colors">
           {productName}
         </h3>
 
-        {/* Category / Subcategory */}
         <p className="text-xs text-gray-400 mt-1">
           {category}
           {subCategory ? ` › ${subCategory}` : ''}
         </p>
 
-        {/* Price + Type badge */}
         <div className="flex items-center justify-between mt-3">
           <p className="text-orange-500 font-bold text-base">₹{price}</p>
           <span
@@ -59,7 +56,6 @@ const ProductCard = ({ product }) => {
           </span>
         </div>
 
-        {/* Stock */}
         <div className="flex items-center gap-1.5 mt-2">
           <span
             className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-400' : 'bg-red-400'}`}

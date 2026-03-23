@@ -29,3 +29,5 @@ export const apiGetSubCategories = (categoryId) =>
 // ── PRODUCTS ──────────────────────────────────
 export const apiGetAllProducts = (queryString = '') =>
   api.get(`/admin/products${queryString ? `?${queryString}` : ''}`);
+
+export const apiGetProductById = (id) => api.get(`/vendor/product/${id}`);

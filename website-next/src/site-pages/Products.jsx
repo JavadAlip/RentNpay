@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '../components/ProductCard';
 import FilterSidebar from '../components/FilterSidebar';
-import { apiGetCategories, apiGetAllProducts } from '../helper/api';
+import { apiGetCategories, apiGetAllProducts } from '../lib/api';
 
 const Products = () => {
   const searchParams = useSearchParams();

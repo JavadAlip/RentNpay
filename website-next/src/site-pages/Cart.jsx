@@ -1,11 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { removeFromCart, updateQuantity } from '../store/slices/cartSlice';
+import {
+  removeFromCart,
+  updateQuantity,
+  syncCart,
+} from '../store/slices/cartSlice';
 
 const Cart = () => {
   const { items } = useSelector((s) => s.cart);
+  const { user, isAuthenticated } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
 
   const total = items.reduce((sum, i) => sum + i.pricePerDay * i.quantity, 0);
@@ -14,6 +20,10 @@ const Cart = () => {
     if (!src) return 'https://via.placeholder.com/100?text=No+Image';
     return src.startsWith('http') ? src : (process.env.NEXT_PUBLIC_API_URL || '') + src;
   };
+
+  useEffect(() => {
+    dispatch(syncCart());
+  }, [dispatch, user, isAuthenticated]);
 
   if (items.length === 0) {
     return (
@@ -34,7 +44,7 @@ const Cart = () => {
               <img src={imgSrc(item.image)} alt="" className="w-24 h-24 object-cover rounded-lg" onError={(e) => { e.target.src = 'https://via.placeholder.com/100'; }} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 truncate">{item.title}</p>
-                <p className="text-primary font-semibold">${item.pricePerDay}/day</p>
+                <p className="text-primary font-semibold">${item.pricePerDay}/mo</p>
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => dispatch(updateQuantity({ productId: item.productId, quantity: item.quantity - 1 }))}
@@ -66,7 +76,7 @@ const Cart = () => {
         <div>
           <div className="p-6 bg-gray-50 rounded-xl border border-gray-200 sticky top-24">
             <h2 className="font-semibold text-gray-900 mb-4">Summary</h2>
-            <p className="text-gray-600">Total rental (per day): <span className="font-bold text-primary">${total.toFixed(2)}</span></p>
+            <p className="text-gray-600">Total rental cost: <span className="font-bold text-primary">${total.toFixed(2)}</span></p>
             <p className="text-sm text-gray-500 mt-2">Final amount depends on rental duration at checkout.</p>
             <Link
               href="/checkout"
