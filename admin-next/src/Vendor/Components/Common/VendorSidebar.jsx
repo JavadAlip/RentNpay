@@ -10,14 +10,8 @@ const navItems = [
   // { to: '/vendor/kyc', label: 'KYC & Verification' },
   { to: '/vendor-dashboard', label: 'Dashboard' },
   { to: '/vendor-products', label: 'Products' },
-  { to: '/vendor/orders', label: 'Orders' },
   { to: '/vendor/customers', label: 'Customers' },
-  { to: '/vendor/tickets', label: 'Tickets' },
   { to: '/vendor/offers', label: 'Offers' },
-  { to: '/vendor/finances', label: 'Finances' },
-  { to: '/vendor/earnings', label: 'Earnings & Payouts' },
-  { to: '/vendor/ads', label: 'Ads Plans' },
-  { to: '/vendor/loans', label: 'Loans' },
   { to: '/vendor/settings', label: 'Settings' },
 ];
 
@@ -65,10 +59,10 @@ const VendorSidebar = () => {
           onClick={handleLogout}
           className="inline-flex items-center gap-2 text-red-500 hover:text-red-600"
         >
-          <span>⏻</span>
+          {/* <span>⏻</span> */}
           <span>Log Out</span>
         </button>
-        <button className="text-gray-500 hover:text-gray-700">Profile</button>
+        {/* <button className="text-gray-500 hover:text-gray-700">Profile</button> */}
       </div>
     </aside>
   );

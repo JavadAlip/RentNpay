@@ -8,6 +8,13 @@ import {
   deleteProduct,
   getProductById,
 } from '../controller/vendor/productController.js';
+import { getVendorCustomersSummary } from '../controller/vendor/customerController.js';
+import {
+  deleteVendorOffer,
+  getPublicActiveOffers,
+  getVendorOffers,
+  upsertVendorOffer,
+} from '../controller/vendor/offerController.js';
 import {
   signupVendor,
   verifyOTP,
@@ -50,5 +57,12 @@ router.put(
 // Delete
 router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
+router.get('/customers', vendorAuth, getVendorCustomersSummary);
+
+// offers
+router.get('/offers/public-active', getPublicActiveOffers);
+router.get('/offers', vendorAuth, getVendorOffers);
+router.post('/offers', vendorAuth, upsertVendorOffer);
+router.delete('/offers/:id', vendorAuth, deleteVendorOffer);
 
 export default router;

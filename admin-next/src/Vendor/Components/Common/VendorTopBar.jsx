@@ -12,21 +12,21 @@ const VendorTopBar = () => {
         <h1 className="text-base md:text-lg font-semibold text-gray-900">
           Dashboard
         </h1>
-        <p className="text-[11px] md:text-xs text-gray-500">
+        {/* <p className="text-[11px] md:text-xs text-gray-500">
           February 2026 · Comprehensive financial overview and performance
           metrics
-        </p>
+        </p> */}
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+        {/* <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
           <span className="w-2 h-2 rounded-full bg-green-500" />
           <span>Mumbai</span>
-        </button>
+        </button> */}
 
-        <button className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
+        {/* <button className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
           IN
-        </button>
+        </button> */}
 
         <div className="flex items-center gap-2">
           <button className="relative w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50">

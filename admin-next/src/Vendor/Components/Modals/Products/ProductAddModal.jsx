@@ -147,7 +147,6 @@ const ProductAddModal = ({
             className="border rounded-lg px-3 py-2"
           >
             <option>Rental</option>
-            <option>Sell</option>
           </select>
           {/* Category (dynamic) */}
           <select
