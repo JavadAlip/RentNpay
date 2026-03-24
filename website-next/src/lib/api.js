@@ -31,6 +31,7 @@ export const apiGetAllProducts = (queryString = '') =>
   api.get(`/admin/products${queryString ? `?${queryString}` : ''}`);
 
 export const apiGetProductById = (id) => api.get(`/vendor/product/${id}`);
+export const apiGetPublicActiveOffers = () => api.get('/vendor/offers/public-active');
 
 // ── USER ADDRESSES ────────────────────────────
 export const apiGetMyAddresses = () => api.get('/users/addresses');

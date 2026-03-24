@@ -1,79 +1,209 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '../components/ProductCard';
-import FilterSidebar from '../components/FilterSidebar';
-import { apiGetCategories, apiGetAllProducts } from '../lib/api';
+import { apiGetAllProducts, apiGetPublicActiveOffers } from '../lib/api';
 
 const Products = () => {
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [filters, setFilters] = useState({});
+  const [allProducts, setAllProducts] = useState([]);
+  const [offersByProduct, setOffersByProduct] = useState({});
+  const [filters, setFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    category: '',
+    type: '',
+    availability: '',
+  });
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const perPage = 6;
 
-  // Load categories once
-  useEffect(() => {
-    apiGetCategories()
-      .then((res) => {
-        const list = Array.isArray(res.data)
-          ? res.data
-          : res.data.categories || [];
-        setCategories(list);
-      })
-      .catch(() => setCategories([]));
-  }, []);
+  const parsePrice = (raw) => {
+    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
 
-  // Load products whenever page / filters / searchParams change
+  const search = searchParams.get('search') || '';
+  const categoryUrl = searchParams.get('category') || '';
+
   useEffect(() => {
     setLoading(true);
-
-    const params = new URLSearchParams();
-    params.set('page', page);
-    params.set('limit', 12);
-
-    const search = searchParams.get('search');
-    const categoryUrl = searchParams.get('category');
-
-    if (search) params.set('search', search);
-    if (categoryUrl) params.set('category', categoryUrl);
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v) params.set(k, v);
-    });
-
-    apiGetAllProducts(params.toString())
-      .then((res) => {
-        const list = res.data.products || [];
-        setProducts(list);
-        setTotalPages(res.data.pages || 1);
-
-        const uniqueBrands = [
-          ...new Set(list.map((p) => p.brand).filter(Boolean)),
-        ];
-        setBrands(uniqueBrands);
+    Promise.all([apiGetAllProducts('limit=400'), apiGetPublicActiveOffers()])
+      .then(([pRes, oRes]) => {
+        const list = pRes.data?.products || [];
+        const offers = oRes.data?.offers || [];
+        const map = {};
+        offers.forEach((o) => {
+          map[String(o.productId)] = o;
+        });
+        setAllProducts(list);
+        setOffersByProduct(map);
       })
-      .catch(() => setProducts([]))
+      .catch(() => {
+        setAllProducts([]);
+        setOffersByProduct({});
+      })
       .finally(() => setLoading(false));
-  }, [page, filters, searchParams]);
+  }, []);
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      category: categoryUrl || prev.category,
+    }));
+  }, [categoryUrl]);
+
+  const categoryOptions = useMemo(() => {
+    return Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean)));
+  }, [allProducts]);
+
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const min = Number(filters.minPrice || 0);
+    const max = Number(filters.maxPrice || 0);
+
+    return allProducts.filter((p) => {
+      const price = parsePrice(p.price);
+      const productText = `${p.productName || ''} ${p.category || ''} ${p.subCategory || ''}`.toLowerCase();
+      const matchesSearch = term ? productText.includes(term) : true;
+      const matchesCategory = filters.category
+        ? String(p.category || '').toLowerCase() ===
+          String(filters.category).toLowerCase()
+        : true;
+      const matchesType = filters.type
+        ? String(p.type || '').toLowerCase() === String(filters.type).toLowerCase()
+        : true;
+      const matchesAvailability =
+        filters.availability === 'available'
+          ? Number(p.stock || 0) > 0
+          : filters.availability === 'unavailable'
+            ? Number(p.stock || 0) <= 0
+            : true;
+      const matchesMin = filters.minPrice ? price >= min : true;
+      const matchesMax = filters.maxPrice ? price <= max : true;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesType &&
+        matchesAvailability &&
+        matchesMin &&
+        matchesMax
+      );
+    });
+  }, [allProducts, filters, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / perPage));
+  const products = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredProducts.slice(start, start + perPage);
+  }, [filteredProducts, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters, search]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Products</h1>
-      <div className="flex flex-col lg:flex-row gap-8">
-        <FilterSidebar
-          filters={filters}
-          onFilterChange={(f) => {
-            setFilters(f);
-            setPage(1);
-          }}
-          brands={brands}
-          categories={categories}
-          categoryFromUrl={searchParams.get('category') || ''}
-        />
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        <aside className="w-full lg:w-72 flex-shrink-0 space-y-4 bg-white border border-gray-200 rounded-2xl p-4 h-fit">
+          <h3 className="font-semibold text-gray-900">Filters</h3>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Price range</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={filters.minPrice}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, minPrice: e.target.value }))
+                }
+                className="px-3 py-2 border rounded-lg text-sm"
+              />
+              <input
+                type="number"
+                placeholder="Max"
+                value={filters.maxPrice}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, maxPrice: e.target.value }))
+                }
+                className="px-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Category</p>
+            <select
+              value={filters.category}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, category: e.target.value }))
+              }
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="">All</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Type</p>
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="">All</option>
+              <option value="Rental">Rental</option>
+              <option value="Sell">Sell</option>
+            </select>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Availability</p>
+            <div className="space-y-2 text-sm">
+              {[
+                { value: '', label: 'All' },
+                { value: 'available', label: 'Available' },
+                { value: 'unavailable', label: 'Unavailable' },
+              ].map((a) => (
+                <label key={a.label} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="availability"
+                    checked={filters.availability === a.value}
+                    onChange={() =>
+                      setFilters((p) => ({ ...p, availability: a.value }))
+                    }
+                  />
+                  <span>{a.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={() =>
+              setFilters({
+                minPrice: '',
+                maxPrice: '',
+                category: categoryUrl || '',
+                type: '',
+                availability: '',
+              })
+            }
+            className="w-full py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+          >
+            Clear Filters
+          </button>
+        </aside>
 
         <div className="flex-1">
           {loading ? (
@@ -108,7 +238,7 @@ const Products = () => {
               <p className="text-sm text-gray-500 mb-4">
                 Showing{' '}
                 <span className="font-medium text-gray-700">
-                  {products.length}
+                  {filteredProducts.length}
                 </span>{' '}
                 product{products.length !== 1 ? 's' : ''}
               </p>
@@ -116,7 +246,11 @@ const Products = () => {
               {/* Product grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {products.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+                  <ProductCard
+                    key={p._id}
+                    product={p}
+                    offer={offersByProduct[String(p._id)]}
+                  />
                 ))}
               </div>
 

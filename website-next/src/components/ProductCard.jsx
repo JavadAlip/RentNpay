@@ -2,17 +2,33 @@
 
 import Link from 'next/link';
 
-const ProductCard = ({ product }) => {
+const parsePrice = (raw) => {
+  const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const ProductCard = ({ product, offer }) => {
   const { _id, productName, image, price, type, category, subCategory, stock } =
     product;
+  const base = parsePrice(price);
+  const discount = Number(offer?.discountPercent || 0);
+  const hasOffer = discount > 0;
+  const finalPrice = hasOffer
+    ? Math.max(0, Math.round(base - (base * discount) / 100))
+    : base;
 
   return (
     <Link
       href={`/rent-product-details/${_id}`}
-      className="group block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-orange-300 transition-all"
+      className="group block bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg hover:border-orange-300 transition-all"
     >
       {/* Image */}
-      <div className="aspect-square bg-gray-100 overflow-hidden">
+      <div className="relative h-48 sm:h-52 bg-gray-100 overflow-hidden">
+        {hasOffer ? (
+          <span className="absolute top-3 left-3 z-10 inline-flex items-center px-2 py-0.5 rounded-lg border text-xs font-medium text-[#F97316] border-[#F97316] bg-white">
+            {discount}% Off
+          </span>
+        ) : null}
         <img
           src={image}
           alt={productName}
@@ -34,17 +50,28 @@ const ProductCard = ({ product }) => {
 
       {/* Details */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 truncate group-hover:text-orange-500 transition-colors">
+        <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-orange-500 transition-colors">
           {productName}
         </h3>
 
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 mt-1 line-clamp-1">
           {category}
           {subCategory ? ` › ${subCategory}` : ''}
         </p>
 
-        <div className="flex items-center justify-between mt-3">
-          <p className="text-orange-500 font-bold text-base">₹{price}</p>
+        <div className="flex items-center justify-between mt-3 gap-2">
+          <div className="min-w-0">
+            <p className="text-orange-500 font-bold text-base">
+              ₹{finalPrice}
+              {type === 'Rental' ? '/mo' : ''}
+            </p>
+            {hasOffer ? (
+              <p className="text-xs text-gray-400 line-through">
+                ₹{base}
+                {type === 'Rental' ? '/mo' : ''}
+              </p>
+            ) : null}
+          </div>
           <span
             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               type === 'Rental'

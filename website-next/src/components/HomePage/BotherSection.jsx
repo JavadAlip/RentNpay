@@ -6,28 +6,52 @@ import {
   IMG_WASHING as washing,
   IMG_TOOLS as tools,
 } from '@/lib/assetPlaceholders';
-import { apiGetCategories } from '@/lib/api';
+import { apiGetAllProducts, apiGetCategories } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 const BotherSection = () => {
+  const router = useRouter();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lowestRentPrice, setLowestRentPrice] = useState(null);
+
+  const parsePrice = (raw) => {
+    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const res = await apiGetCategories();
-        // Adjust to your backend response shape
-        const list = Array.isArray(res.data)
-          ? res.data
-          : res.data.categories || [];
-        setCategories(list);
+        const [catRes, prodRes] = await Promise.all([
+          apiGetCategories(),
+          apiGetAllProducts('limit=300'),
+        ]);
+
+        const categoryList = Array.isArray(catRes.data)
+          ? catRes.data
+          : catRes.data.categories || [];
+        setCategories(categoryList);
+
+        const products = prodRes.data?.products || [];
+        const rentalPrices = products
+          .filter((p) => String(p.type || '').toLowerCase() === 'rental')
+          .map((p) => parsePrice(p.price))
+          .filter((p) => p != null);
+        if (rentalPrices.length > 0) {
+          setLowestRentPrice(Math.min(...rentalPrices));
+        } else {
+          setLowestRentPrice(null);
+        }
       } catch (err) {
         console.error('Failed to load categories:', err);
         setCategories([]);
+        setLowestRentPrice(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchCategories();
+    fetchData();
   }, []);
   return (
     <section className="w-full py-16 px-4 bg-gray-50">
@@ -40,10 +64,17 @@ const BotherSection = () => {
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* LEFT BIG CARD */}
-          <div className="border-2 border-orange-400 rounded-xl p-6 flex flex-col justify-between min-h-[360px] relative overflow-hidden">
+          <button
+            type="button"
+            onClick={() => router.push('/rent')}
+            className="text-left border-2 border-orange-400 rounded-xl p-6 flex flex-col justify-between min-h-[360px] relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+          >
             <div>
               <p className="text-xs bg-orange-100 text-orange-600 px-3 py-1 rounded-full inline-block mb-4">
-                Starts @ ₹99/mo
+                Starts @{' '}
+                {lowestRentPrice != null
+                  ? `₹${lowestRentPrice.toLocaleString('en-IN')}/mo`
+                  : 'Best Price'}
               </p>
               <h3 className="text-xl font-semibold mb-2">Renting →</h3>
               <p className="text-sm text-gray-600 mb-4">
@@ -68,7 +99,7 @@ const BotherSection = () => {
               alt="sofa"
               className="absolute bottom-0 right-0 w-48 md:w-60 object-contain"
             />
-          </div>
+          </button>
 
           {/* RIGHT SIDE */}
           <div className="grid grid-rows-2 gap-6">

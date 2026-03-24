@@ -38,6 +38,36 @@ export const apiGetMyProducts = (token) =>
     },
   });
 
+// Vendor Customers summary
+export const apiGetVendorCustomers = (token) =>
+  API.get('/vendor/customers', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Vendor Offers
+export const apiGetVendorOffers = (token) =>
+  API.get('/vendor/offers', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpsertVendorOffer = (data, token) =>
+  API.post('/vendor/offers', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiDeleteVendorOffer = (id, token) =>
+  API.delete(`/vendor/offers/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Update Product
 export const apiUpdateProduct = (id, data, token) =>
   API.put(`/vendor/update-product/${id}`, data, {

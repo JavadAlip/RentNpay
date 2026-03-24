@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
+import { apiGetAllProducts, apiGetPublicActiveOffers } from '@/lib/api';
 
 import {
   Heart,
@@ -15,104 +17,58 @@ import {
 const Trending = () => {
   const [page, setPage] = useState(0);
   const [activeTab, setActiveTab] = useState('All');
+  const [products, setProducts] = useState([]);
+  const [offersByProduct, setOffersByProduct] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const products = [
-    {
-      title: 'LG 7.5kg Washing Machine',
-      price: '₹1499/mo',
-      oldPrice: '₹1799',
-      rating: '4.3',
-      tag: 'Bestseller',
-      btn: 'Get Notified',
-      type: 'rent',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-    {
-      title: 'Samsung Monitor 14"',
-      price: '₹1499/mo',
-      oldPrice: '₹1799',
-      rating: '4.3',
-      tag: 'Bestseller',
-      btn: 'Rent Now',
-      type: 'rent',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-    {
-      title: 'Activa Scooty',
-      price: '₹299/day',
-      oldPrice: '₹1799',
-      rating: '4.3',
-      tag: 'Bestseller',
-      btn: 'Rent Now',
-      type: 'rent',
-      status: 'Self-Pickup',
-      statusType: 'pickup',
-    },
-    {
-      title: 'Gaming Chair',
-      price: '₹1999',
-      oldPrice: '₹2499',
-      rating: '4.6',
-      tag: 'Bestseller',
-      btn: 'Get Notified',
-      type: 'sale',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-    {
-      title: 'Laptop Table',
-      price: '₹799',
-      oldPrice: '₹999',
-      rating: '4.2',
-      tag: 'Bestseller',
-      btn: 'Rent Now',
-      type: 'sale',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-    {
-      title: 'Office Chair',
-      price: '₹1199',
-      oldPrice: '₹1499',
-      rating: '4.4',
-      tag: 'Bestseller',
-      btn: 'Rent Now',
-      type: 'sale',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-    {
-      title: 'Refrigerator',
-      price: '₹2499',
-      oldPrice: '₹2999',
-      rating: '4.5',
-      tag: 'Bestseller',
-      btn: 'Get Notified',
-      type: 'services',
-      status: 'Self-Pickup',
-      statusType: 'pickup',
-    },
-    {
-      title: 'Microwave',
-      price: '₹999',
-      oldPrice: '₹1299',
-      rating: '4.1',
-      tag: 'Bestseller',
-      btn: 'Rent Now',
-      type: 'services',
-      status: '2-4 days',
-      statusType: 'delivery',
-    },
-  ];
+  const parsePrice = (raw) => {
+    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([apiGetAllProducts('limit=200'), apiGetPublicActiveOffers()])
+      .then(([pRes, oRes]) => {
+        if (!mounted) return;
+        const allProducts = pRes.data?.products || [];
+        const rentProducts = allProducts.filter((p) => p.type === 'Rental');
+        setProducts(rentProducts);
+
+        const map = {};
+        (oRes.data?.offers || []).forEach((o) => {
+          map[String(o.productId)] = o;
+        });
+        setOffersByProduct(map);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setProducts([]);
+        setOffersByProduct({});
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const cardsPerPage = 6;
 
   const filteredProducts =
     activeTab === 'All'
       ? products
-      : products.filter((p) => p.type === activeTab.toLowerCase());
+      : activeTab === 'Rent'
+        ? products
+        : activeTab === 'Sale'
+          ? products.filter((p) => p.type === 'Sell')
+          : products.filter((p) =>
+              String(p.category || '')
+                .toLowerCase()
+                .includes('service'),
+            );
 
   const visibleProducts = filteredProducts.slice(
     page * cardsPerPage,
@@ -139,10 +95,6 @@ const Trending = () => {
           <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold">
             Trending Near You !
           </h2>
-
-          <button className="border px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm whitespace-nowrap hover:bg-gray-100">
-            View All Deals
-          </button>
         </div>
 
         {/* DESCRIPTION */}
@@ -190,79 +142,117 @@ const Trending = () => {
         </div>
 
         {/* PRODUCT GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleProducts.map((item, index) => (
-            <div
-              key={index}
-              className="bg-white border rounded-xl overflow-hidden hover:shadow-md transition"
-            >
-              {/* IMAGE SECTION */}
-              <div className="relative p-4">
-                <span className="absolute top-4 left-4 bg-orange-500 text-white text-xs px-2 py-1 rounded">
-                  {item.tag}
-                </span>
+        {loading ? (
+          <div className="flex justify-center py-14">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {visibleProducts.map((item) => {
+              const offer = offersByProduct[String(item._id)];
+              const base = parsePrice(item.price);
+              const discount = Number(offer?.discountPercent || 0);
+              const finalPrice = Math.max(
+                0,
+                Math.round(base - (base * discount) / 100),
+              );
+              const hasOffer = !!offer && discount > 0;
+              const tag = offer?.sticker || 'Bestseller';
+              const statusType = item.stock > 0 ? 'delivery' : 'pickup';
+              const status = item.stock > 0 ? '2-4 days' : 'Self-Pickup';
+              const rating = (
+                4 +
+                ((item.productName?.length || 3) % 10) / 10
+              ).toFixed(1);
 
-                <button className="absolute top-4 right-4 bg-white p-1 rounded-full shadow">
-                  <Heart size={16} />
-                </button>
-
-                <img
-                  src={mainimg}
-                  alt="product"
-                  className="w-full h-40 object-contain"
-                />
-              </div>
-
-              {/* CARD CONTENT */}
-              <div className="px-4 pb-4">
-                {/* STATUS BADGE */}
-                <div className="mb-2">
-                  {item.statusType === 'delivery' ? (
-                    <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full w-fit">
-                      <Truck size={12} />
-                      {item.status}
+              return (
+                <div
+                  key={item._id}
+                  className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition"
+                >
+                  {/* IMAGE SECTION */}
+                  <div className="relative p-3 sm:p-4">
+                    <span className="absolute top-3 left-3 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
+                      {tag}
                     </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full w-fit">
-                      <MapPin size={12} />
-                      {item.status}
-                    </span>
-                  )}
-                </div>
 
-                {/* TITLE + RATING */}
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-sm font-medium">{item.title}</h3>
+                    <button className="absolute top-4 right-4 bg-white p-1 rounded-full shadow">
+                      <Heart size={16} />
+                    </button>
 
-                  <div className="flex items-center gap-1 text-green-600 text-xs">
-                    <Star size={14} fill="green" />
-                    {item.rating}
+                    <img
+                      src={item.image || mainimg}
+                      alt="product"
+                      className="w-full h-40 sm:h-44 object-contain"
+                    />
+                  </div>
+
+                  {/* CARD CONTENT */}
+                  <div className="px-3 sm:px-4 pb-4">
+                    {/* STATUS BADGE */}
+                    <div className="mb-2 flex items-center justify-between">
+                      {statusType === 'delivery' ? (
+                        <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full w-fit">
+                          <Truck size={12} />
+                          {status}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full w-fit">
+                          <MapPin size={12} />
+                          {status}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-gray-500">
+                        {item.type === 'Rental' ? 'For Rent' : 'Brand New'}
+                      </span>
+                    </div>
+
+                    {/* TITLE + RATING */}
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="text-sm font-medium">
+                        {item.productName}
+                      </h3>
+
+                      <div className="flex items-center gap-1 text-white text-[11px] bg-emerald-500 px-2 py-0.5 rounded-full">
+                        <Star size={12} fill="white" />
+                        {rating}
+                      </div>
+                    </div>
+
+                    {/* PRICE */}
+                    <div className="flex items-end justify-between gap-2 mb-3">
+                      <div>
+                        <span className="font-semibold text-2xl leading-none">
+                          ₹{hasOffer ? finalPrice : base}
+                        </span>
+                        <span className="ml-1 text-sm font-medium text-gray-800">/mo</span>
+                        {hasOffer ? (
+                          <span className="ml-2 text-gray-400 text-xs line-through">
+                            ₹{base}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {hasOffer ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full border text-[11px] font-medium text-[#F97316] border-[#F97316] bg-orange-50 whitespace-nowrap">
+                          {discount}% Off
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* BUTTON */}
+                    <Link
+                      href={`/rent-product-details/${item._id}`}
+                      className="block w-full text-center bg-[#F97316] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600"
+                    >
+                      Details
+                    </Link>
                   </div>
                 </div>
-
-                {/* PRICE */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="font-semibold">{item.price}</span>
-
-                  <span className="text-gray-400 text-xs line-through">
-                    {item.oldPrice}
-                  </span>
-                </div>
-
-                {/* BUTTON */}
-                {item.btn === 'Get Notified' ? (
-                  <button className="w-full border border-gray-300 py-2 rounded-lg text-sm hover:bg-gray-100">
-                    Get Notified
-                  </button>
-                ) : (
-                  <button className="w-full bg-orange-500 text-white py-2 rounded-lg text-sm hover:bg-orange-600">
-                    Rent Now
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* ARROWS */}
         <div className="flex justify-center gap-4 mt-10">
