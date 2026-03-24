@@ -1,5 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiAdminLogin, apiGetAllVendors } from '../../service/api';
+import {
+  apiAdminLogin,
+  apiGetAllUsers,
+  apiGetAllVendors,
+} from '../../service/api';
 
 // Login
 export const adminLogin = createAsyncThunk(
@@ -19,11 +23,40 @@ export const getAllVendors = createAsyncThunk(
   'admin/getVendors',
   async (_, { getState, rejectWithValue }) => {
     try {
-      const token = getState().admin.token;
+      const token =
+        getState().admin.token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem('adminToken')
+          : null);
+      if (!token) {
+        return rejectWithValue('Please login again to continue.');
+      }
       const res = await apiGetAllVendors(token);
       return res.data.vendors;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to get vendors',
+      );
+    }
+  },
+);
+
+export const getAllUsers = createAsyncThunk(
+  'admin/getUsers',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const token =
+        getState().admin.token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem('adminToken')
+          : null);
+      if (!token) {
+        return rejectWithValue('Please login again to continue.');
+      }
+      const res = await apiGetAllUsers(token);
+      return res.data.users;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get users');
     }
   },
 );
@@ -50,7 +83,10 @@ function readAdminAuthFromStorage() {
 const initialState = {
   ...readAdminAuthFromStorage(),
   vendors: [],
-  loading: false,
+  users: [],
+  usersLoading: false,
+  vendorsLoading: false,
+  authLoading: false,
   error: null,
 };
 
@@ -65,17 +101,17 @@ const adminSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(adminLogin.pending, (state) => {
-        state.loading = true;
+        state.authLoading = true;
         state.error = null;
       })
       .addCase(adminLogin.fulfilled, (state, action) => {
-        state.loading = false;
+        state.authLoading = false;
         state.isAuthenticated = true;
         state.token = action.payload.token;
         state.user = action.payload.user;
       })
       .addCase(adminLogin.rejected, (state, action) => {
-        state.loading = false;
+        state.authLoading = false;
         state.isAuthenticated = false;
         state.token = null;
         state.user = null;
@@ -88,14 +124,27 @@ const adminSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllVendors.pending, (state) => {
-        state.loading = true;
+        state.vendorsLoading = true;
+        state.error = null;
       })
       .addCase(getAllVendors.fulfilled, (state, action) => {
-        state.loading = false;
+        state.vendorsLoading = false;
         state.vendors = action.payload;
       })
       .addCase(getAllVendors.rejected, (state, action) => {
-        state.loading = false;
+        state.vendorsLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(getAllUsers.pending, (state) => {
+        state.usersLoading = true;
+        state.error = null;
+      })
+      .addCase(getAllUsers.fulfilled, (state, action) => {
+        state.usersLoading = false;
+        state.users = action.payload;
+      })
+      .addCase(getAllUsers.rejected, (state, action) => {
+        state.usersLoading = false;
         state.error = action.payload;
       });
   },

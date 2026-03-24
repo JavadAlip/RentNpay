@@ -3,6 +3,7 @@ import {
   adminLogin,
   adminLogout,
   getAllVendors,
+  getAllUsers,
   getAllProducts,
 } from '../controller/admin/adminController.js';
 import {
@@ -42,6 +43,7 @@ router.get('/get-sub-categories/:categoryId', adminAuth, getSubCategories);
 router.delete('/delete-sub-category/:id', adminAuth, deleteSubCategory);
 
 router.get('/get-vendors', adminAuth, getAllVendors);
+router.get('/get-users', adminAuth, getAllUsers);
 router.get('/products', getAllProducts);
 
 export default router;

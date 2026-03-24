@@ -71,36 +71,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-
-import { api } from '../api/axios';
+import { apiGetAllAdminProducts } from '@/service/api';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchProducts = () => {
-    api
-      .get('/api/products?limit=100')
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    if (!token) {
+      setError('Please login again to continue.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    apiGetAllAdminProducts(token, 'limit=200')
       .then((r) => {
         setProducts(r.data.products || []);
       })
-      .catch(() => setProducts([]))
+      .catch((err) => {
+        setProducts([]);
+        setError(err.response?.data?.message || 'Failed to load products.');
+      })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => fetchProducts(), []);
 
-  const deleteProduct = (id) => {
-    if (!window.confirm('Delete this product?')) return;
-    api
-      .delete(`/api/products/${id}`)
-      .then(() => fetchProducts())
-      .catch(() => {});
-  };
-
   const imgSrc = (p) => {
-    const src = p.images?.[0];
+    const src = p.image;
     return src?.startsWith('http')
       ? src
       : src
@@ -121,17 +124,13 @@ const Products = () => {
             <div className="flex justify-center py-12">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : error ? (
+            <div className="p-6 text-sm text-red-600">{error}</div>
           ) : (
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-                <Link
-                  href="/products/new"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700"
-                >
-                  Add product
-                </Link>
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                All Products
+              </h1>
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -140,19 +139,16 @@ const Products = () => {
                         Image
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Title
+                        Product Name
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Price/day
+                        Vendor
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Category
+                        Price
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                        Actions
+                        Stock
                       </th>
                     </tr>
                   </thead>
@@ -169,34 +165,12 @@ const Products = () => {
                             }}
                           />
                         </td>
-                        <td className="px-4 py-3 font-medium">{p.title}</td>
-                        <td className="px-4 py-3">${p.pricePerDay}</td>
-                        <td className="px-4 py-3">{p.category?.name || '—'}</td>
+                        <td className="px-4 py-3 font-medium">{p.productName}</td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`text-xs px-2 py-1 rounded ${
-                              p.availability === 'available'
-                                ? 'bg-green-100'
-                                : 'bg-gray-100'
-                            }`}
-                          >
-                            {p.availability}
-                          </span>
+                          {p.vendorId?.fullName || 'Unknown Vendor'}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/products/${p._id}`}
-                            className="text-primary hover:underline mr-3"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => deleteProduct(p._id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </td>
+                        <td className="px-4 py-3">{p.price || '-'}</td>
+                        <td className="px-4 py-3">{p.stock ?? 0}</td>
                       </tr>
                     ))}
                   </tbody>

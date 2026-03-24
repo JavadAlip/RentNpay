@@ -112,4 +112,39 @@ export const apiGetAllVendors = (token) =>
     },
   });
 
+// Get All Users
+export const apiGetAllUsers = (token) =>
+  API.get('/admin/get-users', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Get All Products (admin)
+export const apiGetAllAdminProducts = (token, query = '') =>
+  API.get(`/admin/products${query ? `?${query}` : ''}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// ── ADMIN ORDER APIs ─────────────────────────
+export const apiGetAllOrders = (token) =>
+  API.get('/orders', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpdateOrderStatus = (id, status, token) =>
+  API.put(
+    `/orders/${id}/status`,
+    { status },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
 export default API;

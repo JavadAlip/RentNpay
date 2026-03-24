@@ -6,13 +6,13 @@ import { getAllVendors } from '../../../redux/slices/adminSlice';
 
 const AllVendors = () => {
   const dispatch = useDispatch();
-  const { vendors, loading, error } = useSelector((state) => state.admin);
+  const { vendors, vendorsLoading, error } = useSelector((state) => state.admin);
 
   useEffect(() => {
     dispatch(getAllVendors());
   }, [dispatch]);
 
-  if (loading) {
+  if (vendorsLoading) {
     return <div className="p-6 text-sm text-gray-600">Loading vendors...</div>;
   }
 
@@ -30,6 +30,7 @@ const AllVendors = () => {
             <tr className="text-gray-500">
               <th className="px-4 py-2 text-left font-medium">Name</th>
               <th className="px-4 py-2 text-left font-medium">Email</th>
+              <th className="px-4 py-2 text-left font-medium">Products</th>
               <th className="px-4 py-2 text-left font-medium">Verified</th>
               <th className="px-4 py-2 text-right font-medium">Joined</th>
             </tr>
@@ -39,6 +40,9 @@ const AllVendors = () => {
               <tr key={v._id} className="border-t border-gray-100">
                 <td className="px-4 py-2 text-gray-800">{v.fullName}</td>
                 <td className="px-4 py-2 text-gray-600">{v.emailAddress}</td>
+                <td className="px-4 py-2 text-gray-700 font-medium">
+                  {v.productsCount ?? 0}
+                </td>
                 <td className="px-4 py-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${
@@ -60,7 +64,7 @@ const AllVendors = () => {
             {vendors.length === 0 && (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="px-4 py-6 text-center text-gray-500 text-sm"
                 >
                   No vendors found.
