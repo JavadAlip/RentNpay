@@ -9,18 +9,33 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import RentPrdctDetail from '@/site-pages/RentPrdctDetail';
-import { apiGetProductById } from '@/lib/api';
+import { apiGetProductById, apiGetPublicActiveOffers } from '@/lib/api';
 
 export default function RentProductDetailsPage() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
+  const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    apiGetProductById(id)
-      .then((res) => setProduct(res.data.product))
-      .catch(() => setProduct(null))
+    Promise.all([apiGetProductById(id), apiGetPublicActiveOffers()])
+      .then(([pRes, oRes]) => {
+        const p = pRes.data?.product || null;
+        setProduct(p);
+        if (!p?._id) {
+          setOffer(null);
+          return;
+        }
+        const matched = (oRes.data?.offers || []).find(
+          (o) => String(o.productId) === String(p._id),
+        );
+        setOffer(matched || null);
+      })
+      .catch(() => {
+        setProduct(null);
+        setOffer(null);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -40,5 +55,5 @@ export default function RentProductDetailsPage() {
     );
   }
 
-  return <RentPrdctDetail product={product} />;
+  return <RentPrdctDetail product={product} offer={offer} />;
 }

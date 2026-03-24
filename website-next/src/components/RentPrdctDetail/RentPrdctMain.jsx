@@ -196,7 +196,7 @@ function buildPlans(basePrice) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-const RentPrdctMain = ({ product }) => {
+const RentPrdctMain = ({ product, offer }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { openAuth } = useAuthModal();
@@ -221,6 +221,11 @@ const RentPrdctMain = ({ product }) => {
   const realPrice = parsePrice(product?.price);
   const plans = realPrice ? buildPlans(realPrice) : STATIC_PLANS;
   const plan = plans.find((p) => p.month === selectedPlan) || plans[1];
+  const discountPercent = Number(offer?.discountPercent || 0);
+  const hasOffer = discountPercent > 0;
+  const effectivePlanPrice = hasOffer
+    ? Math.max(0, Math.round(plan.price - (plan.price * discountPercent) / 100))
+    : plan.price;
 
   // Highest plan price for strikethrough (3-month = most expensive)
   const strikePrice = plans[0].price;
@@ -291,7 +296,7 @@ const RentPrdctMain = ({ product }) => {
           productId,
           quantity: 1,
           rentalMonths: activeRentalMonths,
-          pricePerDay: plan.price,
+          pricePerDay: effectivePlanPrice,
           title: productName,
           image: images?.[0] || '',
         }),
@@ -341,7 +346,7 @@ const RentPrdctMain = ({ product }) => {
           productId,
           quantity: 1,
           rentalMonths: activeRentalMonths,
-          pricePerDay: plan.price,
+          pricePerDay: effectivePlanPrice,
           title: productName,
           image: images?.[0] || '',
         }),
@@ -407,6 +412,11 @@ const RentPrdctMain = ({ product }) => {
             </span>
           </div>
         </div>
+        {hasOffer ? (
+          <p className="mt-1 text-sm font-medium text-emerald-600">
+            ({discountPercent}% off)
+          </p>
+        ) : null}
 
         {/* Stock badge */}
         {Number.isFinite(currentStock) && (
@@ -444,7 +454,14 @@ const RentPrdctMain = ({ product }) => {
               >
                 <p className="text-xs sm:text-sm">{p.month} Months</p>
                 <p className="font-semibold text-sm sm:text-base">
-                  ₹{p.price}/mo
+                  ₹
+                  {hasOffer
+                    ? Math.max(
+                        0,
+                        Math.round(p.price - (p.price * discountPercent) / 100),
+                      )
+                    : p.price}
+                  /mo
                 </p>
               </div>
             ))}
@@ -456,12 +473,16 @@ const RentPrdctMain = ({ product }) => {
           <div className="flex justify-between text-sm sm:text-base">
             <span>Monthly Rent</span>
             <span className="text-lg sm:text-xl font-bold">
-              ₹{plan.price}/mo
-              {plan.price < strikePrice && (
+              ₹{effectivePlanPrice}/mo
+              {hasOffer ? (
+                <span className="text-[#4A5565] line-through text-xs sm:text-sm ml-2">
+                  ₹{plan.price}
+                </span>
+              ) : plan.price < strikePrice ? (
                 <span className="text-[#4A5565] line-through text-xs sm:text-sm ml-2">
                   ₹{strikePrice}
                 </span>
-              )}
+              ) : null}
             </span>
           </div>
 
@@ -482,7 +503,7 @@ const RentPrdctMain = ({ product }) => {
               </p>
             </div>
             <span className="text-orange-500 font-medium text-sm sm:text-base shrink-0">
-              ₹{(plan.price + 1000).toLocaleString('en-IN')}
+              ₹{(effectivePlanPrice + 1000).toLocaleString('en-IN')}
             </span>
           </div>
         </div>
@@ -519,7 +540,10 @@ const RentPrdctMain = ({ product }) => {
           <p className="text-gray-500">
             Total rental cost for {selectedPlan} months:{' '}
             <span className="font-semibold text-black">
-              ₹{(plan.price * parseInt(selectedPlan)).toLocaleString('en-IN')}
+              ₹
+              {(
+                effectivePlanPrice * parseInt(selectedPlan, 10)
+              ).toLocaleString('en-IN')}
             </span>
           </p>
         </div>

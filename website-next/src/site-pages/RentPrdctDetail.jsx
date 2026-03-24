@@ -25,10 +25,10 @@ import SimilarRental from '../components/RentPrdctDetail/SimilarRental';
 import CostumerReview from '../components/RentPage/CostumerReview';
 import WorkFlow from '../components/RentPage/WorkFlow';
 
-const RentPrdctDetail = ({ product }) => {
+const RentPrdctDetail = ({ product, offer }) => {
   return (
     <>
-      <RentPrdctMain product={product} />
+      <RentPrdctMain product={product} offer={offer} />
       <RentPrdctDesc product={product} />
       <SimilarRental />
       <CostumerReview />
