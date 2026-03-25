@@ -19,6 +19,22 @@ export const apiVendorVerifyOtp = (data) =>
 
 export const apiVendorLogin = (data) => API.post('/vendor/vendor-login', data);
 
+// vendor kyc
+export const apiGetMyVendorKyc = (token) =>
+  API.get('/vendor/kyc', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiSubmitVendorKyc = (data, token) =>
+  API.post('/vendor/kyc', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
 // ── PRODUCT APIs ─────────────────────────────────────────
 
 // Create Product
@@ -190,5 +206,28 @@ export const apiUpdateOrderStatus = (id, status, token) =>
       },
     },
   );
+
+// ── VENDOR KYC APIs ─────────────────────────────────────────────
+export const apiGetVendorKycQueue = (token) =>
+  API.get('/admin/kyc/queue', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiGetVendorKycReview = (vendorId, token) =>
+  API.get(`/admin/kyc/${vendorId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiReviewVendorKyc = (vendorId, payload, token) =>
+  API.put(`/admin/kyc/${vendorId}`, payload, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
 
 export default API;
