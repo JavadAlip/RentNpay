@@ -1,9 +1,18 @@
 import Product from '../../models/Product.js';
 import { uploadImageToCloudinary } from '../../config/cloudinaryUpload.js';
+import VendorKyc from '../../models/VendorKyc.js';
 
 export const createProduct = async (req, res) => {
   try {
     console.log('Vendor:', req.vendor);
+
+    const vendorKyc = await VendorKyc.findOne({ vendorId: req.vendor._id });
+    if (!vendorKyc || vendorKyc.status !== 'approved') {
+      return res.status(403).json({
+        message:
+          'KYC not approved yet. Complete KYC and wait for admin approval before adding products.',
+      });
+    }
 
     const data = req.body;
 

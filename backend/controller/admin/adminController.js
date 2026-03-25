@@ -3,6 +3,7 @@ import Vendor from '../../models/vendorAuthModel.js';
 import Product from '../../models/Product.js';
 import User from '../../models/userAuthModel.js';
 import Order from '../../models/Order.js';
+import VendorKyc from '../../models/VendorKyc.js';
 
 export const adminLogin = async (req, res) => {
   try {
@@ -75,6 +76,14 @@ export const getAllVendors = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const vendorIds = vendors.map((v) => v._id);
+
+    const kycRecords = await VendorKyc.find({
+      vendorId: { $in: vendorIds },
+    }).select('vendorId status');
+    const kycStatusMap = new Map(
+      (kycRecords || []).map((x) => [String(x.vendorId), x.status]),
+    );
+
     const productCounts = await Product.aggregate([
       { $match: { vendorId: { $in: vendorIds } } },
       { $group: { _id: '$vendorId', count: { $sum: 1 } } },
@@ -84,6 +93,9 @@ export const getAllVendors = async (req, res) => {
     const withCounts = vendors.map((v) => ({
       ...v.toObject(),
       productsCount: countMap.get(String(v._id)) || 0,
+      // Primary source of truth: VendorKyc.status
+      // If no KYC document record exists, treat it as pending unless vendor.isVerified=true (legacy).
+      kycStatus: kycStatusMap.get(String(v._id)) || (v.isVerified ? 'approved' : 'pending'),
     }));
 
     res.json({
@@ -372,8 +384,11 @@ export const getAllProducts = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
+    // If a vendor was deleted, populate(vendorId) becomes null; hide such products.
+    const visibleProducts = (products || []).filter((p) => p.vendorId);
+
     res.status(200).json({
-      products,
+      products: visibleProducts,
       pages: Math.ceil(total / limit),
       total,
     });

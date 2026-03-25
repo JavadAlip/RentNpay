@@ -15,6 +15,7 @@ import {
   getVendorOffers,
   upsertVendorOffer,
 } from '../controller/vendor/offerController.js';
+import { getMyKyc, submitMyKyc } from '../controller/vendor/kycController.js';
 import {
   signupVendor,
   verifyOTP,
@@ -58,6 +59,18 @@ router.put(
 router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
+router.get('/kyc', vendorAuth, getMyKyc);
+router.post(
+  '/kyc',
+  vendorAuth,
+  upload.fields([
+    { name: 'ownerPhoto', maxCount: 1 },
+    { name: 'panPhoto', maxCount: 1 },
+    { name: 'aadhaarFront', maxCount: 1 },
+    { name: 'aadhaarBack', maxCount: 1 },
+  ]),
+  submitMyKyc,
+);
 
 // offers
 router.get('/offers/public-active', getPublicActiveOffers);

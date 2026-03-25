@@ -9,6 +9,11 @@ import {
   getAllProducts,
 } from '../controller/admin/adminController.js';
 import {
+  getVendorKycQueue,
+  getVendorKycReview,
+  reviewVendorKyc,
+} from '../controller/admin/kycController.js';
+import {
   createCategory,
   getCategories,
   deleteCategory,
@@ -49,5 +54,10 @@ router.get('/get-vendors/:id', adminAuth, getVendorDetails);
 router.get('/get-users', adminAuth, getAllUsers);
 router.get('/get-users/:id', adminAuth, getUserDetails);
 router.get('/products', getAllProducts);
+
+// Vendor KYC approvals
+router.get('/kyc/queue', adminAuth, getVendorKycQueue);
+router.get('/kyc/:vendorId', adminAuth, getVendorKycReview);
+router.put('/kyc/:vendorId', adminAuth, reviewVendorKyc);
 
 export default router;

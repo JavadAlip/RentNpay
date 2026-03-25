@@ -2,6 +2,9 @@ import Vendor from '../../models/vendorAuthModel.js';
 import bcrypt from 'bcryptjs';
 import { sendOTPEmail } from '../../utils/sendMail.js';
 import jwt from 'jsonwebtoken';
+import Product from '../../models/Product.js';
+import Offer from '../../models/Offer.js';
+import VendorKyc from '../../models/VendorKyc.js';
 
 export const signupVendor = async (req, res) => {
   try {
@@ -145,6 +148,13 @@ export const deleteVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
     }
+
+    // Cascade delete vendor-owned resources so products/offers won't show as "Unknown Vendor"
+    await Promise.all([
+      Product.deleteMany({ vendorId: id }),
+      Offer.deleteMany({ vendorId: id }),
+      VendorKyc.deleteMany({ vendorId: id }),
+    ]);
 
     await Vendor.findByIdAndDelete(id);
 
