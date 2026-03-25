@@ -7,9 +7,9 @@ const VendorTopBar = () => {
   const { user } = useSelector((state) => state.vendor);
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-4 lg:px-6 py-3 flex items-center justify-between gap-4 sticky top-0 z-20">
-      <div className="flex flex-col">
-        <h1 className="text-base md:text-lg font-semibold text-gray-900">
+    <header className="w-full bg-white border-b border-gray-200 pl-14 md:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
+      <div className="flex flex-col min-w-0">
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
           Dashboard
         </h1>
         {/* <p className="text-[11px] md:text-xs text-gray-500">
@@ -18,7 +18,7 @@ const VendorTopBar = () => {
         </p> */}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
           <span className="w-2 h-2 rounded-full bg-green-500" />
           <span>Mumbai</span>
@@ -47,7 +47,7 @@ const VendorTopBar = () => {
             </svg>
           </button>
 
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <div className="text-right">
               <p className="text-xs font-medium text-gray-800 truncate max-w-[120px]">
                 {user?.fullName || 'User Name'}
@@ -57,6 +57,9 @@ const VendorTopBar = () => {
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </div>
+          </div>
+          <div className="lg:hidden w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
+            {user?.fullName?.[0]?.toUpperCase() || 'U'}
           </div>
         </div>
       </div>
