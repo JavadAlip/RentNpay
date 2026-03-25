@@ -64,16 +64,16 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+    <header className="flex items-center justify-between pl-14 md:pl-6 pr-3 sm:pr-4 md:pr-6 py-3 md:py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+      <div className="min-w-0">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 truncate">
           {title}
         </h1>
-        <p className="text-xs md:text-sm text-gray-500">
+        <p className="hidden sm:block text-xs md:text-sm text-gray-500">
           Real-time platform health &amp; operations
         </p>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
         <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm">
           <span className="w-2 h-2 rounded-full bg-green-500" />
           Live
@@ -102,7 +102,7 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
             </span>
           ) : null}
         </button>
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           <div className="text-right">
             <p className="text-xs font-medium text-gray-700">{adminEmail}</p>
             
@@ -110,6 +110,9 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
             {avatarLetter}
           </div>
+        </div>
+        <div className="lg:hidden w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
+          {avatarLetter}
         </div>
       </div>
     </header>
