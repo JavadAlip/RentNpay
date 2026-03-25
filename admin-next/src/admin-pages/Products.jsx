@@ -112,77 +112,72 @@ const Products = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TopBar */}
-
-        <main className="p-6 overflow-auto">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="p-6 text-sm text-red-600">{error}</div>
-          ) : (
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                All Products
-              </h1>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Image
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Product Name
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Vendor
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Price
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Stock
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {products.map((p) => (
-                      <tr key={p._id}>
-                        <td className="px-4 py-3">
-                          <img
-                            src={imgSrc(p)}
-                            alt=""
-                            className="w-12 h-12 object-cover rounded"
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/80';
-                            }}
-                          />
-                        </td>
-                        <td className="px-4 py-3 font-medium">{p.productName}</td>
-                        <td className="px-4 py-3">
-                          {p.vendorId?.fullName || 'Unknown Vendor'}
-                        </td>
-                        <td className="px-4 py-3">{p.price || '-'}</td>
-                        <td className="px-4 py-3">{p.stock ?? 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {products.length === 0 && (
-                  <p className="p-8 text-center text-gray-500">No products.</p>
-                )}
-              </div>
-            </div>
-          )}
-        </main>
+    <div className="space-y-4 sm:space-y-5">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">All Products</h1>
+        <p className="text-sm text-gray-500 mt-1">Product catalog across all vendors</p>
       </div>
+
+      {loading ? (
+        <div className="flex justify-center py-14">
+          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : error ? (
+        <div className="p-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl">
+          {error}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-[860px] w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Image
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Product Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Vendor
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Price
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Stock
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {products.map((p) => (
+                  <tr key={p._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <img
+                        src={imgSrc(p)}
+                        alt=""
+                        className="w-12 h-12 object-cover rounded"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/80';
+                        }}
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{p.productName}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {p.vendorId?.fullName || 'Unknown Vendor'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-800">{p.price || '-'}</td>
+                    <td className="px-4 py-3 text-gray-800">{p.stock ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {products.length === 0 && (
+            <p className="p-8 text-center text-gray-500">No products.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

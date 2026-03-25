@@ -142,9 +142,23 @@ export const apiGetAllVendors = (token) =>
     },
   });
 
+export const apiGetAdminVendorDetails = (id, token) =>
+  API.get(`/admin/get-vendors/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Get All Users
 export const apiGetAllUsers = (token) =>
   API.get('/admin/get-users', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiGetAdminUserDetails = (id, token) =>
+  API.get(`/admin/get-users/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
