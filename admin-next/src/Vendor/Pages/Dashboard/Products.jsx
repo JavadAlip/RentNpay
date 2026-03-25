@@ -13,6 +13,7 @@ import {
   updateProduct,
 } from '../../../redux/slices/productSlice';
 import ProductAddModal from '../../Components/Modals/Products/ProductAddModal';
+import { apiGetMyVendorKyc } from '@/service/api';
 
 const Products = () => {
   const dispatch = useDispatch();
@@ -21,11 +22,30 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [query, setQuery] = useState('');
+  const [kycStatus, setKycStatus] = useState('');
+  const [kycLoading, setKycLoading] = useState(true);
 
   // Fetch products
   useEffect(() => {
     dispatch(getMyProducts());
   }, [dispatch]);
+
+  useEffect(() => {
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null;
+    if (!token) {
+      setKycLoading(false);
+      return;
+    }
+    apiGetMyVendorKyc(token)
+      .then((res) => {
+        setKycStatus(res.data?.kyc?.status || '');
+      })
+      .catch(() => {
+        setKycStatus('');
+      })
+      .finally(() => setKycLoading(false));
+  }, []);
 
   // Dynamic stats (prefer saved status; fallback to stock-derived status)
   const getProductStatus = (p) => {
@@ -161,14 +181,35 @@ const Products = () => {
 
               <button
                 onClick={() => {
+                  if (kycStatus !== 'approved') {
+                    toast.error(
+                      'KYC not approved yet. Complete KYC and wait for admin approval.',
+                    );
+                    return;
+                  }
                   setEditingProduct(null);
                   setIsAddModalOpen(true);
                 }}
-                className="px-4 py-2 rounded-full bg-orange-500 text-white text-sm"
+                disabled={kycLoading || kycStatus !== 'approved'}
+                className="px-4 py-2 rounded-full bg-orange-500 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + Add New Product
               </button>
             </div>
+
+            {kycStatus !== 'approved' ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+                Product creation is locked until KYC is approved by admin. Please
+                submit your KYC from{' '}
+                <a
+                  href="/vendor-kyc-verification"
+                  className="font-semibold underline"
+                >
+                  Vendor KYC Verification
+                </a>
+                .
+              </div>
+            ) : null}
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

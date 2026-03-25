@@ -8,6 +8,7 @@ import { vendorLogout } from '../../../redux/slices/vendorSlice';
 
 const navItems = [
   { to: '/vendor-dashboard', label: 'Dashboard' },
+  { to: '/vendor-kyc-status', label: 'KYC & Verification' },
   { to: '/vendor-products', label: 'Products' },
   { to: '/vendor/customers', label: 'Customers' },
   { to: '/vendor/offers', label: 'Offers' },

@@ -44,7 +44,9 @@ const VendorMain = () => {
         return (
           <VendorWelcome
             onGoToDashboard={() => (window.location.href = '/vendor-dashboard')}
-            onCompleteKYC={() => (window.location.href = '/vendor-kyc')}
+            onCompleteKYC={() =>
+              (window.location.href = '/vendor-kyc-verification')
+            }
           />
         );
       default:

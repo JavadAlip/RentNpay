@@ -92,7 +92,7 @@ const VendorWelcome = ({ onGoToDashboard, onCompleteKYC }) => {
           onClick={() =>
             onCompleteKYC
               ? onCompleteKYC()
-              : (window.location.href = '/vendor-kyc')
+              : (window.location.href = '/vendor-kyc-verification')
           }
           className="w-full py-3.5 rounded-xl border border-gray-200 hover:bg-gray-50 active:scale-[0.98] text-gray-700 text-sm font-semibold transition-all"
         >
