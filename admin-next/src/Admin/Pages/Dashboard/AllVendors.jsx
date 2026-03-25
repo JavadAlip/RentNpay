@@ -32,7 +32,7 @@ const AllVendors = () => {
           .toLowerCase()
           .includes(q);
       if (!matchSearch) return false;
-      if (activeFilter === 'kyc') return !v.isVerified;
+      if (activeFilter === 'kyc') return v.kycStatus !== 'approved';
       if (activeFilter === 'products') return Number(v.productsCount || 0) > 0;
       return true;
     });
@@ -53,7 +53,7 @@ const AllVendors = () => {
     const list = vendors || [];
     return {
       totalVendors: list.length,
-      pendingVerification: list.filter((v) => !v.isVerified).length,
+      pendingVerification: list.filter((v) => v.kycStatus !== 'approved').length,
       activeStores: list.filter((v) => Number(v.productsCount || 0) > 0).length,
     };
   }, [vendors]);
@@ -191,12 +191,18 @@ const AllVendors = () => {
                       <p className="text-xs text-gray-500">{v.emailAddress}</p>
                       <span
                         className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] border ${
-                          v.isVerified
+                          v.kycStatus === 'approved'
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                            : v.kycStatus === 'rejected'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}
                       >
-                        {v.isVerified ? 'Verified' : 'Pending KYC'}
+                        {v.kycStatus === 'approved'
+                          ? 'Verified'
+                          : v.kycStatus === 'rejected'
+                            ? 'Rejected'
+                            : 'Pending KYC'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
