@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllVendors } from '../../../redux/slices/adminSlice';
 import Link from 'next/link';
+import { apiCreateVendorProfile } from '@/service/api';
 
 const AllVendors = () => {
   const dispatch = useDispatch();
@@ -12,6 +13,15 @@ const AllVendors = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createdCreds, setCreatedCreds] = useState('');
+  const [form, setForm] = useState({
+    fullName: '',
+    emailAddress: '',
+    password: '',
+  });
 
   useEffect(() => {
     dispatch(getAllVendors());
@@ -74,6 +84,44 @@ const AllVendors = () => {
     );
   }
 
+  const openCreate = () => {
+    setForm({ fullName: '', emailAddress: '', password: '' });
+    setCreateError('');
+    setCreatedCreds('');
+    setCreateOpen(true);
+  };
+
+  const submitCreateVendor = async (e) => {
+    e.preventDefault();
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    if (!token) {
+      setCreateError('Please login again to continue.');
+      return;
+    }
+    setCreating(true);
+    setCreateError('');
+    try {
+      const res = await apiCreateVendorProfile(
+        {
+          fullName: form.fullName,
+          emailAddress: form.emailAddress,
+          password: form.password,
+        },
+        token,
+      );
+      setCreatedCreds(
+        `Vendor created. Temporary password: ${res.data?.tempPassword || 'N/A'}`,
+      );
+      dispatch(getAllVendors());
+      setForm({ fullName: '', emailAddress: '', password: '' });
+    } catch (err) {
+      setCreateError(err.response?.data?.message || 'Failed to create vendor profile.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
@@ -81,6 +129,15 @@ const AllVendors = () => {
         <p className="text-sm text-gray-500 mt-1">
           Manage vendor profiles, verification status, and inventory
         </p>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
+          >
+            + Create Vendor Profile
+          </button>
+        </div>
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
@@ -252,6 +309,79 @@ const AllVendors = () => {
           </div>
         </div>
       </div>
+
+      {createOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Create Vendor Profile</h3>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={submitCreateVendor} className="p-5 space-y-3">
+              <input
+                value={form.fullName}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, fullName: e.target.value }))
+                }
+                placeholder="Vendor full name"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                required
+              />
+              <input
+                type="email"
+                value={form.emailAddress}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, emailAddress: e.target.value }))
+                }
+                placeholder="Vendor email"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                required
+              />
+              <input
+                type="text"
+                value={form.password}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, password: e.target.value }))
+                }
+                placeholder="Password (optional, auto-generated if empty)"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+              />
+
+              {createError ? (
+                <p className="text-sm text-red-600">{createError}</p>
+              ) : null}
+              {createdCreds ? (
+                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  {createdCreds}
+                </p>
+              ) : null}
+
+              <div className="pt-1 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm disabled:opacity-60"
+                >
+                  {creating ? 'Creating...' : 'Create Vendor'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

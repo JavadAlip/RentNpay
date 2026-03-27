@@ -18,6 +18,12 @@ export const apiVendorVerifyOtp = (data) =>
   API.post('/vendor/verify-otp', data);
 
 export const apiVendorLogin = (data) => API.post('/vendor/vendor-login', data);
+export const apiVendorForgotPassword = (data) =>
+  API.post('/vendor/forgot-password', data);
+export const apiVendorVerifyResetOtp = (data) =>
+  API.post('/vendor/verify-reset-otp', data);
+export const apiVendorResetPassword = (data) =>
+  API.post('/vendor/reset-password', data);
 
 // vendor kyc
 export const apiGetMyVendorKyc = (token) =>
@@ -155,6 +161,14 @@ export const apiGetAllVendors = (token) =>
   API.get('/admin/get-vendors', {
     headers: {
       Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiCreateVendorProfile = (data, token) =>
+  API.post('/admin/create-vendor', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
   });
 

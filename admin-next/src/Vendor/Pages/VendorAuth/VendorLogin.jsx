@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { vendorLogin, clearError } from '../../../redux/slices/vendorSlice';
 
-const VendorLogin = ({ onClose, onSignup }) => {
+const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { loading, error, isAuthenticated } = useSelector(
@@ -251,6 +251,18 @@ const VendorLogin = ({ onClose, onSignup }) => {
         >
           {loading ? 'Signing In...' : 'Sign In'}
         </button>
+
+        <div className="flex justify-end -mt-2">
+          <button
+            type="button"
+            onClick={() =>
+              onForgotPassword ? onForgotPassword() : null
+            }
+            className="text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+          >
+            Forgot password?
+          </button>
+        </div>
 
         {/* Sign Up link */}
         <div className="flex justify-center">

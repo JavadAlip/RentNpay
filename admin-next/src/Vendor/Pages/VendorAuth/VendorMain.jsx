@@ -5,6 +5,7 @@ import VendorLogin from './VendorLogin';
 import VendorSignup from './VendorSignup';
 import VendorOtpVerification from './VendorOtpVerification';
 import VendorWelcome from './VendorWelcome';
+import VendorForgotPassword from './VendorForgotPassword';
 
 const VendorMain = () => {
   const [modal, setModal] = useState(null);
@@ -19,8 +20,11 @@ const VendorMain = () => {
           <VendorLogin
             onClose={closeModal}
             onSignup={() => setModal('signup')}
+            onForgotPassword={() => setModal('forgot')}
           />
         );
+      case 'forgot':
+        return <VendorForgotPassword onBackToLogin={() => setModal('login')} />;
       case 'signup':
         return (
           <VendorSignup
