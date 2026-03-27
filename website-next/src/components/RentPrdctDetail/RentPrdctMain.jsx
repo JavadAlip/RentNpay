@@ -195,6 +195,21 @@ function buildPlans(basePrice) {
   ];
 }
 
+function normalizeRentalPlansFromProduct(product) {
+  const arr = Array.isArray(product?.rentalConfigurations)
+    ? product.rentalConfigurations
+    : [];
+  const normalized = arr
+    .map((cfg) => ({
+      month: String(cfg?.months ?? ''),
+      price: Number(cfg?.pricePerDay ?? 0),
+      label: String(cfg?.label || ''),
+    }))
+    .filter((cfg) => cfg.month && Number.isFinite(cfg.price) && cfg.price > 0);
+
+  return normalized;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 const RentPrdctMain = ({ product, offer }) => {
   const dispatch = useDispatch();
@@ -203,24 +218,43 @@ const RentPrdctMain = ({ product, offer }) => {
   const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const { items } = useSelector((s) => s.cart);
   const { pushToast } = useToast();
-  const [selectedPlan, setSelectedPlan] = useState('6');
+  const [selectedPlan, setSelectedPlan] = useState('');
 
   // ── Real data first, static fallback second ──────────────────────────────
   const productName = product?.productName || '3-Seater Fabric Sofa - Grey';
   const category = product?.category || 'Furniture';
   const subCategory = product?.subCategory || 'Sofas';
 
-  // Images: product has one image → use it as first thumb, pad with fallbacks
-  const images = product?.image
-    ? [product.image, ...FALLBACK_IMAGES.slice(0, 3)]
-    : FALLBACK_IMAGES;
+  // Images: use vendor uploaded images[] first, fallback to image field and static samples.
+  const images = useMemo(() => {
+    const fromDb = Array.isArray(product?.images)
+      ? product.images.filter(Boolean)
+      : [];
+    if (fromDb.length > 0) return fromDb.slice(0, 5);
+    if (product?.image) return [product.image, ...FALLBACK_IMAGES.slice(0, 3)];
+    return FALLBACK_IMAGES;
+  }, [product?.images, product?.image]);
 
   const [mainImg, setMainImg] = useState(images[0]);
+  useEffect(() => {
+    setMainImg(images[0]);
+  }, [images]);
 
-  // Plans: derive from real price if available, else use static
+  // Plans: vendor rentalConfigurations first, fallback to derived/static.
   const realPrice = parsePrice(product?.price);
-  const plans = realPrice ? buildPlans(realPrice) : STATIC_PLANS;
-  const plan = plans.find((p) => p.month === selectedPlan) || plans[1];
+  const plansFromVendor = normalizeRentalPlansFromProduct(product);
+  const plans = plansFromVendor.length
+    ? plansFromVendor
+    : realPrice
+      ? buildPlans(realPrice)
+      : STATIC_PLANS;
+  const defaultPlanMonth = plans[0]?.month || '1';
+  useEffect(() => {
+    setSelectedPlan((prev) =>
+      plans.some((p) => p.month === prev) ? prev : defaultPlanMonth,
+    );
+  }, [defaultPlanMonth, plans]);
+  const plan = plans.find((p) => p.month === selectedPlan) || plans[0];
   const discountPercent = Number(offer?.discountPercent || 0);
   const hasOffer = discountPercent > 0;
   const effectivePlanPrice = hasOffer
@@ -463,6 +497,9 @@ const RentPrdctMain = ({ product, offer }) => {
                     : p.price}
                   /mo
                 </p>
+                {p.label ? (
+                  <p className="text-[10px] mt-1 opacity-90">{p.label}</p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -489,7 +526,7 @@ const RentPrdctMain = ({ product, offer }) => {
           <div className="flex justify-between text-xs sm:text-sm text-gray-600">
             <span>Refundable Deposit</span>
             <span className="text-green-600 font-medium text-sm sm:text-base">
-              ₹1,000
+              ₹{Number(product?.refundableDeposit || 0).toLocaleString('en-IN')}
             </span>
           </div>
 
@@ -503,7 +540,10 @@ const RentPrdctMain = ({ product, offer }) => {
               </p>
             </div>
             <span className="text-orange-500 font-medium text-sm sm:text-base shrink-0">
-              ₹{(effectivePlanPrice + 1000).toLocaleString('en-IN')}
+              ₹
+              {(
+                effectivePlanPrice + Number(product?.refundableDeposit || 0)
+              ).toLocaleString('en-IN')}
             </span>
           </div>
         </div>

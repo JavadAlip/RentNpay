@@ -46,7 +46,7 @@ router.delete('/delete-vendor/:id', deleteVendor);
 router.post(
   '/create-product',
   vendorAuth,
-  upload.single('image'),
+  upload.array('images', 5),
   createProduct,
 );
 
@@ -57,7 +57,7 @@ router.get('/my-products', vendorAuth, getMyProducts);
 router.put(
   '/update-product/:id',
   vendorAuth,
-  upload.single('image'),
+  upload.array('images', 5),
   updateProduct,
 );
 

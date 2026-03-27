@@ -3,45 +3,6 @@
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
-const specs = [
-  {
-    label: 'Brand',
-    value: 'Urban Ladder',
-    label2: 'Material',
-    value2: 'Premium Fabric',
-  },
-  {
-    label: 'Color',
-    value: 'Grey',
-    label2: 'Seating Capacity',
-    value2: '3 Person',
-  },
-  {
-    label: 'Dimensions',
-    value: '78" W x 35" D x 34" H',
-    label2: 'Frame Material',
-    value2: 'Solid Wood',
-  },
-  {
-    label: 'Cushion Type',
-    value: 'High Density Foam',
-    label2: 'Weight',
-    value2: '45 kg',
-  },
-  {
-    label: 'Assembly Required',
-    value: 'No - Fully Assembled',
-    label2: 'Warranty',
-    value2: 'Covered under rental agreement',
-  },
-  {
-    label: 'Care Instructions',
-    value: 'Dry clean only',
-    label2: 'Style',
-    value2: 'Contemporary',
-  },
-];
-
 const cancellationText =
   'Free cancellation before delivery. If you cancel after dispatch, a 10% processing fee will be deducted from your refundable deposit. Cancel anytime during the rental period with 7 days notice.';
 
@@ -69,7 +30,80 @@ const AccordionItem = ({ title, children, defaultOpen = false }) => {
   );
 };
 
-const RentPrdctDesc = () => {
+const prettifyKey = (key = '') =>
+  String(key)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const toSpecRows = (product) => {
+  const rows = [];
+
+  if (product?.brand) rows.push({ label: 'Brand', value: product.brand });
+  if (product?.condition) rows.push({ label: 'Condition', value: product.condition });
+  if (product?.category) rows.push({ label: 'Category', value: product.category });
+  if (product?.subCategory) rows.push({ label: 'Sub Category', value: product.subCategory });
+  if (product?.refundableDeposit != null) {
+    rows.push({
+      label: 'Refundable Deposit',
+      value: `₹${Number(product.refundableDeposit || 0).toLocaleString('en-IN')}`,
+    });
+  }
+  if (product?.logisticsVerification?.city) {
+    rows.push({ label: 'Service City', value: product.logisticsVerification.city });
+  }
+
+  const specObj = product?.specifications || {};
+  Object.entries(specObj).forEach(([k, v]) => {
+    if (v == null || String(v).trim() === '') return;
+    rows.push({ label: prettifyKey(k), value: String(v) });
+  });
+
+  // Preserve 2-column table structure by pairing rows.
+  const paired = [];
+  for (let i = 0; i < rows.length; i += 2) {
+    const left = rows[i];
+    const right = rows[i + 1];
+    paired.push({
+      label: left?.label || '-',
+      value: left?.value || '-',
+      label2: right?.label || '-',
+      value2: right?.value || '-',
+    });
+  }
+
+  return paired.length
+    ? paired
+    : [
+        {
+          label: 'Product',
+          value: product?.productName || '-',
+          label2: 'Category',
+          value2: product?.category || '-',
+        },
+      ];
+};
+
+const RentPrdctDesc = ({ product }) => {
+  const title = product?.productName || 'Product Description';
+  const descriptionPrimary =
+    product?.description ||
+    product?.shortDescription ||
+    'No description added by vendor for this product yet.';
+  const descriptionSecondary =
+    product?.shortDescription && product?.description
+      ? product.shortDescription
+      : cancellationText;
+  const specs = toSpecRows(product);
+
+  const rentalTerms = {
+    cancellation: cancellationText,
+    damage:
+      'Normal wear and tear is covered. Significant accidental or intentional damage may result in repair charges.',
+    returns:
+      'Return pickup is arranged by our team after scheduling. Please keep the product clean and ready for inspection.',
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 font-sans">
       {/* Product Description */}
@@ -77,12 +111,12 @@ const RentPrdctDesc = () => {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Product Description
         </h2>
-        <AccordionItem title="3-Seater Fabric Sofa - Grey" defaultOpen={true}>
+        <AccordionItem title={title} defaultOpen={true}>
           <p className="text-xs text-gray-600 leading-relaxed mb-2">
-            {cancellationText}
+            {descriptionPrimary}
           </p>
           <p className="text-xs text-gray-600 leading-relaxed">
-            {cancellationText}
+            {descriptionSecondary}
           </p>
         </AccordionItem>
       </section>
@@ -127,29 +161,17 @@ const RentPrdctDesc = () => {
 
         <AccordionItem title="Cancellation Policy" defaultOpen={true}>
           <p className="text-xs text-gray-600 leading-relaxed">
-            {cancellationText}
+            {rentalTerms.cancellation}
           </p>
         </AccordionItem>
 
-        {/* Damage Policy - collapsed */}
-        <div className="border border-gray-200 rounded-md mb-3 overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left">
-            <span className="text-sm font-medium text-gray-800">
-              Damage Policy
-            </span>
-            <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
-          </button>
-        </div>
+        <AccordionItem title="Damage Policy">
+          <p className="text-xs text-gray-600 leading-relaxed">{rentalTerms.damage}</p>
+        </AccordionItem>
 
-        {/* Return Process - collapsed */}
-        <div className="border border-gray-200 rounded-md mb-3 overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left">
-            <span className="text-sm font-medium text-gray-800">
-              Return Process
-            </span>
-            <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
-          </button>
-        </div>
+        <AccordionItem title="Return Process">
+          <p className="text-xs text-gray-600 leading-relaxed">{rentalTerms.returns}</p>
+        </AccordionItem>
       </section>
     </div>
   );

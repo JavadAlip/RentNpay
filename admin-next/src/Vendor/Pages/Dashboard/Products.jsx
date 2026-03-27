@@ -88,10 +88,28 @@ const Products = () => {
     payload.append('type', form.type);
     payload.append('category', form.category);
     payload.append('subCategory', form.subCategory);
+    payload.append('brand', form.brand || '');
+    payload.append('condition', form.condition || 'Good');
+    payload.append('shortDescription', form.shortDescription || '');
+    payload.append('description', form.description || '');
+    payload.append('specifications', JSON.stringify(form.specifications || {}));
+    payload.append('variants', JSON.stringify(form.variants || []));
+    payload.append(
+      'rentalConfigurations',
+      JSON.stringify(form.rentalConfigurations || []),
+    );
+    payload.append('refundableDeposit', String(form.refundableDeposit || 0));
+    payload.append(
+      'logisticsVerification',
+      JSON.stringify(form.logisticsVerification || {}),
+    );
+    payload.append('existingImages', JSON.stringify(form.existingImages || []));
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    if (form.image) payload.append('image', form.image);
+    if (Array.isArray(form.images) && form.images.length) {
+      form.images.slice(0, 5).forEach((img) => payload.append('images', img));
+    }
 
     const resultAction = await dispatch(createProduct(payload));
     if (createProduct.fulfilled.match(resultAction)) {
@@ -122,10 +140,28 @@ const Products = () => {
     payload.append('type', form.type);
     payload.append('category', form.category);
     payload.append('subCategory', form.subCategory);
+    payload.append('brand', form.brand || '');
+    payload.append('condition', form.condition || 'Good');
+    payload.append('shortDescription', form.shortDescription || '');
+    payload.append('description', form.description || '');
+    payload.append('specifications', JSON.stringify(form.specifications || {}));
+    payload.append('variants', JSON.stringify(form.variants || []));
+    payload.append(
+      'rentalConfigurations',
+      JSON.stringify(form.rentalConfigurations || []),
+    );
+    payload.append('refundableDeposit', String(form.refundableDeposit || 0));
+    payload.append(
+      'logisticsVerification',
+      JSON.stringify(form.logisticsVerification || {}),
+    );
+    payload.append('existingImages', JSON.stringify(form.existingImages || []));
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    if (form.image) payload.append('image', form.image);
+    if (Array.isArray(form.images) && form.images.length) {
+      form.images.slice(0, 5).forEach((img) => payload.append('images', img));
+    }
 
     const resultAction = await dispatch(
       updateProduct({ id: editingProduct._id, formData: payload }),
@@ -278,6 +314,7 @@ const Products = () => {
                             <div className="flex items-center gap-3">
                               <img
                                 src={
+                                  p.images?.[0] ||
                                   p.image ||
                                   'https://placehold.co/80x80/e5e7eb/6b7280?text=IMG'
                                 }
@@ -380,6 +417,7 @@ const Products = () => {
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
         mode={editingProduct ? 'edit' : 'create'}
         initialData={editingProduct}
+        existingProducts={products}
       />
 
       {deleteTarget && (

@@ -2,6 +2,51 @@ import Product from '../../models/Product.js';
 import { uploadImageToCloudinary } from '../../config/cloudinaryUpload.js';
 import VendorKyc from '../../models/VendorKyc.js';
 
+const parseJsonField = (value, fallback) => {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const normalizeVariants = (variantsRaw) => {
+  const arr = Array.isArray(variantsRaw) ? variantsRaw : [];
+  return arr.map((v) => ({
+    variantName: String(v?.variantName || '').trim(),
+    color: String(v?.color || '').trim(),
+    storage: String(v?.storage || '').trim(),
+    ram: String(v?.ram || '').trim(),
+    condition: String(v?.condition || '').trim(),
+    price: String(v?.price || '').trim(),
+    stock: toNumber(v?.stock, 0),
+  }));
+};
+
+const normalizeProductPayload = (body) => {
+  const data = { ...body };
+  data.type = 'Rental';
+  data.specifications = parseJsonField(body.specifications, {});
+  data.variants = normalizeVariants(parseJsonField(body.variants, []));
+  data.rentalConfigurations = parseJsonField(body.rentalConfigurations, []).map((cfg) => ({
+    months: toNumber(cfg?.months, 1),
+    label: String(cfg?.label || '').trim(),
+    pricePerDay: toNumber(cfg?.pricePerDay, 0),
+  }));
+  data.refundableDeposit = toNumber(body.refundableDeposit, 0);
+  data.logisticsVerification = parseJsonField(body.logisticsVerification, {});
+  data.existingImages = parseJsonField(body.existingImages, []);
+  data.stock = toNumber(body.stock, 0);
+  return data;
+};
+
 export const createProduct = async (req, res) => {
   try {
     console.log('Vendor:', req.vendor);
@@ -14,16 +59,31 @@ export const createProduct = async (req, res) => {
       });
     }
 
-    const data = req.body;
+    const data = normalizeProductPayload(req.body);
+    const uploadedImages = [];
 
-    if (req.file) {
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      for (const file of req.files.slice(0, 5)) {
+        const imgRes = await uploadImageToCloudinary(file.buffer, 'products');
+        uploadedImages.push(imgRes.secure_url);
+      }
+    } else if (req.file) {
       const imgRes = await uploadImageToCloudinary(req.file.buffer, 'products');
-      data.image = imgRes.secure_url;
+      uploadedImages.push(imgRes.secure_url);
+    }
+
+    if (uploadedImages.length > 0) {
+      data.images = uploadedImages.slice(0, 5);
+      data.image = data.images[0];
+    } else if (Array.isArray(data.images) && data.images.length > 0) {
+      data.image = data.images[0];
     }
 
     if (!data.image) {
-      return res.status(400).json({ message: 'Image required' });
+      return res.status(400).json({ message: 'At least one image is required' });
     }
+
+    delete data.existingImages;
 
     const product = await Product.create({
       ...data,
@@ -54,22 +114,48 @@ export const getMyProducts = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    let data = req.body;
+    const data = normalizeProductPayload(req.body);
+    const existing = await Product.findOne({ _id: id, vendorId: req.vendor._id });
 
-    if (req.file) {
-      const imgRes = await uploadImageToCloudinary(req.file.buffer, 'products');
-      data.image = imgRes.secure_url;
+    if (!existing) {
+      return res.status(404).json({ message: 'Product not found' });
     }
+
+    const uploadedImages = [];
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      for (const file of req.files.slice(0, 5)) {
+        const imgRes = await uploadImageToCloudinary(file.buffer, 'products');
+        uploadedImages.push(imgRes.secure_url);
+      }
+    } else if (req.file) {
+      const imgRes = await uploadImageToCloudinary(req.file.buffer, 'products');
+      uploadedImages.push(imgRes.secure_url);
+    }
+
+    const keptExistingImages = Array.isArray(data.existingImages)
+      ? data.existingImages.filter(Boolean)
+      : Array.isArray(existing.images)
+        ? existing.images
+        : existing.image
+          ? [existing.image]
+          : [];
+    const mergedImages = [...keptExistingImages, ...uploadedImages].slice(0, 5);
+    data.images = mergedImages;
+    data.image = mergedImages[0];
+
+    if (!data.image) {
+      return res
+        .status(400)
+        .json({ message: 'At least one image is required for the product.' });
+    }
+
+    delete data.existingImages;
 
     const product = await Product.findOneAndUpdate(
       { _id: id, vendorId: req.vendor._id },
       data,
       { new: true },
     );
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
 
     res.status(200).json({
       message: 'Updated successfully',

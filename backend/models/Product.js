@@ -15,6 +15,19 @@
 
 import mongoose from 'mongoose';
 
+const productVariantSchema = new mongoose.Schema(
+  {
+    variantName: { type: String, trim: true, default: '' },
+    color: { type: String, trim: true, default: '' },
+    storage: { type: String, trim: true, default: '' },
+    ram: { type: String, trim: true, default: '' },
+    condition: { type: String, trim: true, default: '' },
+    price: { type: String, trim: true, default: '' },
+    stock: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
 const productSchema = new mongoose.Schema(
   {
     vendorId: {
@@ -31,6 +44,10 @@ const productSchema = new mongoose.Schema(
     image: {
       type: String,
       required: true,
+    },
+    images: {
+      type: [String],
+      default: [],
     },
 
     price: {
@@ -52,6 +69,52 @@ const productSchema = new mongoose.Schema(
     subCategory: {
       type: String,
       required: true,
+    },
+    brand: {
+      type: String,
+      default: '',
+    },
+    condition: {
+      type: String,
+      enum: ['Brand New', 'Like New', 'Good', 'Fair'],
+      default: 'Good',
+    },
+    shortDescription: {
+      type: String,
+      default: '',
+    },
+    description: {
+      type: String,
+      default: '',
+    },
+    specifications: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    variants: {
+      type: [productVariantSchema],
+      default: [],
+    },
+    rentalConfigurations: {
+      type: [
+        {
+          months: { type: Number, default: 1 },
+          label: { type: String, default: '' },
+          pricePerDay: { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
+    refundableDeposit: {
+      type: Number,
+      default: 0,
+    },
+    logisticsVerification: {
+      type: {
+        inventoryOwnerName: { type: String, default: '' },
+        city: { type: String, default: '' },
+      },
+      default: {},
     },
 
     stock: {
