@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import Vendor from '../../models/vendorAuthModel.js';
 import Product from '../../models/Product.js';
 import User from '../../models/userAuthModel.js';
@@ -94,8 +95,8 @@ export const getAllVendors = async (req, res) => {
       ...v.toObject(),
       productsCount: countMap.get(String(v._id)) || 0,
       // Primary source of truth: VendorKyc.status
-      // If no KYC document record exists, treat it as pending unless vendor.isVerified=true (legacy).
-      kycStatus: kycStatusMap.get(String(v._id)) || (v.isVerified ? 'approved' : 'pending'),
+      // If no KYC document exists yet, keep it pending.
+      kycStatus: kycStatusMap.get(String(v._id)) || 'pending',
     }));
 
     res.json({
@@ -103,6 +104,50 @@ export const getAllVendors = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const createVendorProfile = async (req, res) => {
+  try {
+    const { fullName, emailAddress, password } = req.body;
+
+    if (!fullName || !emailAddress) {
+      return res.status(400).json({ message: 'fullName and emailAddress are required' });
+    }
+
+    const existing = await Vendor.findOne({ emailAddress });
+    if (existing) {
+      return res.status(400).json({ message: 'Vendor email already exists' });
+    }
+
+    const tempPassword =
+      String(password || '').trim() ||
+      `Rent@${Math.random().toString(36).slice(-6)}${Date.now().toString().slice(-2)}`;
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    const vendor = await Vendor.create({
+      fullName,
+      emailAddress: String(emailAddress).trim().toLowerCase(),
+      password: hashedPassword,
+      // Admin-created profiles should be able to login directly.
+      isVerified: true,
+      otp: null,
+      otpExpire: null,
+    });
+
+    return res.status(201).json({
+      message: 'Vendor profile created successfully',
+      vendor: {
+        _id: vendor._id,
+        fullName: vendor.fullName,
+        emailAddress: vendor.emailAddress,
+        isVerified: vendor.isVerified,
+        createdAt: vendor.createdAt,
+      },
+      tempPassword,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 

@@ -105,6 +105,97 @@ export const loginVendor = async (req, res) => {
   }
 };
 
+export const forgotVendorPassword = async (req, res) => {
+  try {
+    const { emailAddress } = req.body;
+    if (!emailAddress) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const vendor = await Vendor.findOne({
+      emailAddress: String(emailAddress).trim().toLowerCase(),
+    });
+
+    // Keep response generic to avoid email enumeration.
+    if (!vendor) {
+      return res.json({
+        message: 'If this email exists, an OTP has been sent.',
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    vendor.otp = otp;
+    vendor.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await vendor.save();
+
+    await sendOTPEmail(vendor.emailAddress, otp);
+
+    return res.json({
+      message: 'If this email exists, an OTP has been sent.',
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const verifyVendorResetOtp = async (req, res) => {
+  try {
+    const { emailAddress, otp } = req.body;
+    if (!emailAddress || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    const vendor = await Vendor.findOne({
+      emailAddress: String(emailAddress).trim().toLowerCase(),
+    });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    if (vendor.otp !== otp || !vendor.otpExpire || vendor.otpExpire < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    return res.json({ message: 'OTP verified' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const resetVendorPassword = async (req, res) => {
+  try {
+    const { emailAddress, otp, newPassword } = req.body;
+    if (!emailAddress || !otp || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: 'Email, OTP and newPassword are required' });
+    }
+    if (String(newPassword).length < 6) {
+      return res
+        .status(400)
+        .json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const vendor = await Vendor.findOne({
+      emailAddress: String(emailAddress).trim().toLowerCase(),
+    });
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    if (vendor.otp !== otp || !vendor.otpExpire || vendor.otpExpire < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    vendor.password = await bcrypt.hash(String(newPassword), 10);
+    vendor.otp = null;
+    vendor.otpExpire = null;
+    await vendor.save();
+
+    return res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const vendorLogout = async (req, res) => {
   try {
     console.log('Vendor Logout API Hit');

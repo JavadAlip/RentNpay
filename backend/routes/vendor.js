@@ -20,6 +20,9 @@ import {
   signupVendor,
   verifyOTP,
   loginVendor,
+  forgotVendorPassword,
+  verifyVendorResetOtp,
+  resetVendorPassword,
   vendorLogout,
   getAllVendors,
   deleteVendor,
@@ -31,6 +34,9 @@ const router = express.Router();
 router.post('/vendor-signup', signupVendor);
 router.post('/verify-otp', verifyOTP);
 router.post('/vendor-login', loginVendor);
+router.post('/forgot-password', forgotVendorPassword);
+router.post('/verify-reset-otp', verifyVendorResetOtp);
+router.post('/reset-password', resetVendorPassword);
 router.post('/vendor-logout', vendorAuth, vendorLogout);
 router.get('/all-vendors', getAllVendors);
 router.delete('/delete-vendor/:id', deleteVendor);

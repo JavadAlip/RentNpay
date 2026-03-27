@@ -3,6 +3,7 @@ import {
   adminLogin,
   adminLogout,
   getAllVendors,
+  createVendorProfile,
   getVendorDetails,
   getAllUsers,
   getUserDetails,
@@ -50,6 +51,7 @@ router.get('/get-sub-categories/:categoryId', adminAuth, getSubCategories);
 router.delete('/delete-sub-category/:id', adminAuth, deleteSubCategory);
 
 router.get('/get-vendors', adminAuth, getAllVendors);
+router.post('/create-vendor', adminAuth, createVendorProfile);
 router.get('/get-vendors/:id', adminAuth, getVendorDetails);
 router.get('/get-users', adminAuth, getAllUsers);
 router.get('/get-users/:id', adminAuth, getUserDetails);
