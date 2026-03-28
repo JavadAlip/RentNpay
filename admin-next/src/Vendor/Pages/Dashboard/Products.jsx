@@ -12,7 +12,7 @@ import {
   getMyProducts,
   updateProduct,
 } from '../../../redux/slices/productSlice';
-import ProductAddModal from '../../Components/Modals/Products/ProductAddModal';
+import AdminProductAddModal from '@/Admin/Components/Modals/AdminProductAddModal';
 import { apiGetMyVendorKyc } from '@/service/api';
 
 const Products = () => {
@@ -411,7 +411,7 @@ const Products = () => {
         </main>
       </div>
 
-      <ProductAddModal
+      <AdminProductAddModal
         isOpen={isAddModalOpen}
         onClose={handleCloseModal}
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}

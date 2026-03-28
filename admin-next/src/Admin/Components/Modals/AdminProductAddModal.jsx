@@ -7,7 +7,7 @@ import { Calendar, Clock, DollarSign, Filter, Search, Tag } from 'lucide-react';
 import {
   getCategories,
   getSubCategories,
-} from '../../../../redux/slices/categorySlice';
+} from '../../../redux/slices/categorySlice';
 
 const SPEC_FIELDS_BY_CATEGORY = {
   furniture: [
@@ -371,7 +371,7 @@ const defaultForm = {
   existingImages: [],
 };
 
-const ProductAddModal = ({
+const AdminProductAddModal = ({
   isOpen,
   onClose,
   onSubmit,
@@ -1979,4 +1979,4 @@ const ProductAddModal = ({
   );
 };
 
-export default ProductAddModal;
+export default AdminProductAddModal;

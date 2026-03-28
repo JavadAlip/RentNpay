@@ -17,7 +17,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import ProductAddModal from '@/Vendor/Components/Modals/Products/ProductAddModal';
+import AdminProductAddModal from '@/Admin/Components/Modals/AdminProductAddModal';
 import {
   clearListingTemplateError,
   createListingTemplate,
@@ -919,7 +919,7 @@ const CustomListings = () => {
         </div>
       </div>
 
-      <ProductAddModal
+      <AdminProductAddModal
         isOpen={modalOpen}
         onClose={() => {
           setModalOpen(false);

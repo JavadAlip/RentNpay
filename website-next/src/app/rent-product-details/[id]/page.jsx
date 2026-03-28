@@ -1,9 +1,3 @@
-// import RentPrdctDetail from "@/site-pages/RentPrdctDetail";
-
-// export default function RentProductDetailsPage() {
-//   return <RentPrdctDetail />;
-// }
-
 'use client';
 
 import { useEffect, useState } from 'react';
