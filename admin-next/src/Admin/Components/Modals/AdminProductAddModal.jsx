@@ -371,6 +371,135 @@ const defaultForm = {
   existingImages: [],
 };
 
+/** Map admin ListingTemplate → vendor legacy form (non–flexible listing). */
+function buildVendorFormStateFromListingTemplate(template) {
+  if (!template || typeof template !== 'object') {
+    return { ...defaultForm, variants: [{ ...legacyEmptyVariant() }] };
+  }
+
+  let specifications =
+    template.specifications &&
+    typeof template.specifications === 'object' &&
+    !Array.isArray(template.specifications)
+      ? { ...template.specifications }
+      : {};
+  if (
+    Object.keys(specifications).length === 0 &&
+    Array.isArray(template.productCustomSpecs)
+  ) {
+    for (const row of template.productCustomSpecs) {
+      const k = String(row?.label || '').trim();
+      if (k) specifications[k] = String(row?.value ?? '');
+    }
+  }
+
+  const rentalSource =
+    Array.isArray(template.rentalConfigurations) &&
+    template.rentalConfigurations.length
+      ? template.rentalConfigurations
+      : template.variants?.[0]?.rentalConfigurations;
+
+  let rentalConfigurations = defaultForm.rentalConfigurations.map((s) => ({
+    ...s,
+  }));
+  if (Array.isArray(rentalSource) && rentalSource.length) {
+    rentalSource.slice(0, 3).forEach((cfg, i) => {
+      if (!rentalConfigurations[i]) return;
+      const periodUnit = cfg.periodUnit === 'day' ? 'day' : 'month';
+      const slotMonths = rentalConfigurations[i].months;
+      const months =
+        periodUnit === 'month' ? numOr(cfg.months, slotMonths) : slotMonths;
+      const label =
+        String(cfg.label || '').trim() ||
+        rentalConfigurations[i].label ||
+        (periodUnit === 'day'
+          ? `${numOr(cfg.days, 7)} Days`
+          : `${months} Months`);
+      rentalConfigurations[i] = {
+        months,
+        label,
+        pricePerDay:
+          cfg.pricePerDay === undefined || cfg.pricePerDay === null
+            ? ''
+            : String(cfg.pricePerDay),
+      };
+    });
+  }
+
+  const variantsFromTemplate =
+    Array.isArray(template.variants) && template.variants.length
+      ? template.variants.map((v) => ({
+          _clientKey: newVariantClientKey(),
+          variantName: v.variantName || '',
+          color: v.color || '',
+          storage: v.storage || '',
+          ram: v.ram || '',
+          condition: v.condition || template.condition || '',
+          price: v.price || template.price || '',
+          stock:
+            v.stock === undefined || v.stock === null
+              ? template.stock !== undefined && template.stock !== null
+                ? String(template.stock)
+                : ''
+              : String(v.stock),
+        }))
+      : [
+          {
+            ...legacyEmptyVariant(),
+            variantName: template.productName || '',
+            condition: template.condition || '',
+            price: template.price || '',
+            stock:
+              template.stock === undefined || template.stock === null
+                ? ''
+                : String(template.stock),
+          },
+        ];
+
+  return {
+    sku: template.sku || '',
+    productName: template.productName || '',
+    type: template.type || 'Rental',
+    category: template.category || '',
+    subCategory: template.subCategory || '',
+    brand: template.brand || '',
+    condition: template.condition || 'Good',
+    shortDescription: template.shortDescription || '',
+    description: template.description || '',
+    specifications,
+    productCustomSpecs: [{ label: '', value: '' }],
+    variants: variantsFromTemplate,
+    rentalConfigurations,
+    refundableDeposit:
+      template.refundableDeposit === undefined ||
+      template.refundableDeposit === null
+        ? ''
+        : String(template.refundableDeposit),
+    logisticsVerification: {
+      inventoryOwnerName:
+        template.logisticsVerification?.inventoryOwnerName || '',
+      city: template.logisticsVerification?.city || '',
+    },
+    price: template.price || '',
+    stock:
+      template.stock === undefined || template.stock === null
+        ? ''
+        : String(template.stock),
+    status: template.status || 'Active',
+    isActive: template.isActive !== false,
+    images: [],
+    existingImages: (() => {
+      const top = existingImagesFromStandardProduct(template);
+      if (top.length) return top;
+      const v0 = template?.variants?.[0];
+      if (Array.isArray(v0?.images) && v0.images.length) {
+        return v0.images.filter(Boolean).slice(0, 5);
+      }
+      return [];
+    })(),
+  };
+}
+
 const AdminProductAddModal = ({
   isOpen,
   onClose,
@@ -382,6 +511,14 @@ const AdminProductAddModal = ({
   standardCatalogLoading = false,
   /** When true: show admin catalog as a read-only table (Custom Listings style), no Add. */
   standardCatalogTableOnly = false,
+  /** Vendor flow: Add loads full template into the form (not just a new variant row). */
+  standardCatalogPopulateFullForm = false,
+  /** Optional: fetch fresh template by id (recommended). If omitted, list row data is used. */
+  fetchStandardListingTemplate = null,
+  standardSearchPlaceholder = 'Search your Listed Products',
+  standardCatalogShowCustomListingButton = false,
+  modalTitleCreate = 'Add New Listing',
+  modalTitleEdit = 'Edit Listing',
   showSkuField = false,
   allowListingTypeSwitch = false,
   showAdminListingFlags = false,
@@ -398,6 +535,7 @@ const AdminProductAddModal = ({
   const [standardSearch, setStandardSearch] = useState('');
   const [standardCategoryFilter, setStandardCategoryFilter] = useState('all');
   const [standardFilterOpen, setStandardFilterOpen] = useState(false);
+  const [templateApplyLoadingId, setTemplateApplyLoadingId] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -555,6 +693,25 @@ const AdminProductAddModal = ({
       dispatch(getSubCategories(matched._id));
     }
   }, [isOpen, initialData, categories, dispatch]);
+
+  // Create mode + template apply: keep category/subcategory selects in sync with form.category
+  useEffect(() => {
+    if (!isOpen || flexibleListingForm || initialData) return;
+    if (!String(form.category || '').trim() || !categories.length) return;
+    const matched = categories.find((c) => c.name === form.category);
+    if (!matched) return;
+    if (selectedCategoryId === matched._id) return;
+    setSelectedCategoryId(matched._id);
+    dispatch(getSubCategories(matched._id));
+  }, [
+    isOpen,
+    form.category,
+    categories,
+    selectedCategoryId,
+    dispatch,
+    flexibleListingForm,
+    initialData,
+  ]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -998,6 +1155,34 @@ const AdminProductAddModal = ({
     }));
   };
 
+  const handleStandardCatalogRowAdd = async (p) => {
+    if (!standardCatalogPopulateFullForm) {
+      addVariantFromProduct(p);
+      return;
+    }
+    if (fetchStandardListingTemplate) {
+      setTemplateApplyLoadingId(p._id);
+      try {
+        const template = await fetchStandardListingTemplate(p._id);
+        if (!template) {
+          toast.error('Could not load listing template.');
+          return;
+        }
+        setForm(buildVendorFormStateFromListingTemplate(template));
+        toast.success('Template loaded — adjust details and save your listing.');
+      } catch (err) {
+        toast.error(
+          err?.response?.data?.message || 'Failed to load listing template.',
+        );
+      } finally {
+        setTemplateApplyLoadingId(null);
+      }
+      return;
+    }
+    setForm(buildVendorFormStateFromListingTemplate(p));
+    toast.success('Template loaded — adjust details and save your listing.');
+  };
+
   const removeExistingImage = (index) => {
     setForm((prev) => ({
       ...prev,
@@ -1020,7 +1205,7 @@ const AdminProductAddModal = ({
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              {mode === 'edit' ? 'Edit Listing' : 'Add New Listing'}
+              {mode === 'edit' ? modalTitleEdit : modalTitleCreate}
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
           </div>
@@ -1089,7 +1274,9 @@ const AdminProductAddModal = ({
                     <p className="text-xs text-gray-500 mt-0.5">
                       {standardCatalogTableOnly
                         ? 'Same templates as on the Custom Listings page — search and filter below'
-                        : 'Add multiple product variants'}
+                        : standardCatalogPopulateFullForm
+                          ? 'Pick an admin template and tap Add to fill the form — then save as your vendor listing'
+                          : 'Add multiple product variants'}
                     </p>
                   </div>
                 </div>
@@ -1103,11 +1290,23 @@ const AdminProductAddModal = ({
                       type="search"
                       value={standardSearch}
                       onChange={(e) => setStandardSearch(e.target.value)}
-                      placeholder="Search your Listed Products"
+                      placeholder={standardSearchPlaceholder}
                       className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
                       autoComplete="off"
                     />
                   </div>
+                  {standardCatalogShowCustomListingButton ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...defaultForm });
+                        setSelectedCategoryId('');
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300 bg-orange-500 px-4 py-2.5 text-sm font-medium text-white shrink-0 hover:bg-orange-600"
+                    >
+                      Custom Listing
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setStandardFilterOpen((o) => !o)}
@@ -1242,10 +1441,17 @@ const AdminProductAddModal = ({
                           </div>
                           <button
                             type="button"
-                            onClick={() => addVariantFromProduct(p)}
-                            className="shrink-0 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600"
+                            disabled={!!templateApplyLoadingId}
+                            onClick={() => handleStandardCatalogRowAdd(p)}
+                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
+                              standardCatalogPopulateFullForm
+                                ? 'bg-emerald-600 hover:bg-emerald-700'
+                                : 'bg-orange-500 hover:bg-orange-600'
+                            }`}
                           >
-                            Add
+                            {templateApplyLoadingId === p._id
+                              ? '…'
+                              : 'Add'}
                           </button>
                         </div>
                       </li>

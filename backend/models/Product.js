@@ -15,6 +15,24 @@
 
 import mongoose from 'mongoose';
 
+const vendorRentalTierSchema = new mongoose.Schema(
+  {
+    months: { type: Number, default: 1 },
+    days: { type: Number, default: 0 },
+    periodUnit: {
+      type: String,
+      enum: ['month', 'day'],
+      default: 'month',
+    },
+    label: { type: String, default: '' },
+    pricePerDay: { type: Number, default: 0 },
+    /** Monthly rent shown to customer (optional; falls back to pricePerDay-derived UI). */
+    customerRent: { type: Number, default: 0 },
+    shippingCharges: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
 const productVariantSchema = new mongoose.Schema(
   {
     variantName: { type: String, trim: true, default: '' },
@@ -96,13 +114,7 @@ const productSchema = new mongoose.Schema(
       default: [],
     },
     rentalConfigurations: {
-      type: [
-        {
-          months: { type: Number, default: 1 },
-          label: { type: String, default: '' },
-          pricePerDay: { type: Number, default: 0 },
-        },
-      ],
+      type: [vendorRentalTierSchema],
       default: [],
     },
     refundableDeposit: {
@@ -113,8 +125,17 @@ const productSchema = new mongoose.Schema(
       type: {
         inventoryOwnerName: { type: String, default: '' },
         city: { type: String, default: '' },
+        deliveryTimelineValue: { type: Number, default: 0 },
+        deliveryTimelineUnit: { type: String, default: 'Days' },
       },
       default: {},
+    },
+
+    /** Vendor listing workflow (separate from stock status). */
+    submissionStatus: {
+      type: String,
+      enum: ['draft', 'pending_approval', 'published'],
+      default: 'published',
     },
 
     stock: {

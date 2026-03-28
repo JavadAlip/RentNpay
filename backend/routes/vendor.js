@@ -8,6 +8,10 @@ import {
   deleteProduct,
   getProductById,
 } from '../controller/vendor/productController.js';
+import {
+  getListingTemplateForVendor,
+  listListingTemplatesForVendor,
+} from '../controller/vendor/listingTemplateBrowseController.js';
 import { getVendorCustomersSummary } from '../controller/vendor/customerController.js';
 import {
   deleteVendorOffer,
@@ -52,6 +56,10 @@ router.post(
 
 // Get My Products
 router.get('/my-products', vendorAuth, getMyProducts);
+
+// Browse admin listing templates (active only) — for “Add from standard catalog”
+router.get('/listing-templates', vendorAuth, listListingTemplatesForVendor);
+router.get('/listing-templates/:id', vendorAuth, getListingTemplateForVendor);
 
 // Update
 router.put(

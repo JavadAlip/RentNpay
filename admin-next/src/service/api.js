@@ -107,6 +107,22 @@ export const apiDeleteProduct = (id, token) =>
     },
   });
 
+/** Active admin listing templates (vendor catalog — clone into vendor Product). */
+export const apiGetVendorListingTemplates = (token, params = {}) =>
+  API.get('/vendor/listing-templates', {
+    params,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiGetVendorListingTemplate = (id, token) =>
+  API.get(`/vendor/listing-templates/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // ── CATEGORY APIs ─────────────────────────
 
 // Create Category

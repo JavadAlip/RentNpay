@@ -10,7 +10,7 @@ const VendorTopBar = () => {
     <header className="w-full bg-white border-b border-gray-200 pl-14 md:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
       <div className="flex flex-col min-w-0">
         <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
-          Dashboard
+          Vendor Dashboard
         </h1>
         {/* <p className="text-[11px] md:text-xs text-gray-500">
           February 2026 · Comprehensive financial overview and performance

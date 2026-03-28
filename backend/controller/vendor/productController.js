@@ -30,20 +30,50 @@ const normalizeVariants = (variantsRaw) => {
   }));
 };
 
+const normalizeRentalConfigurations = (raw) => {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr.map((cfg) => ({
+    months: toNumber(cfg?.months, 1),
+    days: toNumber(cfg?.days, 0),
+    periodUnit: ['month', 'day'].includes(cfg?.periodUnit)
+      ? cfg.periodUnit
+      : 'month',
+    label: String(cfg?.label || '').trim(),
+    pricePerDay: toNumber(cfg?.pricePerDay, 0),
+    shippingCharges: toNumber(cfg?.shippingCharges, 0),
+    customerRent: toNumber(cfg?.customerRent, 0),
+  }));
+};
+
+const normalizeLogisticsVerification = (raw) => {
+  const o = raw && typeof raw === 'object' ? raw : {};
+  return {
+    inventoryOwnerName: String(o.inventoryOwnerName || '').trim(),
+    city: String(o.city || '').trim(),
+    deliveryTimelineValue: toNumber(o.deliveryTimelineValue, 0),
+    deliveryTimelineUnit:
+      String(o.deliveryTimelineUnit || 'Days').trim() || 'Days',
+  };
+};
+
 const normalizeProductPayload = (body) => {
   const data = { ...body };
   data.type = 'Rental';
   data.specifications = parseJsonField(body.specifications, {});
   data.variants = normalizeVariants(parseJsonField(body.variants, []));
-  data.rentalConfigurations = parseJsonField(body.rentalConfigurations, []).map((cfg) => ({
-    months: toNumber(cfg?.months, 1),
-    label: String(cfg?.label || '').trim(),
-    pricePerDay: toNumber(cfg?.pricePerDay, 0),
-  }));
+  data.rentalConfigurations = normalizeRentalConfigurations(
+    parseJsonField(body.rentalConfigurations, []),
+  );
   data.refundableDeposit = toNumber(body.refundableDeposit, 0);
-  data.logisticsVerification = parseJsonField(body.logisticsVerification, {});
+  data.logisticsVerification = normalizeLogisticsVerification(
+    parseJsonField(body.logisticsVerification, {}),
+  );
   data.existingImages = parseJsonField(body.existingImages, []);
   data.stock = toNumber(body.stock, 0);
+  const subs = ['draft', 'pending_approval', 'published'];
+  data.submissionStatus = subs.includes(body.submissionStatus)
+    ? body.submissionStatus
+    : 'published';
   return data;
 };
 
@@ -72,15 +102,32 @@ export const createProduct = async (req, res) => {
       uploadedImages.push(imgRes.secure_url);
     }
 
+    const keptExisting =
+      Array.isArray(data.existingImages) && data.existingImages.length > 0
+        ? data.existingImages.filter(Boolean).slice(0, 5)
+        : [];
+
     if (uploadedImages.length > 0) {
-      data.images = uploadedImages.slice(0, 5);
+      data.images = [...keptExisting, ...uploadedImages].slice(0, 5);
+      data.image = data.images[0];
+    } else if (keptExisting.length > 0) {
+      data.images = keptExisting;
       data.image = data.images[0];
     } else if (Array.isArray(data.images) && data.images.length > 0) {
       data.image = data.images[0];
     }
 
     if (!data.image) {
-      return res.status(400).json({ message: 'At least one image is required' });
+      if (data.submissionStatus === 'draft') {
+        const ph =
+          'https://placehold.co/400x400/e5e7eb/6b7280?text=Draft';
+        data.image = ph;
+        data.images = [ph];
+      } else {
+        return res
+          .status(400)
+          .json({ message: 'At least one image is required' });
+      }
     }
 
     delete data.existingImages;

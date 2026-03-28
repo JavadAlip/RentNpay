@@ -12,7 +12,7 @@ import {
   getMyProducts,
   updateProduct,
 } from '../../../redux/slices/productSlice';
-import AdminProductAddModal from '@/Admin/Components/Modals/AdminProductAddModal';
+import VendorProductAddModal from '../../Components/Modals/VendorProductAddModal';
 import { apiGetMyVendorKyc } from '@/service/api';
 
 const Products = () => {
@@ -107,13 +107,24 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
+    payload.append(
+      'submissionStatus',
+      form.submissionStatus || 'published',
+    );
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
 
     const resultAction = await dispatch(createProduct(payload));
     if (createProduct.fulfilled.match(resultAction)) {
-      toast.success('Product added successfully');
+      const sub = form.submissionStatus || 'published';
+      toast.success(
+        sub === 'draft'
+          ? 'Draft saved'
+          : sub === 'pending_approval'
+            ? 'Submitted for approval'
+            : 'Product added successfully',
+      );
       setIsAddModalOpen(false);
     } else {
       toast.error(resultAction.payload || 'Failed to add product');
@@ -159,6 +170,10 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
+    payload.append(
+      'submissionStatus',
+      form.submissionStatus || 'published',
+    );
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
@@ -307,6 +322,18 @@ const Products = () => {
                             ? 'bg-yellow-100 text-yellow-600'
                             : 'bg-green-100 text-green-600';
 
+                      const sub = p.submissionStatus;
+                      const listingLabel =
+                        sub === 'draft'
+                          ? 'Draft'
+                          : sub === 'pending_approval'
+                            ? 'Pending approval'
+                            : null;
+                      const listingClass =
+                        sub === 'draft'
+                          ? 'bg-slate-100 text-slate-700'
+                          : 'bg-amber-100 text-amber-800';
+
                       return (
                         <tr key={p._id} className="border-t">
                           {/* Product */}
@@ -352,13 +379,22 @@ const Products = () => {
                             </span>
                           </td>
 
-                          {/* Status */}
+                          {/* Status + listing workflow */}
                           <td className="px-4 py-3">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
-                            >
-                              {status}
-                            </span>
+                            <div className="flex flex-col gap-1 items-start">
+                              {listingLabel ? (
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${listingClass}`}
+                                >
+                                  {listingLabel}
+                                </span>
+                              ) : null}
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
+                              >
+                                {status}
+                              </span>
+                            </div>
                           </td>
 
                           {/* Actions */}
@@ -411,13 +447,12 @@ const Products = () => {
         </main>
       </div>
 
-      <AdminProductAddModal
+      <VendorProductAddModal
         isOpen={isAddModalOpen}
         onClose={handleCloseModal}
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
         mode={editingProduct ? 'edit' : 'create'}
         initialData={editingProduct}
-        existingProducts={products}
       />
 
       {deleteTarget && (
