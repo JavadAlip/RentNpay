@@ -11,7 +11,7 @@ import {
 } from '@/service/api';
 import { buildActivityFeed } from '@/Admin/utils/activityFeed';
 
-const AdminTopbar = ({ title = 'Master Dashboard' }) => {
+const AdminTopbar = ({ title = 'Admin Dashboard' }) => {
   const adminUser = useSelector((state) => state.admin.user);
   const router = useRouter();
   const [notifCount, setNotifCount] = useState(0);
@@ -38,14 +38,24 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
     if (!token) return;
 
     Promise.all([
-      apiGetAllUsers(token).then((r) => r.data.users || []).catch(() => []),
-      apiGetAllVendors(token).then((r) => r.data.vendors || []).catch(() => []),
-      apiGetAllAdminProducts(token, 'limit=100').then((r) => r.data.products || []).catch(() => []),
-      apiGetAllOrders(token).then((r) => r.data || []).catch(() => []),
+      apiGetAllUsers(token)
+        .then((r) => r.data.users || [])
+        .catch(() => []),
+      apiGetAllVendors(token)
+        .then((r) => r.data.vendors || [])
+        .catch(() => []),
+      apiGetAllAdminProducts(token, 'limit=100')
+        .then((r) => r.data.products || [])
+        .catch(() => []),
+      apiGetAllOrders(token)
+        .then((r) => r.data || [])
+        .catch(() => []),
     ]).then(([users, vendors, products, orders]) => {
       if (!mounted) return;
       const feed = buildActivityFeed({ users, vendors, products, orders });
-      const lastSeen = Number(sessionStorage.getItem('admin_last_seen_notif_ts') || 0);
+      const lastSeen = Number(
+        sessionStorage.getItem('admin_last_seen_notif_ts') || 0,
+      );
       const unread = feed.filter(
         (x) => new Date(x.createdAt || 0).getTime() > lastSeen,
       ).length;
@@ -70,7 +80,7 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
           {title}
         </h1>
         <p className="hidden sm:block text-xs md:text-sm text-gray-500">
-          Real-time platform health &amp; operations
+          {/* Real-time platform health &amp; operations */}
         </p>
       </div>
       <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
@@ -105,7 +115,6 @@ const AdminTopbar = ({ title = 'Master Dashboard' }) => {
         <div className="hidden lg:flex items-center gap-2">
           <div className="text-right">
             <p className="text-xs font-medium text-gray-700">{adminEmail}</p>
-            
           </div>
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
             {avatarLetter}

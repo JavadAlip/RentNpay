@@ -20,6 +20,8 @@ const AdminSidebar = () => {
     router.push('/admin-login');
   };
 
+  const [systemOpen, setSystemOpen] = useState(true);
+
   const links = [
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/kyc', label: 'KYC' },
@@ -29,6 +31,11 @@ const AdminSidebar = () => {
     { to: '/all-vendors', label: 'Vendors' },
     { to: '/users', label: 'Users' },
   ];
+
+  const systemChild = {
+    to: '/custom-listings',
+    label: 'Custom Listings',
+  };
 
   useEffect(() => {
     const token =
@@ -119,6 +126,39 @@ const AdminSidebar = () => {
               </Link>
             );
           })}
+
+          <div className="mx-2 mt-2 pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setSystemOpen((v) => !v)}
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                pathname === systemChild.to
+                  ? 'bg-orange-50 text-orange-600 font-medium'
+                  : ''
+              }`}
+              title="System"
+            >
+              <span>{sidebarOpen ? 'System' : 'S'}</span>
+              {sidebarOpen ? (
+                <span className="text-xs text-gray-400">
+                  {systemOpen ? '▼' : '▶'}
+                </span>
+              ) : null}
+            </button>
+            {sidebarOpen && systemOpen ? (
+              <Link
+                href={systemChild.to}
+                onClick={() => setMobileOpen(false)}
+                className={`mt-1 ml-2 block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                  pathname === systemChild.to
+                    ? 'bg-orange-50 text-orange-600 font-medium'
+                    : ''
+                }`}
+              >
+                {systemChild.label}
+              </Link>
+            ) : null}
+          </div>
         </nav>
 
         <div className="border-t border-gray-100 p-4">

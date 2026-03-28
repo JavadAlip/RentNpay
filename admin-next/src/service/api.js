@@ -162,6 +162,48 @@ export const apiDeleteSubCategory = (id, token) =>
     },
   });
 
+// ── ADMIN LISTING TEMPLATES (Custom Listings) ─────────────────────────
+
+export const apiGetListingTemplates = (token) =>
+  API.get('/admin/listing-templates', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiCreateListingTemplate = (data, token) =>
+  API.post('/admin/listing-templates', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpdateListingTemplate = (id, data, token) =>
+  API.put(`/admin/listing-templates/${id}`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiDeleteListingTemplate = (id, token) =>
+  API.delete(`/admin/listing-templates/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiPatchListingTemplateActive = (id, isActive, token) =>
+  API.patch(
+    `/admin/listing-templates/${id}/active`,
+    { isActive },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
 // ── ADMIN VENDOR APIs ─────────────────────────
 
 // Get All Vendors

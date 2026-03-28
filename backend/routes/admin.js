@@ -25,6 +25,14 @@ import {
   getSubCategories,
   deleteSubCategory,
 } from '../controller/admin/subCategoryController.js';
+import {
+  listListingTemplates,
+  getListingTemplate,
+  createListingTemplate,
+  updateListingTemplate,
+  deleteListingTemplate,
+  patchListingTemplateActive,
+} from '../controller/admin/listingTemplateController.js';
 import { adminAuth } from '../middleware/Auth.js';
 const router = express.Router();
 import upload from '../middleware/upload.js';
@@ -57,6 +65,27 @@ router.post(
 );
 router.get('/get-sub-categories/:categoryId', adminAuth, getSubCategories);
 router.delete('/delete-sub-category/:id', adminAuth, deleteSubCategory);
+
+router.get('/listing-templates', adminAuth, listListingTemplates);
+router.get('/listing-templates/:id', adminAuth, getListingTemplate);
+router.post(
+  '/listing-templates',
+  adminAuth,
+  upload.any(),
+  createListingTemplate,
+);
+router.put(
+  '/listing-templates/:id',
+  adminAuth,
+  upload.any(),
+  updateListingTemplate,
+);
+router.delete('/listing-templates/:id', adminAuth, deleteListingTemplate);
+router.patch(
+  '/listing-templates/:id/active',
+  adminAuth,
+  patchListingTemplateActive,
+);
 
 router.get('/get-vendors', adminAuth, getAllVendors);
 router.post('/create-vendor', adminAuth, createVendorProfile);
