@@ -57,8 +57,12 @@ export const deleteCategory = createAsyncThunk(
           ? localStorage.getItem('adminToken')
           : null);
       if (!token) return rejectWithValue('Please login again to continue.');
-      await apiDeleteCategory(id, token);
-      return id;
+      const res = await apiDeleteCategory(id, token);
+      return {
+        id,
+        deletedProducts: res.data?.deletedProducts ?? 0,
+        deletedOffers: res.data?.deletedOffers ?? 0,
+      };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to delete category',
@@ -122,8 +126,12 @@ export const deleteSubCategory = createAsyncThunk(
           ? localStorage.getItem('adminToken')
           : null);
       if (!token) return rejectWithValue('Please login again to continue.');
-      await apiDeleteSubCategory(id, token);
-      return id;
+      const res = await apiDeleteSubCategory(id, token);
+      return {
+        id,
+        deletedProducts: res.data?.deletedProducts ?? 0,
+        deletedOffers: res.data?.deletedOffers ?? 0,
+      };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to delete subcategory',
@@ -172,7 +180,7 @@ const categorySlice = createSlice({
 
       .addCase(deleteCategory.fulfilled, (state, action) => {
         state.categories = state.categories.filter(
-          (c) => c._id !== action.payload,
+          (c) => c._id !== action.payload.id,
         );
       })
 
@@ -196,7 +204,7 @@ const categorySlice = createSlice({
 
       .addCase(deleteSubCategory.fulfilled, (state, action) => {
         state.subCategories = state.subCategories.filter(
-          (s) => s._id !== action.payload,
+          (s) => s._id !== action.payload.id,
         );
       });
   },

@@ -18,6 +18,7 @@ import {
   createCategory,
   getCategories,
   deleteCategory,
+  getMasterCategories,
 } from '../controller/admin/categoryController.js';
 import {
   createSubCategory,
@@ -35,16 +36,23 @@ router.post('/admin-logout', adminLogout);
 router.post(
   '/create-category',
   adminAuth,
-  upload.single('image'),
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),
   createCategory,
 );
 router.get('/get-categories', getCategories);
+router.get('/master-categories', adminAuth, getMasterCategories);
 router.delete('/delete-category/:id', adminAuth, deleteCategory);
 
 router.post(
   '/create-sub-category',
   adminAuth,
-  upload.single('image'),
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),
   createSubCategory,
 );
 router.get('/get-sub-categories/:categoryId', adminAuth, getSubCategories);

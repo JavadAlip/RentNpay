@@ -87,7 +87,7 @@ export const createProduct = async (req, res) => {
 
     const product = await Product.create({
       ...data,
-      vendorId: req.vendor._id, // ✅ FIXED
+      vendorId: req.vendor._id,
     });
 
     res.status(201).json({

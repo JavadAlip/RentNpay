@@ -120,6 +120,14 @@ export const apiCreateCategory = (data, token) =>
 // Get Categories
 export const apiGetCategories = () => API.get('/admin/get-categories');
 
+// Master category tree + stats (admin)
+export const apiGetMasterCategories = (token, platform = 'rent') =>
+  API.get(`/admin/master-categories?platform=${encodeURIComponent(platform)}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Delete Category
 export const apiDeleteCategory = (id, token) =>
   API.delete(`/admin/delete-category/${id}`, {
