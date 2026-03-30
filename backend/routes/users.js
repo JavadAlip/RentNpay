@@ -12,6 +12,10 @@ import {
   updateAddress,
   deleteAddress,
 } from '../controller/user/addressController.js';
+import {
+  getMyWishlist,
+  toggleWishlist,
+} from '../controller/user/wishlistController.js';
 
 const router = express.Router();
 
@@ -26,5 +30,9 @@ router.get('/addresses', userAuth, getMyAddresses);
 router.post('/addresses', userAuth, createAddress);
 router.put('/addresses/:id', userAuth, updateAddress);
 router.delete('/addresses/:id', userAuth, deleteAddress);
+
+// wishlist
+router.get('/wishlist', userAuth, getMyWishlist);
+router.post('/wishlist/toggle', userAuth, toggleWishlist);
 
 export default router;

@@ -35,7 +35,9 @@ const Products = () => {
 
   useEffect(() => {
     const token =
-      typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null;
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
     if (!token) {
       setKycLoading(false);
       return;
@@ -59,8 +61,12 @@ const Products = () => {
   };
 
   const totalProducts = products.length;
-  const lowStock = products.filter((p) => getProductStatus(p) === 'Low Stock').length;
-  const outOfStock = products.filter((p) => getProductStatus(p) === 'Out of Stock').length;
+  const lowStock = products.filter(
+    (p) => getProductStatus(p) === 'Low Stock',
+  ).length;
+  const outOfStock = products.filter(
+    (p) => getProductStatus(p) === 'Out of Stock',
+  ).length;
 
   const filteredProducts = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -109,14 +115,14 @@ const Products = () => {
       'logisticsVerification',
       JSON.stringify(next.logisticsVerification || {}),
     );
-    payload.append('existingImages', JSON.stringify(next.images || [next.image].filter(Boolean)));
+    payload.append(
+      'existingImages',
+      JSON.stringify(next.images || [next.image].filter(Boolean)),
+    );
     payload.append('price', next.price || '');
     payload.append('stock', String(stockNum));
     payload.append('status', status);
-    payload.append(
-      'submissionStatus',
-      next.submissionStatus || 'published',
-    );
+    payload.append('submissionStatus', next.submissionStatus || 'published');
     return payload;
   };
 
@@ -153,10 +159,7 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    payload.append(
-      'submissionStatus',
-      form.submissionStatus || 'published',
-    );
+    payload.append('submissionStatus', form.submissionStatus || 'published');
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
@@ -165,7 +168,9 @@ const Products = () => {
     if (createProduct.fulfilled.match(resultAction)) {
       const sub = form.submissionStatus || 'published';
       toast.success(
-        sub === 'draft' ? 'Draft saved' : 'Product published — visible on your storefront',
+        sub === 'draft'
+          ? 'Draft saved'
+          : 'Product published — visible on your storefront',
       );
       setIsAddModalOpen(false);
       return true;
@@ -214,10 +219,7 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    payload.append(
-      'submissionStatus',
-      form.submissionStatus || 'published',
-    );
+    payload.append('submissionStatus', form.submissionStatus || 'published');
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
@@ -263,11 +265,13 @@ const Products = () => {
     if (updateProduct.fulfilled.match(resultAction)) {
       toast.success(
         currentlyActive
-          ? 'Product hidden from storefront'
-          : 'Product visible on storefront',
+          ? 'Product hidden from website'
+          : 'Product visible on website',
       );
     } else {
-      toast.error(resultAction.payload || 'Failed to update product visibility');
+      toast.error(
+        resultAction.payload || 'Failed to update product visibility',
+      );
     }
   };
 
@@ -315,8 +319,8 @@ const Products = () => {
 
             {kycStatus !== 'approved' ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
-                Product creation is locked until KYC is approved by admin. Please
-                submit your KYC from{' '}
+                Product creation is locked until KYC is approved by admin.
+                Please submit your KYC from{' '}
                 <a
                   href="/vendor-kyc-verification"
                   className="font-semibold underline"
@@ -380,7 +384,8 @@ const Products = () => {
                           : status === 'Low Stock'
                             ? 'bg-yellow-100 text-yellow-600'
                             : 'bg-green-100 text-green-600';
-                      const isActiveOnStorefront = p.submissionStatus !== 'draft';
+                      const isActiveOnStorefront =
+                        p.submissionStatus !== 'draft';
 
                       return (
                         <tr key={p._id} className="border-t">
@@ -398,7 +403,9 @@ const Products = () => {
                               />
                               <div>
                                 <p className="font-medium">{p.productName}</p>
-                                <p className="text-xs text-gray-500">{p.price}</p>
+                                <p className="text-xs text-gray-500">
+                                  {p.price}
+                                </p>
                               </div>
                             </div>
                           </td>
@@ -444,7 +451,9 @@ const Products = () => {
                               aria-checked={isActiveOnStorefront}
                               onClick={() => handleToggleActive(p)}
                               className={`relative inline-flex h-6 w-11 rounded-full transition ${
-                                isActiveOnStorefront ? 'bg-emerald-500' : 'bg-gray-300'
+                                isActiveOnStorefront
+                                  ? 'bg-emerald-500'
+                                  : 'bg-gray-300'
                               }`}
                               title={
                                 isActiveOnStorefront
@@ -503,11 +512,7 @@ const Products = () => {
                 Showing {filteredProducts.length} of {products.length} products
               </div>
             </div>
-            {error && (
-              <p className="text-sm text-red-500 px-1">
-                {error}
-              </p>
-            )}
+            {error && <p className="text-sm text-red-500 px-1">{error}</p>}
           </div>
         </main>
       </div>
@@ -570,7 +575,6 @@ const Products = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

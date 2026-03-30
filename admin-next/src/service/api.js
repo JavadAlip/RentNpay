@@ -287,6 +287,14 @@ export const apiUpdateOrderStatus = (id, status, token) =>
     },
   );
 
+// ── ADMIN WISHLIST ANALYTICS ─────────────────
+export const apiGetWishlistAnalytics = (token) =>
+  API.get('/admin/wishlist/analytics', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // ── VENDOR KYC APIs ─────────────────────────────────────────────
 export const apiGetVendorKycQueue = (token) =>
   API.get('/admin/kyc/queue', {

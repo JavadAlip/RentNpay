@@ -6,7 +6,10 @@ import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
 import {
   apiGetStorefrontVendorProducts,
   apiGetPublicActiveOffers,
+  apiGetMyWishlist,
+  apiToggleWishlist,
 } from '@/lib/api';
+import { useSelector } from 'react-redux';
 
 import {
   Heart,
@@ -18,10 +21,13 @@ import {
 } from 'lucide-react';
 
 const Trending = () => {
+  const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const [page, setPage] = useState(0);
   const [activeTab, setActiveTab] = useState('All');
   const [products, setProducts] = useState([]);
   const [offersByProduct, setOffersByProduct] = useState({});
+  const [wishedIds, setWishedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState('');
   const [loading, setLoading] = useState(true);
 
   const parsePrice = (raw) => {
@@ -60,6 +66,50 @@ const Trending = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWishedIds([]);
+      return;
+    }
+    let mounted = true;
+    apiGetMyWishlist()
+      .then((res) => {
+        if (!mounted) return;
+        setWishedIds(
+          Array.isArray(res.data?.wishedProductIds) ? res.data.wishedProductIds : [],
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setWishedIds([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated]);
+
+  const isWished = (id) => wishedIds.includes(String(id));
+
+  const onToggleWishlist = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) return;
+    setTogglingId(String(productId));
+    try {
+      const res = await apiToggleWishlist(productId);
+      const wished = !!res.data?.wished;
+      setWishedIds((prev) => {
+        const pid = String(productId);
+        if (wished) return prev.includes(pid) ? prev : [...prev, pid];
+        return prev.filter((x) => x !== pid);
+      });
+    } catch {
+      // keep UI unchanged on failure
+    } finally {
+      setTogglingId('');
+    }
+  };
 
   const cardsPerPage = 6;
 
@@ -182,8 +232,19 @@ const Trending = () => {
                       {tag}
                     </span>
 
-                    <button className="absolute top-4 right-4 bg-white p-1 rounded-full shadow">
-                      <Heart size={16} />
+                    <button
+                      type="button"
+                      onClick={(e) => onToggleWishlist(e, item._id)}
+                      disabled={togglingId === String(item._id)}
+                      className="absolute top-4 right-4 bg-white p-1 rounded-full shadow disabled:opacity-60"
+                      title={isAuthenticated ? 'Wishlist' : 'Login to wishlist'}
+                    >
+                      <Heart
+                        size={16}
+                        className={
+                          isWished(item._id) ? 'text-red-500 fill-red-500' : 'text-gray-700'
+                        }
+                      />
                     </button>
 
                     <img

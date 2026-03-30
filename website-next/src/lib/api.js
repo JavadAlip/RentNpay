@@ -52,3 +52,8 @@ export const apiDeleteAddress = (id) => api.delete(`/users/addresses/${id}`);
 // ── USER ORDERS ───────────────────────────────
 export const apiCreateOrder = (data) => api.post('/orders', data);
 export const apiGetMyOrders = () => api.get('/orders/my');
+
+// ── WISHLIST ────────────────────────────────
+export const apiGetMyWishlist = () => api.get('/users/wishlist');
+export const apiToggleWishlist = (productId) =>
+  api.post('/users/wishlist/toggle', { productId });

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { apiGetMyOrders } from '@/lib/api';
+import { apiGetMyOrders, apiGetMyWishlist } from '@/lib/api';
 
 const Profile = () => {
   const { user } = useSelector((s) => s.auth);
   const [orders, setOrders] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -15,6 +17,14 @@ const Profile = () => {
       .then((r) => setOrders(r.data || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    setWishlistLoading(true);
+    apiGetMyWishlist()
+      .then((r) => setWishlist(r.data?.items || []))
+      .catch(() => setWishlist([]))
+      .finally(() => setWishlistLoading(false));
   }, []);
 
   return (
@@ -64,6 +74,30 @@ const Profile = () => {
                   )
                   .toFixed(2)}
               </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="text-xl font-semibold text-gray-900 mt-10 mb-4">My wishlist</h2>
+      {wishlistLoading ? (
+        <div className="flex justify-center py-8">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : wishlist.length === 0 ? (
+        <p className="text-gray-500">No wishlist items yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {wishlist.map((p) => (
+            <div key={p._id} className="border border-gray-200 rounded-xl p-3">
+              <img
+                src={p.image || p.images?.[0] || 'https://placehold.co/300x200'}
+                alt={p.productName}
+                className="w-full h-32 object-cover rounded-lg mb-2"
+              />
+              <p className="font-medium text-gray-900">{p.productName}</p>
+              <p className="text-xs text-gray-500">{p.category}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">{p.price}</p>
             </div>
           ))}
         </div>

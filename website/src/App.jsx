@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Wishlist from './pages/Wishlist';
 import RentPrdctDetail from './pages/RentPrdctDetail';
 import BuyPage from './pages/BuyPage';
 import ServicePage from './pages/ServicePage';
@@ -61,6 +62,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <ProtectedRoute>
+                <Wishlist />
               </ProtectedRoute>
             }
           />

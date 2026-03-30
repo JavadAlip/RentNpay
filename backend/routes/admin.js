@@ -33,6 +33,7 @@ import {
   deleteListingTemplate,
   patchListingTemplateActive,
 } from '../controller/admin/listingTemplateController.js';
+import { getWishlistAnalytics } from '../controller/admin/wishlistController.js';
 import { adminAuth } from '../middleware/Auth.js';
 const router = express.Router();
 import upload from '../middleware/upload.js';
@@ -93,6 +94,7 @@ router.get('/get-vendors/:id', adminAuth, getVendorDetails);
 router.get('/get-users', adminAuth, getAllUsers);
 router.get('/get-users/:id', adminAuth, getUserDetails);
 router.get('/products', getAllProducts);
+router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
 
 // Vendor KYC approvals
 router.get('/kyc/queue', adminAuth, getVendorKycQueue);
