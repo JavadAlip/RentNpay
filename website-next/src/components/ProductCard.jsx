@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Heart, Bell, ShoppingCart, Star, Truck, MapPin } from 'lucide-react';
 
 const parsePrice = (raw) => {
   const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
@@ -16,83 +17,94 @@ const ProductCard = ({ product, offer }) => {
   const finalPrice = hasOffer
     ? Math.max(0, Math.round(base - (base * discount) / 100))
     : base;
+  const inStock = Number(stock || 0) > 0;
+  const rating = (4 + ((productName?.length || 3) % 10) / 10).toFixed(1);
 
   return (
-    <Link
-      href={`/rent-product-details/${_id}`}
-      className="group block bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg hover:border-orange-300 transition-all"
-    >
-      {/* Image */}
-      <div className="relative h-48 sm:h-52 bg-gray-100 overflow-hidden">
-        {hasOffer ? (
-          <span className="absolute top-3 left-3 z-10 inline-flex items-center px-2 py-0.5 rounded-lg border text-xs font-medium text-[#F97316] border-[#F97316] bg-white">
-            {discount}% Off
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all">
+      <Link href={`/rent-product-details/${_id}`} className="block">
+        <div className="relative h-40 sm:h-44 bg-gray-100 overflow-hidden">
+          <span className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500 text-white">
+            Bestseller
           </span>
-        ) : null}
-        <img
-          src={image}
-          alt={productName}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.style.display = 'none';
-            e.target.parentElement.innerHTML = `
-              <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f9fafb;gap:8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="#d1d5db">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <span style="font-size:12px;color:#9ca3af;">No Image</span>
-              </div>`;
-          }}
-        />
-      </div>
+          <button
+            type="button"
+            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center"
+            aria-label="Wishlist"
+          >
+            <Heart className="w-4 h-4 text-gray-500" />
+          </button>
+          <img
+            src={image || 'https://placehold.co/600x400/e5e7eb/6b7280?text=IMG'}
+            alt={productName}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </Link>
 
-      {/* Details */}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-orange-500 transition-colors">
-          {productName}
-        </h3>
+      <div className="p-3">
+        <div className="flex items-center justify-between mb-1">
+          <span
+            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${
+              inStock
+                ? 'bg-blue-50 text-blue-600'
+                : 'bg-purple-50 text-purple-600'
+            }`}
+          >
+            {inStock ? (
+              <Truck className="w-3 h-3" />
+            ) : (
+              <MapPin className="w-3 h-3" />
+            )}
+            {inStock ? '2-4 days' : 'Self-Pickup'}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white font-semibold">
+            <Star className="w-3 h-3 fill-white" />
+            {rating}
+          </span>
+        </div>
 
-        <p className="text-xs text-gray-400 mt-1 line-clamp-1">
-          {category}
-          {subCategory ? ` › ${subCategory}` : ''}
+        <p className="font-medium text-gray-900 line-clamp-1">{productName}</p>
+        <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+          {category || 'Product'} {subCategory ? `· ${subCategory}` : ''}
         </p>
 
-        <div className="flex items-center justify-between mt-3 gap-2">
-          <div className="min-w-0">
-            <p className="text-orange-500 font-bold text-base">
+        <div className="mt-2 flex items-end justify-between gap-2">
+          <div>
+            <p className="text-3xl leading-none font-semibold text-gray-900">
               ₹{finalPrice}
-              {type === 'Rental' ? '/mo' : ''}
+              <span className="text-xl">{type === 'Rental' ? '/mo' : ''}</span>
             </p>
             {hasOffer ? (
-              <p className="text-xs text-gray-400 line-through">
+              <p className="text-xs text-gray-400 line-through mt-0.5">
                 ₹{base}
-                {type === 'Rental' ? '/mo' : ''}
               </p>
             ) : null}
           </div>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              type === 'Rental'
-                ? 'bg-blue-50 text-blue-600'
-                : 'bg-green-50 text-green-600'
-            }`}
-          >
-            {type}
-          </span>
+          {hasOffer ? (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border border-orange-300 text-orange-600 bg-orange-50">
+              {discount}% Off
+            </span>
+          ) : null}
         </div>
 
-        <div className="flex items-center gap-1.5 mt-2">
-          <span
-            className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-400' : 'bg-red-400'}`}
-          />
-          <span className="text-xs text-gray-500">
-            {stock > 0 ? `${stock} in stock` : 'Out of stock'}
-          </span>
-        </div>
+        <Link
+          href={`/rent-product-details/${_id}`}
+          className={`mt-3 w-full inline-flex items-center justify-center gap-1 rounded-xl py-2 text-sm font-medium border ${
+            inStock
+              ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {inStock ? (
+            <ShoppingCart className="w-4 h-4" />
+          ) : (
+            <Bell className="w-4 h-4" />
+          )}
+          {inStock ? 'Rent Now' : 'Get Notified'}
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 };
 
