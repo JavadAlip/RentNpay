@@ -119,11 +119,7 @@ const Products = () => {
     if (createProduct.fulfilled.match(resultAction)) {
       const sub = form.submissionStatus || 'published';
       toast.success(
-        sub === 'draft'
-          ? 'Draft saved'
-          : sub === 'pending_approval'
-            ? 'Submitted for approval'
-            : 'Product added successfully',
+        sub === 'draft' ? 'Draft saved' : 'Product published — visible on your storefront',
       );
       setIsAddModalOpen(false);
     } else {
@@ -323,16 +319,8 @@ const Products = () => {
                             : 'bg-green-100 text-green-600';
 
                       const sub = p.submissionStatus;
-                      const listingLabel =
-                        sub === 'draft'
-                          ? 'Draft'
-                          : sub === 'pending_approval'
-                            ? 'Pending approval'
-                            : null;
-                      const listingClass =
-                        sub === 'draft'
-                          ? 'bg-slate-100 text-slate-700'
-                          : 'bg-amber-100 text-amber-800';
+                      const listingLabel = sub === 'draft' ? 'Draft' : null;
+                      const listingClass = 'bg-slate-100 text-slate-700';
 
                       return (
                         <tr key={p._id} className="border-t">

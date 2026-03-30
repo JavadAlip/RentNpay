@@ -3,7 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
-import { apiGetAllProducts, apiGetPublicActiveOffers } from '@/lib/api';
+import {
+  apiGetStorefrontVendorProducts,
+  apiGetPublicActiveOffers,
+} from '@/lib/api';
 
 import {
   Heart,
@@ -28,7 +31,10 @@ const Trending = () => {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([apiGetAllProducts('limit=200'), apiGetPublicActiveOffers()])
+    Promise.all([
+      apiGetStorefrontVendorProducts('limit=200'),
+      apiGetPublicActiveOffers(),
+    ])
       .then(([pRes, oRes]) => {
         if (!mounted) return;
         const allProducts = pRes.data?.products || [];

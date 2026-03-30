@@ -161,7 +161,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { addToCart } from '@/store/slices/cartSlice';
-import { useAuthModal, AUTH_REDIRECT_SESSION_KEY } from '@/contexts/AuthModalContext';
+import {
+  useAuthModal,
+  AUTH_REDIRECT_SESSION_KEY,
+} from '@/contexts/AuthModalContext';
 import { apiGetProductById } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -174,9 +177,36 @@ const FALLBACK_IMAGES = [
 ];
 
 const STATIC_PLANS = [
-  { month: '3', price: 799 },
-  { month: '6', price: 699 },
-  { month: '12', price: 499 },
+  {
+    id: 'm-3',
+    tenureLabel: '3 Months',
+    rentalMonths: 3,
+    rawDays: 0,
+    periodUnit: 'month',
+    price: 799,
+    label: '',
+    priceSuffix: '/mo',
+  },
+  {
+    id: 'm-6',
+    tenureLabel: '6 Months',
+    rentalMonths: 6,
+    rawDays: 0,
+    periodUnit: 'month',
+    price: 699,
+    label: '',
+    priceSuffix: '/mo',
+  },
+  {
+    id: 'm-12',
+    tenureLabel: '12 Months',
+    rentalMonths: 12,
+    rawDays: 0,
+    periodUnit: 'month',
+    price: 499,
+    label: '',
+    priceSuffix: '/mo',
+  },
 ];
 
 // ─── Parse price string like "1599/month" or "20000" → number ───────────────
@@ -186,28 +216,89 @@ function parsePrice(raw) {
   return isNaN(num) ? null : num;
 }
 
-// ─── Build 3 rental plans from a base price ──────────────────────────────────
+function tierRentAmount(cfg) {
+  const cr = Number(cfg?.customerRent);
+  if (Number.isFinite(cr) && cr > 0) return cr;
+  const pd = Number(cfg?.pricePerDay);
+  if (Number.isFinite(pd) && pd > 0) return pd;
+  return 0;
+}
+
+// ─── Build 3 rental plans from a base price (fallback) ─────────────────────
 function buildPlans(basePrice) {
   return [
-    { month: '3', price: Math.round(basePrice * 1.15) },
-    { month: '6', price: basePrice },
-    { month: '12', price: Math.round(basePrice * 0.75) },
+    {
+      id: 'm-3',
+      tenureLabel: '3 Months',
+      rentalMonths: 3,
+      rawDays: 0,
+      periodUnit: 'month',
+      price: Math.round(basePrice * 1.15),
+      label: '',
+      priceSuffix: '/mo',
+    },
+    {
+      id: 'm-6',
+      tenureLabel: '6 Months',
+      rentalMonths: 6,
+      rawDays: 0,
+      periodUnit: 'month',
+      price: basePrice,
+      label: '',
+      priceSuffix: '/mo',
+    },
+    {
+      id: 'm-12',
+      tenureLabel: '12 Months',
+      rentalMonths: 12,
+      rawDays: 0,
+      periodUnit: 'month',
+      price: Math.round(basePrice * 0.75),
+      label: '',
+      priceSuffix: '/mo',
+    },
   ];
 }
 
+/** Maps vendor `rentalConfigurations` (customerRent + months/days) → UI plans. */
 function normalizeRentalPlansFromProduct(product) {
   const arr = Array.isArray(product?.rentalConfigurations)
     ? product.rentalConfigurations
     : [];
-  const normalized = arr
-    .map((cfg) => ({
-      month: String(cfg?.months ?? ''),
-      price: Number(cfg?.pricePerDay ?? 0),
-      label: String(cfg?.label || ''),
-    }))
-    .filter((cfg) => cfg.month && Number.isFinite(cfg.price) && cfg.price > 0);
+  const out = [];
+  arr.forEach((cfg, idx) => {
+    const periodUnit = cfg?.periodUnit === 'day' ? 'day' : 'month';
+    const months = Number(cfg?.months) || 0;
+    const days = Number(cfg?.days) || 0;
+    const price = tierRentAmount(cfg);
+    if (!Number.isFinite(price) || price <= 0) return;
 
-  return normalized;
+    const id =
+      periodUnit === 'day' && days > 0
+        ? `d-${days}-${idx}`
+        : months > 0
+          ? `m-${months}-${idx}`
+          : `tier-${idx}`;
+
+    const tenureLabel =
+      periodUnit === 'day' && days > 0
+        ? `${days} Days`
+        : months > 0
+          ? `${months} Months`
+          : `Option ${idx + 1}`;
+
+    out.push({
+      id,
+      tenureLabel,
+      rentalMonths: months > 0 ? months : Math.max(1, Math.ceil(days / 30)),
+      rawDays: days,
+      periodUnit,
+      price,
+      label: String(cfg?.label || '').trim(),
+      priceSuffix: periodUnit === 'day' ? '/day' : '/mo',
+    });
+  });
+  return out;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -218,12 +309,24 @@ const RentPrdctMain = ({ product, offer }) => {
   const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const { items } = useSelector((s) => s.cart);
   const { pushToast } = useToast();
-  const [selectedPlan, setSelectedPlan] = useState('');
+  const [selectedPlanId, setSelectedPlanId] = useState('');
 
   // ── Real data first, static fallback second ──────────────────────────────
-  const productName = product?.productName || '3-Seater Fabric Sofa - Grey';
-  const category = product?.category || 'Furniture';
-  const subCategory = product?.subCategory || 'Sofas';
+  const productName = product?.productName || 'Rental product';
+  const category = product?.category || '—';
+  const subCategory = product?.subCategory || '—';
+
+  const vendorDisplayName = useMemo(() => {
+    const v = product?.vendorId;
+    if (v && typeof v === 'object' && String(v.fullName || '').trim()) {
+      return String(v.fullName).trim();
+    }
+    const owner = String(
+      product?.logisticsVerification?.inventoryOwnerName || '',
+    ).trim();
+    if (owner) return owner;
+    return 'Verified partner';
+  }, [product?.vendorId, product?.logisticsVerification?.inventoryOwnerName]);
 
   // Images: use vendor uploaded images[] first, fallback to image field and static samples.
   const images = useMemo(() => {
@@ -240,29 +343,45 @@ const RentPrdctMain = ({ product, offer }) => {
     setMainImg(images[0]);
   }, [images]);
 
-  // Plans: vendor rentalConfigurations first, fallback to derived/static.
-  const realPrice = parsePrice(product?.price);
-  const plansFromVendor = normalizeRentalPlansFromProduct(product);
-  const plans = plansFromVendor.length
-    ? plansFromVendor
-    : realPrice
-      ? buildPlans(realPrice)
-      : STATIC_PLANS;
-  const defaultPlanMonth = plans[0]?.month || '1';
+  const plans = useMemo(() => {
+    const fromVendor = normalizeRentalPlansFromProduct(product);
+    if (fromVendor.length) return fromVendor;
+    const realPrice = parsePrice(product?.price);
+    if (realPrice) return buildPlans(realPrice);
+    return STATIC_PLANS;
+  }, [product]);
+
+  const defaultPlanId = plans[0]?.id || '';
   useEffect(() => {
-    setSelectedPlan((prev) =>
-      plans.some((p) => p.month === prev) ? prev : defaultPlanMonth,
+    setSelectedPlanId((prev) =>
+      plans.some((p) => p.id === prev) ? prev : defaultPlanId,
     );
-  }, [defaultPlanMonth, plans]);
-  const plan = plans.find((p) => p.month === selectedPlan) || plans[0];
+  }, [defaultPlanId, plans]);
+
+  const plan = useMemo(
+    () => plans.find((p) => p.id === selectedPlanId) || plans[0],
+    [plans, selectedPlanId],
+  );
+
   const discountPercent = Number(offer?.discountPercent || 0);
   const hasOffer = discountPercent > 0;
-  const effectivePlanPrice = hasOffer
-    ? Math.max(0, Math.round(plan.price - (plan.price * discountPercent) / 100))
-    : plan.price;
+  const effectivePlanPrice = useMemo(() => {
+    if (!plan) return 0;
+    return hasOffer
+      ? Math.max(
+          0,
+          Math.round(plan.price - (plan.price * discountPercent) / 100),
+        )
+      : plan.price;
+  }, [plan, hasOffer, discountPercent]);
 
-  // Highest plan price for strikethrough (3-month = most expensive)
-  const strikePrice = plans[0].price;
+  const strikePrice = useMemo(() => {
+    if (!plans.length) return 0;
+    return Math.max(...plans.map((p) => p.price));
+  }, [plans]);
+
+  const rentLineLabel =
+    plan?.periodUnit === 'day' ? 'Rental rate' : 'Monthly rent';
 
   const [currentStock, setCurrentStock] = useState(
     typeof product?.stock === 'number' ? product.stock : 0,
@@ -290,10 +409,28 @@ const RentPrdctMain = ({ product, offer }) => {
     };
   }, [product?._id]);
 
-  const activeRentalMonths = useMemo(
-    () => parseInt(selectedPlan, 10) || 1,
-    [selectedPlan],
-  );
+  /** Cart / checkout tenure: months for month-plans; day count for day-plans. */
+  const activeRentalMonths = useMemo(() => {
+    if (!plan) return 1;
+    if (plan.periodUnit === 'day' && plan.rawDays > 0) return plan.rawDays;
+    return plan.rentalMonths || 1;
+  }, [plan]);
+
+  const totalRentalForTenure = useMemo(() => {
+    if (!plan) return 0;
+    if (plan.periodUnit === 'day' && plan.rawDays > 0) {
+      return effectivePlanPrice * plan.rawDays;
+    }
+    return effectivePlanPrice * (plan.rentalMonths || 1);
+  }, [plan, effectivePlanPrice]);
+
+  const tenureSummaryText = useMemo(() => {
+    if (!plan) return '';
+    if (plan.periodUnit === 'day' && plan.rawDays > 0) {
+      return `${plan.rawDays} days`;
+    }
+    return `${plan.rentalMonths || 1} months`;
+  }, [plan]);
 
   const handleAddToCart = () => {
     (async () => {
@@ -311,7 +448,8 @@ const RentPrdctMain = ({ product, offer }) => {
         }
       }
 
-      const existingQty = items.find((i) => i.productId === productId)?.quantity || 0;
+      const existingQty =
+        items.find((i) => i.productId === productId)?.quantity || 0;
       const res = await apiGetProductById(productId);
       const stock = res.data?.product?.stock ?? currentStock ?? 0;
 
@@ -321,7 +459,10 @@ const RentPrdctMain = ({ product, offer }) => {
       }
 
       if (existingQty + 1 > stock) {
-        pushToast(`Only ${stock} available in stock for this product.`, 'error');
+        pushToast(
+          `Only ${stock} available in stock for this product.`,
+          'error',
+        );
         return;
       }
 
@@ -361,7 +502,8 @@ const RentPrdctMain = ({ product, offer }) => {
         }
       }
 
-      const existingQty = items.find((i) => i.productId === productId)?.quantity || 0;
+      const existingQty =
+        items.find((i) => i.productId === productId)?.quantity || 0;
       const res = await apiGetProductById(productId);
       const stock = res.data?.product?.stock ?? currentStock ?? 0;
 
@@ -371,7 +513,10 @@ const RentPrdctMain = ({ product, offer }) => {
       }
 
       if (existingQty + 1 > stock) {
-        pushToast(`Only ${stock} available in stock for this product.`, 'error');
+        pushToast(
+          `Only ${stock} available in stock for this product.`,
+          'error',
+        );
         return;
       }
 
@@ -437,13 +582,16 @@ const RentPrdctMain = ({ product, offer }) => {
         <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6 lg:gap-10 gap-2 mt-2">
           <h1 className="text-xl sm:text-2xl font-semibold">{productName}</h1>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex flex-col items-end sm:items-end gap-0.5 shrink-0 text-right">
             <span className="bg-green-500 text-white text-xs sm:text-sm px-2 py-0.5 sm:py-1 rounded">
               4.8 ★
             </span>
-            <span className="text-gray-500 text-xs sm:text-sm">
-              124 Ratings
-            </span>
+            {/* <span
+              className="text-gray-500 text-xs sm:text-sm max-w-[10rem] sm:max-w-[14rem] truncate"
+              title={vendorDisplayName}
+            >
+              Listed by {vendorDisplayName}
+            </span> */}
           </div>
         </div>
         {hasOffer ? (
@@ -475,49 +623,62 @@ const RentPrdctMain = ({ product, offer }) => {
           </p>
 
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            {plans.map((p) => (
-              <div
-                key={p.month}
-                onClick={() => setSelectedPlan(p.month)}
-                className={`cursor-pointer border rounded-lg p-2 sm:p-3 text-center transition-colors
+            {plans.map((p) => {
+              const displayPrice = hasOffer
+                ? Math.max(
+                    0,
+                    Math.round(p.price - (p.price * discountPercent) / 100),
+                  )
+                : p.price;
+              const selected = selectedPlanId === p.id;
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  onClick={() => setSelectedPlanId(p.id)}
+                  className={`cursor-pointer border rounded-lg p-2 sm:p-3 text-center transition-colors
                   ${
-                    selectedPlan === p.month
+                    selected
                       ? 'bg-orange-500 text-white border-orange-500'
                       : 'bg-white hover:border-orange-300'
                   }`}
-              >
-                <p className="text-xs sm:text-sm">{p.month} Months</p>
-                <p className="font-semibold text-sm sm:text-base">
-                  ₹
-                  {hasOffer
-                    ? Math.max(
-                        0,
-                        Math.round(p.price - (p.price * discountPercent) / 100),
-                      )
-                    : p.price}
-                  /mo
-                </p>
-                {p.label ? (
-                  <p className="text-[10px] mt-1 opacity-90">{p.label}</p>
-                ) : null}
-              </div>
-            ))}
+                >
+                  <p className="text-xs sm:text-sm leading-tight">
+                    {p.tenureLabel}
+                  </p>
+                  <p className="font-semibold text-sm sm:text-base mt-1">
+                    ₹{displayPrice}
+                    <span className="text-[10px] sm:text-xs font-normal opacity-90">
+                      {p.priceSuffix}
+                    </span>
+                  </p>
+                  {/* {p.label ? (
+                    <p className="text-[10px] mt-1 opacity-90 line-clamp-2">{p.label}</p>
+                  ) : null} */}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* ── Price Box ── */}
         <div className="mt-4 sm:mt-6 bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-5 space-y-3 sm:space-y-4">
-          <div className="flex justify-between text-sm sm:text-base">
-            <span>Monthly Rent</span>
-            <span className="text-lg sm:text-xl font-bold">
-              ₹{effectivePlanPrice}/mo
-              {hasOffer ? (
+          <div className="flex justify-between text-sm sm:text-base gap-2">
+            <span>{rentLineLabel}</span>
+            <span className="text-lg sm:text-xl font-bold text-right">
+              ₹{effectivePlanPrice}
+              <span className="text-sm font-semibold text-gray-700">
+                {plan?.priceSuffix || '/mo'}
+              </span>
+              {plan && hasOffer ? (
                 <span className="text-[#4A5565] line-through text-xs sm:text-sm ml-2">
                   ₹{plan.price}
+                  {plan.priceSuffix || '/mo'}
                 </span>
-              ) : plan.price < strikePrice ? (
+              ) : plan && strikePrice > plan.price ? (
                 <span className="text-[#4A5565] line-through text-xs sm:text-sm ml-2">
                   ₹{strikePrice}
+                  {plan.priceSuffix || '/mo'}
                 </span>
               ) : null}
             </span>
@@ -550,10 +711,37 @@ const RentPrdctMain = ({ product, offer }) => {
 
         {/* ── Delivery ── */}
         <div className="bg-[#BEDBFF] mt-4 sm:mt-5 border-2 border-blue-300 p-3 sm:p-4 rounded-lg text-xs sm:text-sm">
-          Delivered & Installed by Tomorrow, 2PM
-          <p className="text-gray-500 mt-0.5">
-            Free delivery and setup included
-          </p>
+          {(() => {
+            const lv = product?.logisticsVerification || {};
+            const n = Number(lv.deliveryTimelineValue);
+            const unit = String(
+              lv.deliveryTimelineUnit || 'Days',
+            ).toLowerCase();
+            if (Number.isFinite(n) && n > 0) {
+              return (
+                <>
+                  <span className="font-medium">
+                    Estimated delivery: {n}{' '}
+                    {unit === 'hours' ? 'hour(s)' : 'day(s)'} after order
+                    confirmation
+                  </span>
+                  <p className="text-gray-600 mt-0.5">
+                    {lv.city
+                      ? `Service area includes ${lv.city}.`
+                      : 'Delivery timeline set by the renter.'}
+                  </p>
+                </>
+              );
+            }
+            return (
+              <>
+                <span className="font-medium">Delivery</span>
+                <p className="text-gray-600 mt-0.5">
+                  Contact the renter after checkout for delivery scheduling.
+                </p>
+              </>
+            );
+          })()}
         </div>
 
         {/* ── CTA Buttons ── */}
@@ -578,13 +766,15 @@ const RentPrdctMain = ({ product, offer }) => {
         {/* Total cost summary */}
         <div className="bg-blue-50 mt-4 sm:mt-5 p-3 sm:p-4 text-center rounded-lg text-xs sm:text-sm">
           <p className="text-gray-500">
-            Total rental cost for {selectedPlan} months:{' '}
+            Total rental for {tenureSummaryText}:{' '}
             <span className="font-semibold text-black">
-              ₹
-              {(
-                effectivePlanPrice * parseInt(selectedPlan, 10)
-              ).toLocaleString('en-IN')}
+              ₹{totalRentalForTenure.toLocaleString('en-IN')}
             </span>
+            {plan?.periodUnit === 'day' ? (
+              <span className="block text-[10px] text-gray-400 mt-1">
+                ({plan.rawDays} × ₹{effectivePlanPrice}/day)
+              </span>
+            ) : null}
           </p>
         </div>
       </div>

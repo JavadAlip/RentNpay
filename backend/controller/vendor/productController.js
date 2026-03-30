@@ -237,7 +237,10 @@ export const deleteProduct = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id);
+    const product = await Product.findById(id).populate(
+      'vendorId',
+      'fullName emailAddress',
+    );
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });

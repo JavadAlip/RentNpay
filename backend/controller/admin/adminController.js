@@ -416,11 +416,17 @@ export const getUserDetails = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 12, search, category } = req.query;
+    const { page = 1, limit = 12, search, category, storefront } = req.query;
 
     const query = {};
     if (search) query.productName = { $regex: search, $options: 'i' };
     if (category) query.category = category;
+
+    /** Public website: same vendor Product rows as dashboard; hide only drafts (pending & published both visible). */
+    if (storefront === '1' || storefront === 'true') {
+      query.vendorId = { $exists: true, $ne: null };
+      query.$nor = [{ submissionStatus: 'draft' }];
+    }
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)

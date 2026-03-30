@@ -40,8 +40,7 @@ const userSchema = new mongoose.Schema(
     emailAddress: {
       type: String,
       required: [true, 'Email is required'],
-      unique: true,
-      lowercase: true, // 🔥 auto convert to lowercase
+      lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
     },
@@ -72,7 +71,6 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-// 🔥 Ensure index is created properly
 userSchema.index({ emailAddress: 1 }, { unique: true });
 
 export default mongoose.model('User', userSchema);

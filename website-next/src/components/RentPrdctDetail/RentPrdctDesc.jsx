@@ -3,9 +3,6 @@
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
-const cancellationText =
-  'Free cancellation before delivery. If you cancel after dispatch, a 10% processing fee will be deducted from your refundable deposit. Cancel anytime during the rental period with 7 days notice.';
-
 const AccordionItem = ({ title, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -39,21 +36,48 @@ const prettifyKey = (key = '') =>
 const toSpecRows = (product) => {
   const rows = [];
 
-  if (product?.brand) rows.push({ label: 'Brand', value: product.brand });
-  if (product?.condition) rows.push({ label: 'Condition', value: product.condition });
-  if (product?.category) rows.push({ label: 'Category', value: product.category });
-  if (product?.subCategory) rows.push({ label: 'Sub Category', value: product.subCategory });
-  if (product?.refundableDeposit != null) {
-    rows.push({
-      label: 'Refundable Deposit',
-      value: `₹${Number(product.refundableDeposit || 0).toLocaleString('en-IN')}`,
-    });
-  }
-  if (product?.logisticsVerification?.city) {
-    rows.push({ label: 'Service City', value: product.logisticsVerification.city });
-  }
+  // Variant specs (color/storage/ram) are stored under `product.variants[]`
+  // and are not part of `product.specifications`.
+  const v0 =
+    Array.isArray(product?.variants) && product.variants.length
+      ? product.variants[0]
+      : null;
 
   const specObj = product?.specifications || {};
+  const specKeysLower = Object.keys(specObj).map((k) =>
+    String(k).toLowerCase(),
+  );
+  const hasSpecKey = (pred) => specKeysLower.some((k) => pred(k));
+
+  const showVariantColor =
+    !!v0?.color &&
+    !hasSpecKey(
+      (k) =>
+        k === 'color' ||
+        k === 'colour' ||
+        k.includes('color') ||
+        k.includes('colour'),
+    );
+  const showVariantStorage =
+    !!v0?.storage &&
+    !hasSpecKey(
+      (k) =>
+        k === 'storage' ||
+        k.includes('storage') ||
+        k.includes('capacity') ||
+        k.includes('ssd') ||
+        k.includes('hdd'),
+    );
+  const showVariantRam =
+    !!v0?.ram &&
+    !hasSpecKey(
+      (k) => k === 'ram' || k.includes('ram') || k.includes('memory'),
+    );
+
+  if (showVariantColor) rows.push({ label: 'Color', value: v0.color });
+  if (showVariantStorage) rows.push({ label: 'Storage', value: v0.storage });
+  if (showVariantRam) rows.push({ label: 'RAM', value: v0.ram });
+
   Object.entries(specObj).forEach(([k, v]) => {
     if (v == null || String(v).trim() === '') return;
     rows.push({ label: prettifyKey(k), value: String(v) });
@@ -85,23 +109,49 @@ const toSpecRows = (product) => {
 };
 
 const RentPrdctDesc = ({ product }) => {
-  const title = product?.productName || 'Product Description';
+  const title = product?.productName || 'Product description';
+  const desc = String(product?.description || '').trim();
+  const short = String(product?.shortDescription || '').trim();
+
   const descriptionPrimary =
-    product?.description ||
-    product?.shortDescription ||
-    'No description added by vendor for this product yet.';
-  const descriptionSecondary =
-    product?.shortDescription && product?.description
-      ? product.shortDescription
-      : cancellationText;
+    desc || short || 'No description added by the renter for this listing yet.';
+
+  const descriptionSecondary = desc && short && short !== desc;
+
   const specs = toSpecRows(product);
 
+  const rentalTiers = Array.isArray(product?.rentalConfigurations)
+    ? product.rentalConfigurations
+    : [];
+  const rentalSummary =
+    rentalTiers.length > 0
+      ? rentalTiers
+          .map((cfg) => {
+            const months = Number(cfg?.months) || 0;
+            const days = Number(cfg?.days) || 0;
+            const unit = cfg?.periodUnit === 'day' ? 'day' : 'month';
+            const rent =
+              Number(cfg?.customerRent) > 0
+                ? Number(cfg.customerRent)
+                : Number(cfg?.pricePerDay) || 0;
+            const tenure =
+              unit === 'day' && days > 0
+                ? `${days} days`
+                : months > 0
+                  ? `${months} months`
+                  : 'Tier';
+            const suffix = unit === 'day' ? '/day' : '/mo';
+            return rent > 0 ? `${tenure}: ₹${rent}${suffix}` : null;
+          })
+          .filter(Boolean)
+          .join(' · ')
+      : '';
+
   const rentalTerms = {
-    cancellation: cancellationText,
     damage:
-      'Normal wear and tear is covered. Significant accidental or intentional damage may result in repair charges.',
+      'Normal wear and tear is covered. Significant accidental or intentional damage may result in repair charges deducted from the refundable deposit where applicable.',
     returns:
-      'Return pickup is arranged by our team after scheduling. Please keep the product clean and ready for inspection.',
+      'Return pickup is coordinated after your rental term ends. Please keep the item clean and ready for inspection.',
   };
 
   return (
@@ -124,7 +174,7 @@ const RentPrdctDesc = ({ product }) => {
       {/* Product Specifications */}
       <section className="mb-6 sm:mb-8">
         <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-          Product Specifications
+          Product specifications
         </h2>
         <div className="border border-gray-200 rounded-md overflow-x-auto">
           <table className="w-full min-w-[400px] text-left border-collapse">
@@ -132,7 +182,9 @@ const RentPrdctDesc = ({ product }) => {
               {specs.map((row, i) => (
                 <tr
                   key={i}
-                  className={i !== specs.length - 1 ? 'border-b border-gray-200' : ''}
+                  className={
+                    i !== specs.length - 1 ? 'border-b border-gray-200' : ''
+                  }
                 >
                   <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs text-gray-500 bg-gray-50 w-[22%] sm:w-auto">
                     {row.label}
@@ -166,11 +218,15 @@ const RentPrdctDesc = ({ product }) => {
         </AccordionItem>
 
         <AccordionItem title="Damage Policy">
-          <p className="text-xs text-gray-600 leading-relaxed">{rentalTerms.damage}</p>
+          <p className="text-xs text-gray-600 leading-relaxed">
+            {rentalTerms.damage}
+          </p>
         </AccordionItem>
 
         <AccordionItem title="Return Process">
-          <p className="text-xs text-gray-600 leading-relaxed">{rentalTerms.returns}</p>
+          <p className="text-xs text-gray-600 leading-relaxed">
+            {rentalTerms.returns}
+          </p>
         </AccordionItem>
       </section>
     </div>

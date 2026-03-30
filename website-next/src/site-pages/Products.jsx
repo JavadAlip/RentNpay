@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '../components/ProductCard';
-import { apiGetAllProducts, apiGetPublicActiveOffers } from '../lib/api';
+import {
+  apiGetStorefrontVendorProducts,
+  apiGetPublicActiveOffers,
+} from '../lib/api';
 
 const Products = () => {
   const searchParams = useSearchParams();
@@ -30,7 +33,10 @@ const Products = () => {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([apiGetAllProducts('limit=400'), apiGetPublicActiveOffers()])
+    Promise.all([
+      apiGetStorefrontVendorProducts('limit=400'),
+      apiGetPublicActiveOffers(),
+    ])
       .then(([pRes, oRes]) => {
         const list = pRes.data?.products || [];
         const offers = oRes.data?.offers || [];

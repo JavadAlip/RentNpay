@@ -25,7 +25,7 @@ const AdminSidebar = () => {
   const links = [
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/kyc', label: 'KYC' },
-    { to: '/products', label: 'Products' },
+    // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
     { to: '/orders', label: 'Orders' },
     { to: '/all-vendors', label: 'Vendors' },

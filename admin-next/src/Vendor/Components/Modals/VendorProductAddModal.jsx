@@ -22,15 +22,14 @@ import {
   apiGetVendorListingTemplates,
 } from '@/service/api';
 
-const PLACEHOLDER_IMG =
-  'https://placehold.co/56x56/e5e7eb/6b7280?text=IMG';
+const PLACEHOLDER_IMG = 'https://placehold.co/56x56/e5e7eb/6b7280?text=IMG';
 
 function toNum(v, fallback = 0) {
   const n = Number(String(v).replace(/,/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
 
-function specsObjectFromTemplate(t) {
+function specsObjectFromTemplate(t, variantIndex = 0) {
   const specs =
     t?.specifications &&
     typeof t.specifications === 'object' &&
@@ -42,6 +41,48 @@ function specsObjectFromTemplate(t) {
       const k = String(row?.label || '').trim();
       if (k) specs[k] = String(row?.value ?? '');
     }
+  }
+
+  // Merge selected variant's "variant specs" so vendor-created products
+  // can store them in `product.specifications` (storefront displays from it).
+  const variant =
+    Array.isArray(t?.variants) && t.variants.length
+      ? t.variants[Math.max(0, Math.min(variantIndex, t.variants.length - 1))]
+      : null;
+
+  const mergeLabelValueRows = (rows) => {
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) {
+      const k = String(row?.label || '').trim();
+      if (!k) continue;
+      specs[k] = String(row?.value ?? '').trim();
+    }
+  };
+
+  if (variant) {
+    // Expected shape: `variant.variantSpecs: [{label,value}]`
+    if (Array.isArray(variant.variantSpecs)) {
+      mergeLabelValueRows(variant.variantSpecs);
+    } else if (
+      variant.variantSpecs &&
+      typeof variant.variantSpecs === 'object' &&
+      !Array.isArray(variant.variantSpecs)
+    ) {
+      // Sometimes stored as an object map: { "colour": "green", ... }
+      for (const [k, v] of Object.entries(variant.variantSpecs)) {
+        const kk = String(k).trim();
+        if (!kk) continue;
+        specs[kk] = String(v ?? '').trim();
+      }
+    } else if (Array.isArray(variant.specRows)) {
+      // Legacy naming used by the admin flexible form: `specRows`
+      mergeLabelValueRows(variant.specRows);
+    }
+
+    // Also copy standard fields into spec object (storefront reads from it).
+    if (variant.color) specs.Color = String(variant.color);
+    if (variant.storage) specs.Storage = String(variant.storage);
+    if (variant.ram) specs.RAM = String(variant.ram);
   }
   return specs;
 }
@@ -135,12 +176,8 @@ function rentalTiersFromTemplate(template, model) {
   return raw.slice(0, 6).map((cfg, i) => {
     const periodUnit = cfg.periodUnit === 'day' ? 'day' : 'month';
     const effectiveDay = useDay || periodUnit === 'day';
-    const months = effectiveDay
-      ? 0
-      : toNum(cfg.months, [3, 6, 12][i] || 3);
-    const days = effectiveDay
-      ? toNum(cfg.days, [3, 5, 7][i] || 3 + i * 2)
-      : 0;
+    const months = effectiveDay ? 0 : toNum(cfg.months, [3, 6, 12][i] || 3);
+    const days = effectiveDay ? toNum(cfg.days, [3, 5, 7][i] || 3 + i * 2) : 0;
     const rentVal =
       cfg.customerRent != null && cfg.customerRent !== ''
         ? String(cfg.customerRent)
@@ -181,7 +218,10 @@ function SectionCard({
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/90">
         <div className="flex items-center gap-2 min-w-0">
           {Icon ? (
-            <Icon className="h-5 w-5 text-emerald-600 shrink-0" strokeWidth={2} />
+            <Icon
+              className="h-5 w-5 text-emerald-600 shrink-0"
+              strokeWidth={2}
+            />
           ) : null}
           <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
             {title}
@@ -235,6 +275,11 @@ export default function VendorProductAddModal({
   const [description, setDescription] = useState('');
   const [specs, setSpecs] = useState({});
 
+  // Which variant's spec grid should be shown in the form.
+  // We keep this as the template's variant index (not the filtered list index).
+  const [selectedTemplateVariantIndex, setSelectedTemplateVariantIndex] =
+    useState(0);
+
   const [variantIndices, setVariantIndices] = useState([]);
   const [rentalPricingModel, setRentalPricingModel] = useState('month');
   const [rentalTiers, setRentalTiers] = useState(defaultMonthTiers());
@@ -264,6 +309,7 @@ export default function VendorProductAddModal({
     setShortDescription('');
     setDescription('');
     setSpecs({});
+    setSelectedTemplateVariantIndex(0);
     setVariantIndices([]);
     setRentalPricingModel('month');
     setRentalTiers(defaultMonthTiers());
@@ -303,9 +349,8 @@ export default function VendorProductAddModal({
     );
     setNewImages([]);
     const nVar = Array.isArray(p.variants) ? p.variants.length : 0;
-    setVariantIndices(
-      nVar ? Array.from({ length: nVar }, (_, i) => i) : [],
-    );
+    setVariantIndices(nVar ? Array.from({ length: nVar }, (_, i) => i) : []);
+    setSelectedTemplateVariantIndex(0);
     const rc = Array.isArray(p.rentalConfigurations)
       ? p.rentalConfigurations
       : [];
@@ -322,16 +367,14 @@ export default function VendorProductAddModal({
           monthlyRent: String(
             cfg.customerRent != null && cfg.customerRent !== ''
               ? cfg.customerRent
-              : cfg.pricePerDay ?? '',
+              : (cfg.pricePerDay ?? ''),
           ),
           shippingCharges: String(cfg.shippingCharges ?? ''),
           bestValue: i === 2,
         })),
       );
     } else {
-      setRentalTiers(
-        model === 'day' ? defaultDayTiers() : defaultMonthTiers(),
-      );
+      setRentalTiers(model === 'day' ? defaultDayTiers() : defaultMonthTiers());
     }
     setRefundableDeposit(
       p.refundableDeposit != null ? String(p.refundableDeposit) : '',
@@ -433,6 +476,7 @@ export default function VendorProductAddModal({
       setNewImages([]);
       const n = Array.isArray(t.variants) ? t.variants.length : 0;
       setVariantIndices(n ? Array.from({ length: n }, (_, i) => i) : []);
+      setSelectedTemplateVariantIndex(0);
       const vModel =
         t.variants?.[0]?.rentalPricingModel === 'day' ? 'day' : 'month';
       setRentalPricingModel(vModel);
@@ -462,8 +506,27 @@ export default function VendorProductAddModal({
   };
 
   const removeVariantIndex = (idx) => {
-    setVariantIndices((prev) => prev.filter((i) => i !== idx));
+    setVariantIndices((prev) => {
+      const next = prev.filter((i) => i !== idx);
+      // If the currently selected variant is removed, fall back to the first remaining one.
+      if (idx === selectedTemplateVariantIndex) {
+        setSelectedTemplateVariantIndex(next[0] ?? 0);
+      }
+      return next;
+    });
   };
+
+  // When template + selected variant changes, refresh the spec grid.
+  useEffect(() => {
+    if (!fullTemplate) return;
+    const vCount = Array.isArray(fullTemplate.variants)
+      ? fullTemplate.variants.length
+      : 0;
+    if (!vCount) return;
+    setSpecs(
+      specsObjectFromTemplate(fullTemplate, selectedTemplateVariantIndex),
+    );
+  }, [fullTemplate, selectedTemplateVariantIndex]);
 
   const addRentalTier = () => {
     setRentalTiers((prev) => [
@@ -491,7 +554,9 @@ export default function VendorProductAddModal({
   };
 
   const removeRentalTier = (i) => {
-    setRentalTiers((prev) => (prev.length <= 1 ? prev : prev.filter((_, j) => j !== i)));
+    setRentalTiers((prev) =>
+      prev.length <= 1 ? prev : prev.filter((_, j) => j !== i),
+    );
   };
 
   const updateTier = (i, field, value) => {
@@ -502,14 +567,115 @@ export default function VendorProductAddModal({
 
   const buildVariantsPayload = () => {
     if (fullTemplate && Array.isArray(fullTemplate.variants)) {
+      // Template "variant specs" sometimes come as top-level `template.specifications`
+      // (loaded into `specs` state) instead of `variantSpecs` on each variant.
+      // We use `specs` as a fallback source of truth for color/storage/ram.
+      const productSpecEntries = Object.entries(specs || {});
+
+      const getFromProductSpecs = (pred) => {
+        const hit = productSpecEntries.find(([k]) =>
+          pred(String(k || '').trim()),
+        );
+        if (!hit) return '';
+        const [, v] = hit;
+        return String(v ?? '').trim();
+      };
+
       const rows = variantIndices
         .map((i) => fullTemplate.variants[i])
         .filter(Boolean)
         .map((v) => ({
           variantName: String(v.variantName || '').trim(),
-          color: String(v.color || '').trim(),
-          storage: String(v.storage || '').trim(),
-          ram: String(v.ram || '').trim(),
+          // Admin templates may store Color/Storage/RAM either in direct fields
+          // (`color`, `storage`, `ram`) OR inside `variantSpecs` label/value rows.
+          color: (() => {
+            const direct = v.color;
+            const variantSpecRows = Array.isArray(v.variantSpecs)
+              ? v.variantSpecs
+              : [];
+            const fromVariantSpecs = variantSpecRows.find((s) => {
+              const label = String(s?.label || '')
+                .toLowerCase()
+                .trim();
+              return (
+                label === 'color' ||
+                label === 'colour' ||
+                label.includes('color') ||
+                label.includes('colour')
+              );
+            })?.value;
+            return String(
+              direct ||
+                fromVariantSpecs ||
+                getFromProductSpecs((k) => {
+                  const lk = k.toLowerCase();
+                  return (
+                    lk === 'color' ||
+                    lk === 'colour' ||
+                    lk.includes('color') ||
+                    lk.includes('colour')
+                  );
+                }),
+            ).trim();
+          })(),
+          storage: (() => {
+            const direct = v.storage;
+            const variantSpecRows = Array.isArray(v.variantSpecs)
+              ? v.variantSpecs
+              : [];
+            const fromVariantSpecs = variantSpecRows.find((s) => {
+              const label = String(s?.label || '')
+                .toLowerCase()
+                .trim();
+              return (
+                label === 'storage' ||
+                label.includes('storage') ||
+                label.includes('capacity') ||
+                label.includes('ssd') ||
+                label.includes('hdd')
+              );
+            })?.value;
+            return String(
+              direct ||
+                fromVariantSpecs ||
+                getFromProductSpecs((k) => {
+                  const lk = k.toLowerCase();
+                  return (
+                    lk === 'storage' ||
+                    lk.includes('storage') ||
+                    lk.includes('capacity') ||
+                    lk.includes('ssd') ||
+                    lk.includes('hdd')
+                  );
+                }),
+            ).trim();
+          })(),
+          ram: (() => {
+            const direct = v.ram;
+            const variantSpecRows = Array.isArray(v.variantSpecs)
+              ? v.variantSpecs
+              : [];
+            const fromVariantSpecs = variantSpecRows.find((s) => {
+              const label = String(s?.label || '')
+                .toLowerCase()
+                .trim();
+              return (
+                label === 'ram' ||
+                label.includes('ram') ||
+                label.includes('memory')
+              );
+            })?.value;
+            return String(
+              direct ||
+                fromVariantSpecs ||
+                getFromProductSpecs((k) => {
+                  const lk = k.toLowerCase();
+                  return (
+                    lk === 'ram' || lk.includes('ram') || lk.includes('memory')
+                  );
+                }),
+            ).trim();
+          })(),
           condition: String(v.condition || condition || '').trim(),
           price: String(v.price || fullTemplate.price || '').trim(),
           stock: toNum(v.stock, 0),
@@ -531,12 +697,14 @@ export default function VendorProductAddModal({
 
   const buildRentalPayload = () =>
     rentalTiers.map((t, i) => ({
-      months: rentalPricingModel === 'month' ? toNum(t.months, [3, 6, 12][i] || 3) : 0,
+      months:
+        rentalPricingModel === 'month'
+          ? toNum(t.months, [3, 6, 12][i] || 3)
+          : 0,
       days: rentalPricingModel === 'day' ? toNum(t.days, [3, 5, 7][i] || 3) : 0,
       periodUnit: rentalPricingModel,
       label: String(t.label || '').trim(),
-      pricePerDay:
-        rentalPricingModel === 'day' ? toNum(t.monthlyRent, 0) : 0,
+      pricePerDay: rentalPricingModel === 'day' ? toNum(t.monthlyRent, 0) : 0,
       customerRent: toNum(t.monthlyRent, 0),
       shippingCharges: toNum(t.shippingCharges, 0),
     }));
@@ -546,7 +714,10 @@ export default function VendorProductAddModal({
       toast.error('Product name is required.');
       return false;
     }
-    if (!String(categoryName || '').trim() || !String(subCategoryName || '').trim()) {
+    if (
+      !String(categoryName || '').trim() ||
+      !String(subCategoryName || '').trim()
+    ) {
       toast.error('Category and sub-category are required.');
       return false;
     }
@@ -576,7 +747,8 @@ export default function VendorProductAddModal({
     if (!validate(submissionStatus)) return;
     const imgs = [...existingImages];
     const priceLabel =
-      rentalTiers[0]?.monthlyRent != null && String(rentalTiers[0].monthlyRent).trim() !== ''
+      rentalTiers[0]?.monthlyRent != null &&
+      String(rentalTiers[0].monthlyRent).trim() !== ''
         ? `₹${rentalTiers[0].monthlyRent}/mo`
         : fullTemplate?.price || '0';
 
@@ -614,13 +786,15 @@ export default function VendorProductAddModal({
   }, [rentalPricingModel, fullTemplate]);
 
   useEffect(() => {
-    if (!isOpen || mode !== 'edit' || !initialData || !categories.length) return;
+    if (!isOpen || mode !== 'edit' || !initialData || !categories.length)
+      return;
     const c = categories.find((x) => x.name === initialData.category);
     if (c) setCategoryId(c._id);
   }, [isOpen, mode, initialData, categories]);
 
   useEffect(() => {
-    if (!isOpen || mode !== 'edit' || !initialData || !subCategories.length) return;
+    if (!isOpen || mode !== 'edit' || !initialData || !subCategories.length)
+      return;
     const s = subCategories.find((x) => x.name === initialData.subCategory);
     if (s) setSubCategoryId(s._id);
   }, [isOpen, mode, initialData, subCategories]);
@@ -684,7 +858,9 @@ export default function VendorProductAddModal({
                     : 'border-gray-200 bg-white opacity-60'
                 } ${opt.id === 'rent' ? 'cursor-pointer opacity-100' : 'cursor-not-allowed'}`}
               >
-                <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {opt.label}
+                </p>
                 <p className="text-[11px] text-gray-500 mt-0.5">{opt.sub}</p>
               </button>
             ))}
@@ -703,7 +879,8 @@ export default function VendorProductAddModal({
                     {subCategoryName || '—'}
                   </span>
                   <p className="w-full text-xs text-gray-500 mt-2">
-                    Filled automatically from the standard product you add below.
+                    Filled automatically from the standard product you add
+                    below.
                   </p>
                 </>
               ) : (
@@ -727,7 +904,9 @@ export default function VendorProductAddModal({
                     </select>
                   </div>
                   <div className="w-full sm:w-[calc(50%-0.25rem)]">
-                    <label className="text-xs text-gray-500">Sub-category</label>
+                    <label className="text-xs text-gray-500">
+                      Sub-category
+                    </label>
                     <select
                       value={subCategoryId}
                       onChange={(e) => setSubCategoryId(e.target.value)}
@@ -929,10 +1108,16 @@ export default function VendorProductAddModal({
                 </div>
               </SectionCard>
 
-              <SectionCard title="Basic Information" icon={null} badge="Verified Specs">
+              <SectionCard
+                title="Basic Information"
+                icon={null}
+                badge="Verified Specs"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-500">Product name</label>
+                    <label className="text-xs text-gray-500">
+                      Product name
+                    </label>
                     <input
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
@@ -951,9 +1136,7 @@ export default function VendorProductAddModal({
                       onChange={(e) => setBrand(e.target.value)}
                       readOnly={!!fullTemplate && mode === 'create'}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
-                        fullTemplate && mode === 'create'
-                          ? 'bg-gray-50'
-                          : ''
+                        fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
                   </div>
@@ -964,22 +1147,20 @@ export default function VendorProductAddModal({
                       onChange={(e) => setCondition(e.target.value)}
                       readOnly={!!fullTemplate && mode === 'create'}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
-                        fullTemplate && mode === 'create'
-                          ? 'bg-gray-50'
-                          : ''
+                        fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs text-gray-500">Short description</label>
+                    <label className="text-xs text-gray-500">
+                      Short description
+                    </label>
                     <input
                       value={shortDescription}
                       onChange={(e) => setShortDescription(e.target.value)}
                       readOnly={!!fullTemplate && mode === 'create'}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
-                        fullTemplate && mode === 'create'
-                          ? 'bg-gray-50'
-                          : ''
+                        fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
                   </div>
@@ -991,9 +1172,7 @@ export default function VendorProductAddModal({
                       readOnly={!!fullTemplate && mode === 'create'}
                       rows={3}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
-                        fullTemplate && mode === 'create'
-                          ? 'bg-gray-50'
-                          : ''
+                        fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
                   </div>
@@ -1019,13 +1198,26 @@ export default function VendorProductAddModal({
               {fullTemplate && displayVariants.length > 0 ? (
                 <SectionCard title="Product Variants">
                   <p className="text-xs text-gray-500 mb-3">
-                    Selected variants for this listing. Remove any you do not offer.
+                    Selected variants for this listing. Remove any you do not
+                    offer.
                   </p>
                   <ul className="space-y-2">
                     {displayVariants.map(({ index, v }) => (
                       <li
                         key={index}
-                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2"
+                        onClick={() => setSelectedTemplateVariantIndex(index)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setSelectedTemplateVariantIndex(index);
+                          }
+                        }}
+                        className={`flex items-center gap-3 rounded-xl border px-3 py-2 bg-white ${
+                          selectedTemplateVariantIndex === index
+                            ? 'border-blue-500'
+                            : 'border-gray-200 hover:border-orange-300'
+                        }`}
                       >
                         <img
                           src={
@@ -1054,7 +1246,10 @@ export default function VendorProductAddModal({
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeVariantIndex(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeVariantIndex(index);
+                          }}
                           className="p-2 rounded-lg text-red-500 hover:bg-red-50"
                           aria-label="Remove variant"
                         >
@@ -1177,7 +1372,9 @@ export default function VendorProductAddModal({
                   Security deposit returned after rental period ends
                 </p>
                 <div className="mt-3 flex rounded-xl border border-violet-200 bg-white max-w-xs">
-                  <span className="pl-3 flex items-center text-gray-500">₹</span>
+                  <span className="pl-3 flex items-center text-gray-500">
+                    ₹
+                  </span>
                   <input
                     value={refundableDeposit}
                     onChange={(e) => setRefundableDeposit(e.target.value)}
@@ -1254,7 +1451,9 @@ export default function VendorProductAddModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">City (optional)</label>
+                    <label className="text-xs text-gray-500">
+                      City (optional)
+                    </label>
                     <input
                       value={logistics.city}
                       onChange={(e) =>
@@ -1279,13 +1478,11 @@ export default function VendorProductAddModal({
             </button>
             <button
               type="button"
-              onClick={() =>
-                submit(mode === 'edit' ? 'published' : 'pending_approval')
-              }
+              onClick={() => submit('published')}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Send className="h-4 w-4" />
-              {mode === 'edit' ? 'Update Product' : 'Submit for Approval'}
+              {mode === 'edit' ? 'Update Product' : 'Publish to store'}
             </button>
           </div>
         </div>

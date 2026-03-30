@@ -27,8 +27,18 @@ export const apiGetSubCategories = (categoryId) =>
   api.get(`/admin/get-sub-categories/${categoryId}`);
 
 // ── PRODUCTS ──────────────────────────────────
+/** Admin product list (all vendor inventory rows; optional filters). */
 export const apiGetAllProducts = (queryString = '') =>
   api.get(`/admin/products${queryString ? `?${queryString}` : ''}`);
+
+/**
+ * Storefront: same `Product` documents vendors create in the vendor dashboard
+ * (`/vendor/my-products`). Passes `storefront=1` so drafts / pending approval are hidden.
+ */
+export const apiGetStorefrontVendorProducts = (queryString = '') =>
+  api.get(
+    `/admin/products?storefront=1${queryString ? `&${queryString}` : ''}`,
+  );
 
 export const apiGetProductById = (id) => api.get(`/vendor/product/${id}`);
 export const apiGetPublicActiveOffers = () => api.get('/vendor/offers/public-active');

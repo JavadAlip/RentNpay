@@ -6,7 +6,7 @@ import {
   IMG_WASHING as washing,
   IMG_TOOLS as tools,
 } from '@/lib/assetPlaceholders';
-import { apiGetAllProducts, apiGetCategories } from '@/lib/api';
+import { apiGetStorefrontVendorProducts, apiGetCategories } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 const BotherSection = () => {
@@ -25,7 +25,7 @@ const BotherSection = () => {
       try {
         const [catRes, prodRes] = await Promise.all([
           apiGetCategories(),
-          apiGetAllProducts('limit=300'),
+          apiGetStorefrontVendorProducts('limit=300'),
         ]);
 
         const categoryList = Array.isArray(catRes.data)
