@@ -17,6 +17,13 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const deriveStockStatus = (stock) => {
+  const s = toNumber(stock, 0);
+  if (s <= 0) return 'Out of Stock';
+  if (s <= 5) return 'Low Stock';
+  return 'Active';
+};
+
 const normalizeVariants = (variantsRaw) => {
   const arr = Array.isArray(variantsRaw) ? variantsRaw : [];
   return arr.map((v) => ({
@@ -70,6 +77,7 @@ const normalizeProductPayload = (body) => {
   );
   data.existingImages = parseJsonField(body.existingImages, []);
   data.stock = toNumber(body.stock, 0);
+  data.status = deriveStockStatus(data.stock);
   const subs = ['draft', 'pending_approval', 'published'];
   data.submissionStatus = subs.includes(body.submissionStatus)
     ? body.submissionStatus

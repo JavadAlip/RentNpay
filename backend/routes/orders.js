@@ -1,5 +1,6 @@
 import express from 'express';
 import Order from '../models/Order.js';
+import Product from '../models/Product.js';
 import { adminAuth } from '../middleware/Auth.js';
 import { userAuth } from '../middleware/userAuth.js';
 
@@ -11,6 +12,26 @@ router.post('/', userAuth, async (req, res) => {
     if (!products?.length || !rentalDuration || !address || !phone || !name) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
+    // Reduce live inventory based on ordered quantity, and update stock status.
+    for (const line of products) {
+      const productId = line?.product;
+      const qty = Math.max(0, Number(line?.quantity || 0));
+      if (!productId || qty <= 0) continue;
+
+      const product = await Product.findById(productId);
+      if (!product) continue;
+
+      const nextStock = Math.max(0, Number(product.stock || 0) - qty);
+      product.stock = nextStock;
+      product.status =
+        nextStock <= 0
+          ? 'Out of Stock'
+          : nextStock <= 5
+            ? 'Low Stock'
+            : 'Active';
+      await product.save();
+    }
+
     const order = await Order.create({
       user: req.user._id,
       products,

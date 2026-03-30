@@ -77,6 +77,49 @@ const Products = () => {
     });
   }, [products, query]);
 
+  const deriveStatusFromStock = (stock) => {
+    const s = Number(stock || 0);
+    if (s <= 0) return 'Out of Stock';
+    if (s <= 5) return 'Low Stock';
+    return 'Active';
+  };
+
+  const buildProductFormData = (product, overrides = {}) => {
+    const next = { ...product, ...overrides };
+    const stockNum = Number(next.stock || 0);
+    const status = deriveStatusFromStock(stockNum);
+
+    const payload = new FormData();
+    payload.append('productName', next.productName || '');
+    payload.append('type', next.type || 'Rental');
+    payload.append('category', next.category || '');
+    payload.append('subCategory', next.subCategory || '');
+    payload.append('brand', next.brand || '');
+    payload.append('condition', next.condition || 'Good');
+    payload.append('shortDescription', next.shortDescription || '');
+    payload.append('description', next.description || '');
+    payload.append('specifications', JSON.stringify(next.specifications || {}));
+    payload.append('variants', JSON.stringify(next.variants || []));
+    payload.append(
+      'rentalConfigurations',
+      JSON.stringify(next.rentalConfigurations || []),
+    );
+    payload.append('refundableDeposit', String(next.refundableDeposit || 0));
+    payload.append(
+      'logisticsVerification',
+      JSON.stringify(next.logisticsVerification || {}),
+    );
+    payload.append('existingImages', JSON.stringify(next.images || [next.image].filter(Boolean)));
+    payload.append('price', next.price || '');
+    payload.append('stock', String(stockNum));
+    payload.append('status', status);
+    payload.append(
+      'submissionStatus',
+      next.submissionStatus || 'published',
+    );
+    return payload;
+  };
+
   const handleCreateProduct = async (form) => {
     const autoStatus =
       Number(form.stock) === 0
@@ -207,6 +250,27 @@ const Products = () => {
     setDeleteTarget(null);
   };
 
+  const handleToggleActive = async (product) => {
+    const currentlyActive = product.submissionStatus !== 'draft';
+    const nextSubmission = currentlyActive ? 'draft' : 'published';
+    const payload = buildProductFormData(product, {
+      submissionStatus: nextSubmission,
+    });
+
+    const resultAction = await dispatch(
+      updateProduct({ id: product._id, formData: payload }),
+    );
+    if (updateProduct.fulfilled.match(resultAction)) {
+      toast.success(
+        currentlyActive
+          ? 'Product hidden from storefront'
+          : 'Product visible on storefront',
+      );
+    } else {
+      toast.error(resultAction.payload || 'Failed to update product visibility');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
@@ -302,30 +366,21 @@ const Products = () => {
                       <th className="px-4 py-3 text-left">SubCategory</th>
                       <th className="px-4 py-3 text-left">Stock</th>
                       <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Active</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {filteredProducts.map((p) => {
-                      // Use persisted status from DB first so edit changes reflect immediately.
-                      const derivedStatus =
-                        p.stock === 0
-                          ? 'Out of Stock'
-                          : p.stock <= 5
-                            ? 'Low Stock'
-                            : 'Active';
-                      const status = p.status || derivedStatus;
+                      const status = deriveStatusFromStock(p.stock);
                       const statusClass =
                         status === 'Out of Stock'
                           ? 'bg-red-100 text-red-600'
                           : status === 'Low Stock'
                             ? 'bg-yellow-100 text-yellow-600'
                             : 'bg-green-100 text-green-600';
-
-                      const sub = p.submissionStatus;
-                      const listingLabel = sub === 'draft' ? 'Draft' : null;
-                      const listingClass = 'bg-slate-100 text-slate-700';
+                      const isActiveOnStorefront = p.submissionStatus !== 'draft';
 
                       return (
                         <tr key={p._id} className="border-t">
@@ -372,22 +427,39 @@ const Products = () => {
                             </span>
                           </td>
 
-                          {/* Status + listing workflow */}
+                          {/* Status */}
                           <td className="px-4 py-3">
-                            <div className="flex flex-col gap-1 items-start">
-                              {listingLabel ? (
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${listingClass}`}
-                                >
-                                  {listingLabel}
-                                </span>
-                              ) : null}
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
+                            >
+                              {status}
+                            </span>
+                          </td>
+
+                          {/* Active toggle (controls storefront visibility) */}
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isActiveOnStorefront}
+                              onClick={() => handleToggleActive(p)}
+                              className={`relative inline-flex h-6 w-11 rounded-full transition ${
+                                isActiveOnStorefront ? 'bg-emerald-500' : 'bg-gray-300'
+                              }`}
+                              title={
+                                isActiveOnStorefront
+                                  ? 'Visible on storefront'
+                                  : 'Hidden from storefront'
+                              }
+                            >
                               <span
-                                className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
-                              >
-                                {status}
-                              </span>
-                            </div>
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                                  isActiveOnStorefront
+                                    ? 'translate-x-5 mt-0.5'
+                                    : 'translate-x-0.5 mt-0.5'
+                                }`}
+                              />
+                            </button>
                           </td>
 
                           {/* Actions */}
@@ -415,7 +487,7 @@ const Products = () => {
                     {!loading && filteredProducts.length === 0 && (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="px-4 py-8 text-center text-gray-500"
                         >
                           No products found.
