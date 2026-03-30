@@ -88,15 +88,56 @@ function specsObjectFromTemplate(t, variantIndex = 0) {
 }
 
 function galleryFromTemplate(t) {
-  if (Array.isArray(t?.images) && t.images.length) {
-    return t.images.filter(Boolean).slice(0, 5);
-  }
-  if (t?.image) return [t.image];
-  const v0 = t?.variants?.[0];
-  if (Array.isArray(v0?.images) && v0.images.length) {
-    return v0.images.filter(Boolean).slice(0, 5);
-  }
-  return [];
+  const normalizeToUrlArray = (val) => {
+    if (Array.isArray(val)) {
+      return val.filter(Boolean).map((x) => String(x));
+    }
+    if (typeof val === 'string') {
+      const s = val.trim();
+      if (!s) return [];
+      // Sometimes backend stores JSON-stringified arrays.
+      try {
+        if (s.startsWith('[')) {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            return parsed.filter(Boolean).map((x) => String(x));
+          }
+        }
+      } catch {
+        // ignore
+      }
+      // Otherwise treat as a single URL.
+      return [s];
+    }
+    if (val && typeof val === 'object') {
+      // e.g. {0: 'url1', 1: 'url2'} or { images: [...] }
+      if (Array.isArray(val.images)) {
+        return val.images.filter(Boolean).map((x) => String(x));
+      }
+      const values = Object.values(val)
+        .filter(Boolean)
+        .map((x) => String(x));
+      return values;
+    }
+    return [];
+  };
+
+  const urls = [
+    ...normalizeToUrlArray(t?.images),
+    t?.image ? String(t.image) : '',
+    ...(Array.isArray(t?.variants)
+      ? t.variants.flatMap((v) => [
+          ...normalizeToUrlArray(v?.images),
+          ...normalizeToUrlArray(v?.existingVariantImages),
+          ...normalizeToUrlArray(v?.variantImages),
+        ])
+      : []),
+  ].filter(Boolean);
+
+  // De-duplicate while preserving order (important for templates
+  // that store the same image at multiple levels).
+  const uniq = Array.from(new Set(urls));
+  return uniq.slice(0, 5);
 }
 
 function defaultMonthTiers() {
@@ -295,6 +336,43 @@ export default function VendorProductAddModal({
   const [existingImages, setExistingImages] = useState([]);
   const [newImages, setNewImages] = useState([]);
 
+  const getTemplateRefundableDeposit = useCallback((t, variantIdx) => {
+    if (!t) return '';
+
+    const parseMoney = (x) => {
+      const s = String(x ?? '')
+        .replace(/,/g, '')
+        .trim();
+      if (!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // Prefer template-level value (legacy).
+    if (
+      t.refundableDeposit != null &&
+      parseMoney(t.refundableDeposit) != null &&
+      parseMoney(t.refundableDeposit) > 0
+    )
+      return String(t.refundableDeposit);
+    // Otherwise fall back to selected variant value.
+    const v =
+      Array.isArray(t.variants) && t.variants.length
+        ? t.variants[
+            Math.max(0, Math.min(variantIdx ?? 0, t.variants.length - 1))
+          ]
+        : null;
+    if (v?.refundableDeposit != null) {
+      const vn = parseMoney(v.refundableDeposit);
+      if (vn != null && vn > 0) return String(v.refundableDeposit);
+    }
+
+    // If both are empty/zero, return template value (may be '0') for stability.
+    if (t.refundableDeposit != null) return String(t.refundableDeposit);
+    if (v?.refundableDeposit != null) return String(v.refundableDeposit);
+    return '0';
+  }, []);
+
   const resetCreateState = useCallback(() => {
     setListingType('rent');
     setSearchQuery('');
@@ -480,9 +558,7 @@ export default function VendorProductAddModal({
       const vModel =
         t.variants?.[0]?.rentalPricingModel === 'day' ? 'day' : 'month';
       setRentalPricingModel(vModel);
-      setRefundableDeposit(
-        t.refundableDeposit != null ? String(t.refundableDeposit) : '',
-      );
+      setRefundableDeposit(getTemplateRefundableDeposit(t, 0));
       const lv = t.logisticsVerification || {};
       setLogistics((prev) => ({
         ...prev,
@@ -527,6 +603,21 @@ export default function VendorProductAddModal({
       specsObjectFromTemplate(fullTemplate, selectedTemplateVariantIndex),
     );
   }, [fullTemplate, selectedTemplateVariantIndex]);
+
+  // Update refundable deposit when the selected template variant changes
+  // (create mode only). Some templates store refundable deposit at variant level.
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (!fullTemplate) return;
+    setRefundableDeposit(
+      getTemplateRefundableDeposit(fullTemplate, selectedTemplateVariantIndex),
+    );
+  }, [
+    mode,
+    fullTemplate,
+    selectedTemplateVariantIndex,
+    getTemplateRefundableDeposit,
+  ]);
 
   const addRentalTier = () => {
     setRentalTiers((prev) => [
@@ -806,6 +897,10 @@ export default function VendorProductAddModal({
     fullTemplate ||
     (customListing && categoryId && subCategoryId);
 
+  // Lock admin-provided details for vendor (view only).
+  // Vendor can still edit stock, logistics, and rental terms if not locked.
+  const detailsLocked = mode === 'edit' || !!fullTemplate;
+
   const displayVariants =
     fullTemplate && Array.isArray(fullTemplate.variants)
       ? variantIndices
@@ -1052,7 +1147,7 @@ export default function VendorProductAddModal({
                 title="Product Media"
                 icon={ImageIcon}
                 badge="Catalog Images"
-                showLock
+                showLock={detailsLocked}
               >
                 <div className="flex flex-wrap gap-3">
                   {existingImages.map((url, i) => (
@@ -1067,44 +1162,49 @@ export default function VendorProductAddModal({
                       </span>
                     </div>
                   ))}
-                  {newImages.map((file, i) => (
-                    <div key={`${file.name}-${i}`} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt=""
-                        className="h-24 w-24 rounded-xl object-cover border border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNewImages((prev) => prev.filter((_, j) => j !== i))
-                        }
-                        className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 text-xs text-gray-500 hover:border-orange-400">
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []).slice(
-                          0,
-                          Math.max(
+                  {!detailsLocked &&
+                    newImages.map((file, i) => (
+                      <div key={`${file.name}-${i}`} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt=""
+                          className="h-24 w-24 rounded-xl object-cover border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNewImages((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
+                          }
+                          className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  {!detailsLocked ? (
+                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 text-xs text-gray-500 hover:border-orange-400">
+                      <span>Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []).slice(
                             0,
-                            5 - existingImages.length - newImages.length,
-                          ),
-                        );
-                        setNewImages((prev) => [...prev, ...files]);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
+                            Math.max(
+                              0,
+                              5 - existingImages.length - newImages.length,
+                            ),
+                          );
+                          setNewImages((prev) => [...prev, ...files]);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  ) : null}
                 </div>
               </SectionCard>
 
@@ -1112,6 +1212,7 @@ export default function VendorProductAddModal({
                 title="Basic Information"
                 icon={null}
                 badge="Verified Specs"
+                showLock={detailsLocked}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -1121,7 +1222,7 @@ export default function VendorProductAddModal({
                     <input
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
-                      readOnly={!!fullTemplate && mode === 'create'}
+                      readOnly={detailsLocked}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create'
                           ? 'bg-gray-50 text-gray-800'
@@ -1134,7 +1235,7 @@ export default function VendorProductAddModal({
                     <input
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
-                      readOnly={!!fullTemplate && mode === 'create'}
+                      readOnly={detailsLocked}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
@@ -1145,31 +1246,31 @@ export default function VendorProductAddModal({
                     <input
                       value={condition}
                       onChange={(e) => setCondition(e.target.value)}
-                      readOnly={!!fullTemplate && mode === 'create'}
+                      readOnly={detailsLocked}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
                   </div>
-                  <div className="sm:col-span-2">
+                  {/* <div className="sm:col-span-2">
                     <label className="text-xs text-gray-500">
                       Short description
                     </label>
                     <input
                       value={shortDescription}
                       onChange={(e) => setShortDescription(e.target.value)}
-                      readOnly={!!fullTemplate && mode === 'create'}
+                      readOnly={detailsLocked}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     />
-                  </div>
+                  </div> */}
                   <div className="sm:col-span-2">
                     <label className="text-xs text-gray-500">Description</label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      readOnly={!!fullTemplate && mode === 'create'}
+                      readOnly={detailsLocked}
                       rows={3}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
@@ -1244,17 +1345,19 @@ export default function VendorProductAddModal({
                             </span>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeVariantIndex(index);
-                          }}
-                          className="p-2 rounded-lg text-red-500 hover:bg-red-50"
-                          aria-label="Remove variant"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
+                        {!detailsLocked ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeVariantIndex(index);
+                            }}
+                            className="p-2 rounded-lg text-red-500 hover:bg-red-50"
+                            aria-label="Remove variant"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -1264,14 +1367,17 @@ export default function VendorProductAddModal({
               <SectionCard
                 title="Rental Configuration"
                 icon={DollarSign}
+                showLock={detailsLocked}
                 headerRight={
-                  <button
-                    type="button"
-                    onClick={addRentalTier}
-                    className="text-xs font-medium text-orange-600 hover:text-orange-700"
-                  >
-                    + Add More Term
-                  </button>
+                  detailsLocked ? null : (
+                    <button
+                      type="button"
+                      onClick={addRentalTier}
+                      className="text-xs font-medium text-orange-600 hover:text-orange-700"
+                    >
+                      + Add More Term
+                    </button>
+                  )
                 }
               >
                 <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-100 mb-4 w-fit">
@@ -1283,6 +1389,7 @@ export default function VendorProductAddModal({
                         ? 'bg-white shadow text-gray-900'
                         : 'text-gray-600'
                     }`}
+                    disabled={detailsLocked}
                   >
                     Month-wise
                   </button>
@@ -1294,6 +1401,7 @@ export default function VendorProductAddModal({
                         ? 'bg-white shadow text-gray-900'
                         : 'text-gray-600'
                     }`}
+                    disabled={detailsLocked}
                   >
                     Day-wise
                   </button>
@@ -1333,6 +1441,7 @@ export default function VendorProductAddModal({
                             updateTier(i, 'monthlyRent', e.target.value)
                           }
                           className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
+                          disabled={detailsLocked}
                         />
                       </div>
                       <label className="text-xs text-gray-600 mt-2 block">
@@ -1348,9 +1457,10 @@ export default function VendorProductAddModal({
                             updateTier(i, 'shippingCharges', e.target.value)
                           }
                           className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
+                          disabled={detailsLocked}
                         />
                       </div>
-                      {rentalTiers.length > 1 ? (
+                      {!detailsLocked && rentalTiers.length > 1 ? (
                         <button
                           type="button"
                           onClick={() => removeRentalTier(i)}
@@ -1482,7 +1592,7 @@ export default function VendorProductAddModal({
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Send className="h-4 w-4" />
-              {mode === 'edit' ? 'Update Product' : 'Publish to store'}
+              {mode === 'edit' ? 'Update Product' : 'Publish'}
             </button>
           </div>
         </div>
