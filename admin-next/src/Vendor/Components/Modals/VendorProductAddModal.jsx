@@ -291,6 +291,7 @@ export default function VendorProductAddModal({
   onSubmit,
   mode = 'create',
   initialData = null,
+  onOpenManualProduct = null,
 }) {
   const dispatch = useDispatch();
   const token = useSelector((state) => state.vendor?.token);
@@ -575,6 +576,10 @@ export default function VendorProductAddModal({
   };
 
   const onCustomListing = () => {
+    if (typeof onOpenManualProduct === 'function') {
+      onOpenManualProduct();
+      return;
+    }
     resetCreateState();
     setCustomListing(true);
     setFullTemplate(null);

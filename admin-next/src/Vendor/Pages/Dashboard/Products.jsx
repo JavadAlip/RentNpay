@@ -13,12 +13,15 @@ import {
   updateProduct,
 } from '../../../redux/slices/productSlice';
 import VendorProductAddModal from '../../Components/Modals/VendorProductAddModal';
+import VendorManualProductModal from '../../Components/Modals/VendorManualProductModal';
 import { apiGetMyVendorKyc } from '@/service/api';
 
 const Products = () => {
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.product);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualModalDesign, setManualModalDesign] = useState('vendor');
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [query, setQuery] = useState('');
@@ -122,8 +125,10 @@ const Products = () => {
         sub === 'draft' ? 'Draft saved' : 'Product published — visible on your storefront',
       );
       setIsAddModalOpen(false);
+      return true;
     } else {
       toast.error(resultAction.payload || 'Failed to add product');
+      return false;
     }
   };
 
@@ -441,6 +446,24 @@ const Products = () => {
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
         mode={editingProduct ? 'edit' : 'create'}
         initialData={editingProduct}
+        onOpenManualProduct={() => {
+          setIsAddModalOpen(false);
+          setManualModalDesign('admin');
+          setIsManualModalOpen(true);
+        }}
+      />
+
+      <VendorManualProductModal
+        isOpen={isManualModalOpen}
+        onClose={() => {
+          setIsManualModalOpen(false);
+          setManualModalDesign('vendor');
+        }}
+        onSubmit={async (form) => {
+          const ok = await handleCreateProduct(form);
+          if (ok) setIsManualModalOpen(false);
+        }}
+        designMode={manualModalDesign}
       />
 
       {deleteTarget && (
