@@ -1,10 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 const VendorTopBar = () => {
   const { user } = useSelector((state) => state.vendor);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const fullName = mounted ? user?.fullName : '';
+  const initialsName = mounted ? user?.fullName : '';
 
   return (
     <header className="w-full bg-white border-b border-gray-200 pl-14 md:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
@@ -50,16 +58,16 @@ const VendorTopBar = () => {
           <div className="hidden lg:flex items-center gap-2">
             <div className="text-right">
               <p className="text-xs font-medium text-gray-800 truncate max-w-[120px]">
-                {user?.fullName || 'User Name'}
+                {fullName || 'User Name'}
               </p>
               <p className="text-[11px] text-gray-400">Vendor</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
-              {user?.fullName?.[0]?.toUpperCase() || 'U'}
+              {(initialsName || '')?.[0]?.toUpperCase() || 'U'}
             </div>
           </div>
           <div className="lg:hidden w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold">
-            {user?.fullName?.[0]?.toUpperCase() || 'U'}
+            {(initialsName || '')?.[0]?.toUpperCase() || 'U'}
           </div>
         </div>
       </div>

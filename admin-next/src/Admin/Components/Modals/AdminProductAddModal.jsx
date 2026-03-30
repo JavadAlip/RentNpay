@@ -79,13 +79,12 @@ const defaultRentalTermsMonth = () =>
 const defaultRentalTermsDay = () =>
   TIER_PRESETS_DAY.map((p) => emptyRentalTier(p, 'day'));
 
+// Deterministic key generator to avoid SSR/CSR hydration mismatches.
+// (We intentionally do NOT use randomUUID/Date.now here.)
 let _variantKeySeq = 0;
 function newVariantClientKey() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
   _variantKeySeq += 1;
-  return `vk-${Date.now()}-${_variantKeySeq}`;
+  return `vk-${_variantKeySeq}`;
 }
 
 const emptyFlexibleVariant = () => ({

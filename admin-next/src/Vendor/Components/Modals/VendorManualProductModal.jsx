@@ -3,15 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { X } from 'lucide-react';
+import { Calendar, Clock, DollarSign, Filter, Search, Tag } from 'lucide-react';
 
 import {
   getCategories,
   getSubCategories,
 } from '../../../redux/slices/categorySlice';
 
-import AdminProductAddModal from '../../../Admin/Components/Modals/AdminProductAddModal.jsx';
-
+// ─── Spec fields by category (exact copy from AdminProductAddModal) ───────────
 const SPEC_FIELDS_BY_CATEGORY = {
   furniture: [
     { key: 'material', label: 'Material' },
@@ -45,8 +44,23 @@ const SPEC_FIELDS_BY_CATEGORY = {
   ],
 };
 
-function SectionTitle({ title }) {
-  return <p className="text-sm font-semibold text-gray-900 mb-2">{title}</p>;
+// ─── Rental tier presets (exact copy from AdminProductAddModal) ───────────────
+const TIER_PRESETS_MONTH = [
+  { months: 3, tierLabel: 'SHORT TERM', label: '3 Months' },
+  { months: 6, tierLabel: 'STANDARD', label: '6 Months' },
+  { months: 12, tierLabel: 'LONG TERM', label: '12 Months' },
+];
+
+const TIER_PRESETS_DAY = [
+  { days: 3, tierLabel: 'SHORT TERM', label: '3 Days' },
+  { days: 5, tierLabel: 'STANDARD', label: '5 Days' },
+  { days: 7, tierLabel: 'LONG TERM', label: '7 Days' },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function numOr(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 const toNum = (v, fallback = 0) => {
@@ -58,384 +72,862 @@ const toNum = (v, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-function getSpecValue(specRows, pred) {
-  if (!Array.isArray(specRows) || !specRows.length) return '';
-  const hit = specRows.find((r) => pred(String(r?.label || '').toLowerCase(), r?.value));
-  return hit?.value == null ? '' : String(hit.value).trim();
+let _variantKeySeq = 0;
+function newVariantClientKey() {
+  // Deterministic key generator to avoid SSR/CSR hydration mismatches.
+  _variantKeySeq += 1;
+  return `vk-${_variantKeySeq}`;
 }
 
-function convertAdminFlexibleFormToVendorPayload(adminForm) {
-  const variants = Array.isArray(adminForm?.variants) ? adminForm.variants : [];
-  const v0 = variants[0] || {};
+// ─── Rental tier factories ────────────────────────────────────────────────────
+const emptyRentalTier = (preset, periodUnit) => ({
+  months: periodUnit === 'month' ? preset.months || 0 : 0,
+  days: periodUnit === 'day' ? preset.days || 0 : 0,
+  periodUnit,
+  tierLabel: preset.tierLabel || '',
+  label: preset.label || '',
+  pricePerDay: '',
+  customerRent: '',
+  customerShipping: '',
+  vendorRent: '',
+  vendorShipping: '',
+});
 
-  const specMap = { ...(adminForm?.specifications && typeof adminForm.specifications === 'object' ? adminForm.specifications : {}) };
-  if (Array.isArray(adminForm?.productCustomSpecs)) {
-    for (const row of adminForm.productCustomSpecs) {
-      const k = String(row?.label || '').trim();
-      if (!k) continue;
-      const v = row?.value ?? '';
-      specMap[k] = String(v).trim();
-    }
-  }
+const defaultRentalTermsMonth = () =>
+  TIER_PRESETS_MONTH.map((p) => emptyRentalTier(p, 'month'));
 
-  // Merge variant specRows into product.specifications so storefront can display them.
-  for (const v of variants) {
-    const specRows = Array.isArray(v?.specRows) ? v.specRows : [];
-    for (const row of specRows) {
-      const k = String(row?.label || '').trim();
-      if (!k) continue;
-      const val = row?.value ?? '';
-      specMap[k] = String(val).trim();
-    }
-  }
+const defaultRentalTermsDay = () =>
+  TIER_PRESETS_DAY.map((p) => emptyRentalTier(p, 'day'));
 
-  const images = [];
-  const existingImages = [];
-  for (const v of variants) {
-    if (Array.isArray(v?.images) && v.images.length) {
-      for (const f of v.images) images.push(f);
-    }
-    if (Array.isArray(v?.existingVariantImages) && v.existingVariantImages.length) {
-      for (const u of v.existingVariantImages) existingImages.push(u);
-    }
-  }
+// ─── Flexible variant factory ─────────────────────────────────────────────────
+const emptyFlexibleVariant = () => ({
+  _clientKey: newVariantClientKey(),
+  variantName: '',
+  price: '',
+  stock: '',
+  images: [],
+  existingVariantImages: [],
+  specRows: [{ label: '', value: '' }],
+  rentalPricingModel: 'month',
+  allowVendorEditRentalPrices: true,
+  rentalConfigurations: defaultRentalTermsMonth(),
+  refundableDeposit: '',
+});
 
-  const variantsPayload = variants
-    .filter((v) => String(v?.variantName || '').trim())
-    .map((v) => {
-      const specRows = Array.isArray(v?.specRows) ? v.specRows : [];
-      const color = getSpecValue(specRows, (label) => (
-        label === 'color' ||
-        label === 'colour' ||
-        label.includes('color') ||
-        label.includes('colour')
-      ));
-      const storage = getSpecValue(specRows, (label) => (
-        label === 'storage' ||
-        label.includes('storage') ||
-        label.includes('capacity') ||
-        label.includes('ssd') ||
-        label.includes('hdd')
-      ));
-      const ram = getSpecValue(specRows, (label) => (
-        label === 'ram' ||
-        label.includes('ram') ||
-        label.includes('memory')
-      ));
-
-      return {
-        variantName: String(v.variantName || '').trim(),
-        color,
-        storage,
-        ram,
-        condition: String(adminForm?.condition || '').trim(),
-        price: String(v?.price || '').trim(),
-        stock: toNum(v?.stock, 0),
-      };
-    });
-
-  const rentalSource = Array.isArray(v0?.rentalConfigurations)
-    ? v0.rentalConfigurations
-    : [];
-
-  const rentalConfigurations = rentalSource.length
-    ? rentalSource.map((cfg) => {
-        const periodUnit = cfg?.periodUnit === 'day' ? 'day' : 'month';
-        const customerRent =
-          cfg?.customerRent != null && String(cfg.customerRent).trim() !== ''
-            ? cfg.customerRent
-            : cfg?.pricePerDay != null
-              ? cfg.pricePerDay
-              : 0;
-        const customerShipping = cfg?.customerShipping ?? cfg?.shippingCharges ?? 0;
-        return {
-          months: toNum(cfg?.months, periodUnit === 'month' ? 3 : 0),
-          days: periodUnit === 'day' ? toNum(cfg?.days, 3) : 0,
-          periodUnit,
-          label: String(cfg?.label || '').trim(),
-          pricePerDay: toNum(customerRent, 0),
-          customerRent: toNum(customerRent, 0),
-          shippingCharges: toNum(customerShipping, 0),
-        };
-      })
-    : [];
-
-  return {
-    productName: String(adminForm?.productName || '').trim(),
-    type: 'Rental',
-    category: String(adminForm?.category || '').trim(),
-    subCategory: String(adminForm?.subCategory || '').trim(),
-    brand: String(adminForm?.brand || '').trim(),
-    condition: String(adminForm?.condition || 'Good').trim(),
-    shortDescription: String(adminForm?.shortDescription || '').trim(),
-    description: String(adminForm?.description || '').trim(),
-    specifications: specMap,
-    variants: variantsPayload.length ? variantsPayload : [],
-    rentalConfigurations,
-    refundableDeposit: toNum(v0?.refundableDeposit ?? adminForm?.refundableDeposit, 0),
-    logisticsVerification: {
-      inventoryOwnerName: String(adminForm?.logisticsVerification?.inventoryOwnerName || '').trim(),
-      city: String(adminForm?.logisticsVerification?.city || '').trim(),
-      deliveryTimelineValue: 0,
-      deliveryTimelineUnit: 'Days',
-    },
-    existingImages: existingImages.filter(Boolean).slice(0, 5),
-    images: images.filter(Boolean).slice(0, 5),
-    price: String(adminForm?.price || '0'),
-    stock: toNum(adminForm?.stock, 0),
-    status: String(adminForm?.status || 'Active'),
-    submissionStatus: 'published',
-  };
-}
-
-function VendorManualProductModalAdminStyle({
-  isOpen,
-  onClose,
-  onSubmit,
-}) {
-  return (
-    <AdminProductAddModal
-      isOpen={isOpen}
-      onClose={onClose}
-      onSubmit={(adminForm) => {
-        const payload = convertAdminFlexibleFormToVendorPayload(adminForm);
-        return onSubmit?.(payload);
-      }}
-      mode="create"
-      enableStandardProductSearch={false}
-      flexibleListingForm
-      standardCatalogTableOnly={true}
-      subtitle="Rental listing form"
-      submitCreateLabel="Save listing template"
+// ─── Image preview component ──────────────────────────────────────────────────
+function VariantNewImagePreview({ file }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return url ? (
+    <img
+      src={url}
+      alt=""
+      className="h-16 w-16 rounded-lg object-cover border"
     />
+  ) : null;
+}
+
+// ─── Standard catalog helpers ─────────────────────────────────────────────────
+function standardProductThumbUrl(p) {
+  return (
+    p?.images?.[0] ||
+    p?.image ||
+    'https://placehold.co/56x56/e5e7eb/6b7280?text=IMG'
   );
 }
 
-const defaultRentalConfigs = () => [
-  {
-    months: 3,
-    label: '3 Months',
-    pricePerDay: '',
-    customerRent: 0,
-    shippingCharges: 0,
-    periodUnit: 'month',
-  },
-  {
-    months: 6,
-    label: '6 Months',
-    pricePerDay: '',
-    customerRent: 0,
-    shippingCharges: 0,
-    periodUnit: 'month',
-  },
-  {
-    months: 12,
-    label: '12 Months',
-    pricePerDay: '',
-    customerRent: 0,
-    shippingCharges: 0,
-    periodUnit: 'month',
-  },
-];
+function standardProductPriceLabel(p) {
+  const pickThreeMo = (configs) => {
+    if (!Array.isArray(configs)) return null;
+    return configs.find((c) => Number(c.months) === 3) ?? null;
+  };
+  let tier = pickThreeMo(p?.rentalConfigurations);
+  if (!tier && Array.isArray(p?.variants)) {
+    for (const v of p.variants) {
+      tier = pickThreeMo(v?.rentalConfigurations);
+      if (tier) break;
+    }
+  }
+  if (
+    tier != null &&
+    tier.pricePerDay != null &&
+    String(tier.pricePerDay).trim() !== ''
+  ) {
+    const perDay = Number(tier.pricePerDay);
+    if (!Number.isNaN(perDay)) {
+      const approxMonth = Math.round(perDay * 30);
+      return `₹${approxMonth}/month`;
+    }
+  }
+  const raw = p?.price;
+  if (raw != null && String(raw).trim() !== '') {
+    const s = String(raw).trim();
+    if (/month|\/mo/i.test(s) || /[₹]|rs\.?/i.test(s)) return s;
+    return `₹${s}/month`;
+  }
+  return '—';
+}
 
-function VendorManualProductModalVendorStyle({
+function mapFlexibleRentalTierFromApi(cfg, index) {
+  const periodUnit = cfg.periodUnit === 'day' ? 'day' : 'month';
+  const months = numOr(cfg.months, 0);
+  const days = numOr(cfg.days, 0);
+  const m =
+    periodUnit === 'month'
+      ? months || TIER_PRESETS_MONTH[index]?.months || 3
+      : 0;
+  const d =
+    periodUnit === 'day' ? days || TIER_PRESETS_DAY[index]?.days || 3 : 0;
+  const hasExtended =
+    cfg.tierLabel ||
+    cfg.customerRent != null ||
+    cfg.vendorRent != null ||
+    cfg.customerShipping != null ||
+    cfg.vendorShipping != null;
+  const tierLabel =
+    String(cfg.tierLabel || '').trim() ||
+    (hasExtended ? '' : String(cfg.label || '').trim()) ||
+    TIER_PRESETS_MONTH[index]?.tierLabel ||
+    TIER_PRESETS_DAY[index]?.tierLabel ||
+    '';
+  const label =
+    String(cfg.label || '').trim() ||
+    (periodUnit === 'month' ? `${m} Months` : `${d} Days`);
+  const strVal = (x) =>
+    x === undefined || x === null || x === '' ? '' : String(x);
+  return {
+    months: periodUnit === 'month' ? m : 0,
+    days: periodUnit === 'day' ? d : 0,
+    periodUnit,
+    tierLabel,
+    label,
+    pricePerDay: strVal(cfg.pricePerDay),
+    customerRent: strVal(cfg.customerRent),
+    customerShipping: strVal(cfg.customerShipping),
+    vendorRent: strVal(cfg.vendorRent),
+    vendorShipping: strVal(cfg.vendorShipping),
+  };
+}
+
+function mapVariantFromApi(v) {
+  const rentalPricingModel = v.rentalPricingModel === 'day' ? 'day' : 'month';
+  const allowVendorEditRentalPrices = v.allowVendorEditRentalPrices !== false;
+  let rental;
+  if (Array.isArray(v.rentalConfigurations) && v.rentalConfigurations.length) {
+    rental = v.rentalConfigurations.map((cfg, i) =>
+      mapFlexibleRentalTierFromApi(
+        { ...cfg, periodUnit: rentalPricingModel },
+        i,
+      ),
+    );
+  } else {
+    rental =
+      rentalPricingModel === 'day'
+        ? defaultRentalTermsDay()
+        : defaultRentalTermsMonth();
+  }
+  let specRows = [{ label: '', value: '' }];
+  if (Array.isArray(v.variantSpecs) && v.variantSpecs.length) {
+    specRows = v.variantSpecs.map((r) => ({
+      label: r.label || '',
+      value: r.value || '',
+    }));
+  } else if (v.color || v.storage || v.ram) {
+    const rows = [
+      ...(v.color ? [{ label: 'Color', value: v.color }] : []),
+      ...(v.storage ? [{ label: 'Storage', value: v.storage }] : []),
+      ...(v.ram ? [{ label: 'RAM', value: v.ram }] : []),
+    ];
+    specRows = rows.length ? rows : [{ label: '', value: '' }];
+  }
+  return {
+    _clientKey: v._clientKey || newVariantClientKey(),
+    variantName: v.variantName || '',
+    price: v.price || '',
+    stock: v.stock === undefined || v.stock === null ? '' : String(v.stock),
+    images: [],
+    existingVariantImages: Array.isArray(v.images)
+      ? v.images.filter(Boolean).slice(0, 5)
+      : [],
+    specRows,
+    rentalPricingModel,
+    allowVendorEditRentalPrices,
+    rentalConfigurations: rental,
+    refundableDeposit:
+      v.refundableDeposit === undefined || v.refundableDeposit === null
+        ? ''
+        : String(v.refundableDeposit),
+  };
+}
+
+function rentalConfigsFromStandardProduct(product) {
+  const raw =
+    Array.isArray(product?.rentalConfigurations) &&
+    product.rentalConfigurations.length
+      ? product.rentalConfigurations
+      : product?.variants?.[0]?.rentalConfigurations;
+  if (!Array.isArray(raw) || !raw.length) return defaultRentalTermsMonth();
+  return raw.map((cfg, i) =>
+    mapFlexibleRentalTierFromApi({ ...cfg, periodUnit: 'month' }, i),
+  );
+}
+
+function existingImagesFromStandardProduct(product) {
+  if (Array.isArray(product?.images) && product.images.length) {
+    return product.images.filter(Boolean).slice(0, 5);
+  }
+  if (product?.image) return [product.image];
+  return [];
+}
+
+// ─── Default form state ───────────────────────────────────────────────────────
+const defaultForm = {
+  productName: '',
+  type: 'Rental',
+  category: '',
+  subCategory: '',
+  brand: '',
+  condition: 'Good',
+  shortDescription: '',
+  description: '',
+  specifications: {},
+  productCustomSpecs: [{ label: '', value: '' }],
+  variants: [],
+  logisticsVerification: { inventoryOwnerName: '', city: '' },
+  price: '',
+  stock: '',
+  status: 'Active',
+  isActive: true,
+  images: [],
+  existingImages: [],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VendorManualProductModal
+// Exact same UI/structure as AdminProductAddModal (flexibleListingForm mode)
+// while keeping VendorManualProductModal's own state and submit payload.
+// ─────────────────────────────────────────────────────────────────────────────
+export default function VendorManualProductModal({
   isOpen,
   onClose,
   onSubmit,
+  existingProducts = [],
+  standardCatalogLoading = false,
+  fetchStandardListingTemplate = null,
+  standardSearchPlaceholder = 'Search standard listed products',
+  enableStandardProductSearch = true,
 }) {
   const dispatch = useDispatch();
   const { categories, subCategories } = useSelector((s) => s.category);
 
-  const [categoryId, setCategoryId] = useState('');
-  const [subCategoryId, setSubCategoryId] = useState('');
+  // ── core form state ─────────────────────────────────────────────────────────
+  const [form, setForm] = useState({ ...defaultForm });
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
-  const categoryName = useMemo(
-    () => categories.find((c) => c._id === categoryId)?.name || '',
-    [categories, categoryId],
-  );
-  const subCategoryName = useMemo(
-    () => subCategories.find((s) => s._id === subCategoryId)?.name || '',
-    [subCategories, subCategoryId],
-  );
+  // ── catalog search state ────────────────────────────────────────────────────
+  const [standardSearch, setStandardSearch] = useState('');
+  const [standardCategoryFilter, setStandardCategoryFilter] = useState('all');
+  const [standardFilterOpen, setStandardFilterOpen] = useState(false);
+  const [templateApplyLoadingId, setTemplateApplyLoadingId] = useState(null);
 
-  const categoryKey = useMemo(() => {
-    const k = String(categoryName || '').toLowerCase();
-    if (k.includes('furniture')) return 'furniture';
-    if (k.includes('vehicle') || k.includes('car')) return 'vehicle';
-    return 'electronics';
-  }, [categoryName]);
-
-  const activeSpecFields = SPEC_FIELDS_BY_CATEGORY[categoryKey] || [];
-
-  const [productName, setProductName] = useState('');
-  const [brand, setBrand] = useState('');
-  const [condition, setCondition] = useState('Good');
-  const [shortDescription, setShortDescription] = useState('');
-  const [description, setDescription] = useState('');
-
-  const [specifications, setSpecifications] = useState({});
-
-  const [variants, setVariants] = useState([
-    {
-      variantName: '',
-      color: '',
-      storage: '',
-      ram: '',
-      condition: 'Like New',
-      price: '',
-      stock: 0,
-    },
-  ]);
-
-  const [rentalConfigurations, setRentalConfigurations] = useState(
-    defaultRentalConfigs(),
-  );
-
-  const [refundableDeposit, setRefundableDeposit] = useState('');
+  // ── vendor-specific logistics extras ───────────────────────────────────────
   const [deliveryTimelineValue, setDeliveryTimelineValue] = useState('');
   const [deliveryTimelineUnit, setDeliveryTimelineUnit] = useState('Days');
-  const [inventoryOwnerName, setInventoryOwnerName] = useState('');
-  const [city, setCity] = useState('');
-  const [stock, setStock] = useState('');
 
-  const [newImages, setNewImages] = useState([]);
-
+  // ── reset on open ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     dispatch(getCategories());
-    setCategoryId('');
-    setSubCategoryId('');
-    setProductName('');
-    setBrand('');
-    setCondition('Good');
-    setShortDescription('');
-    setDescription('');
-    setSpecifications({});
-    setVariants([
-      {
-        variantName: '',
-        color: '',
-        storage: '',
-        ram: '',
-        condition: 'Like New',
-        price: '',
-        stock: 0,
-      },
-    ]);
-    setRentalConfigurations(defaultRentalConfigs());
-    setRefundableDeposit('');
+    setForm({ ...defaultForm });
+    setSelectedCategoryId('');
+    setStandardSearch('');
+    setStandardCategoryFilter('all');
+    setStandardFilterOpen(false);
     setDeliveryTimelineValue('');
     setDeliveryTimelineUnit('Days');
-    setInventoryOwnerName('');
-    setCity('');
-    setStock('');
-    setNewImages([]);
   }, [isOpen, dispatch]);
 
+  // ── sync category select when form.category changes (template apply) ────────
   useEffect(() => {
-    if (!categoryId) return;
-    dispatch(getSubCategories(categoryId));
-  }, [categoryId, dispatch]);
+    if (!isOpen || !String(form.category || '').trim() || !categories.length)
+      return;
+    const matched = categories.find((c) => c.name === form.category);
+    if (!matched) return;
+    if (selectedCategoryId === matched._id) return;
+    setSelectedCategoryId(matched._id);
+    dispatch(getSubCategories(matched._id));
+  }, [isOpen, form.category, categories, selectedCategoryId, dispatch]);
 
-  const priceLabel = useMemo(() => {
-    const first = rentalConfigurations[0];
-    const rent = toNum(first?.pricePerDay, 0);
-    return rent ? `₹${rent}/mo` : '₹0/mo';
-  }, [rentalConfigurations]);
+  // ── derived values ──────────────────────────────────────────────────────────
+  const categoryKey = useMemo(() => {
+    const k = String(form.category || '').toLowerCase();
+    if (k.includes('furniture')) return 'furniture';
+    if (k.includes('vehicle') || k.includes('car')) return 'vehicle';
+    return 'electronics';
+  }, [form.category]);
 
-  const handleChangeSpec = (key, value) => {
-    setSpecifications((prev) => ({ ...prev, [key]: value }));
+  const activeSpecFields = SPEC_FIELDS_BY_CATEGORY[categoryKey] || [];
+  const specLabel =
+    categoryKey === 'furniture'
+      ? 'Furniture'
+      : categoryKey === 'vehicle'
+        ? 'Vehicle'
+        : 'Electronics';
+
+  // ── catalog derived ─────────────────────────────────────────────────────────
+  const standardProductCategories = useMemo(() => {
+    const set = new Set();
+    (existingProducts || []).forEach((p) => {
+      const c = String(p?.category || '').trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [existingProducts]);
+
+  const filteredStandardProducts = useMemo(() => {
+    const term = standardSearch.trim().toLowerCase();
+    return (existingProducts || [])
+      .filter((p) => p?._id)
+      .filter((p) => {
+        if (standardCategoryFilter && standardCategoryFilter !== 'all') {
+          if (String(p.category || '') !== standardCategoryFilter) return false;
+        }
+        if (!term) return true;
+        const name = String(p.productName || '').toLowerCase();
+        const category = String(p.category || '').toLowerCase();
+        const sub = String(p.subCategory || '').toLowerCase();
+        const sku = String(p.sku || '').toLowerCase();
+        return (
+          name.includes(term) ||
+          category.includes(term) ||
+          sub.includes(term) ||
+          sku.includes(term)
+        );
+      })
+      .slice(0, 500);
+  }, [existingProducts, standardSearch, standardCategoryFilter]);
+
+  // ── generic field handler ───────────────────────────────────────────────────
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'images') {
+      setForm((prev) => {
+        const remainingSlots = Math.max(
+          0,
+          5 - (prev.existingImages?.length || 0) - prev.images.length,
+        );
+        const selected = Array.from(files || []).slice(0, remainingSlots);
+        return { ...prev, images: [...prev.images, ...selected] };
+      });
+      return;
+    }
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validate = () => {
-    if (!String(productName || '').trim()) {
+  // ── category handlers ───────────────────────────────────────────────────────
+  const handleCategoryChange = (e) => {
+    const id = e.target.value;
+    setSelectedCategoryId(id);
+    const cat = categories.find((c) => c._id === id);
+    setForm((prev) => ({
+      ...prev,
+      category: cat?.name || '',
+      subCategory: '',
+      specifications: {},
+      productCustomSpecs: [{ label: '', value: '' }],
+    }));
+    if (id) dispatch(getSubCategories(id));
+  };
+
+  const handleSubCategoryChange = (e) => {
+    const id = e.target.value;
+    const sub = subCategories.find((s) => s._id === id);
+    setForm((prev) => ({ ...prev, subCategory: sub?.name || '' }));
+  };
+
+  // ── spec handler ────────────────────────────────────────────────────────────
+  const handleSpecChange = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      specifications: { ...(prev.specifications || {}), [field]: value },
+    }));
+  };
+
+  // ── variant management ──────────────────────────────────────────────────────
+  const addVariant = () => {
+    setForm((prev) => ({
+      ...prev,
+      variants: [...prev.variants, emptyFlexibleVariant()],
+    }));
+  };
+
+  const removeVariant = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateVariant = (index, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === index ? { ...v, [field]: value } : v,
+      ),
+    }));
+  };
+
+  // ── variant spec rows ───────────────────────────────────────────────────────
+  const addVariantSpecRow = (vIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? {
+              ...v,
+              specRows: [...(v.specRows || []), { label: '', value: '' }],
+            }
+          : v,
+      ),
+    }));
+  };
+
+  const updateVariantSpecRow = (vIdx, rowIdx, key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? {
+              ...v,
+              specRows: (v.specRows || []).map((row, j) =>
+                j === rowIdx ? { ...row, [key]: value } : row,
+              ),
+            }
+          : v,
+      ),
+    }));
+  };
+
+  const removeVariantSpecRow = (vIdx, rowIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) => {
+        if (i !== vIdx) return v;
+        const next = (v.specRows || []).filter((_, j) => j !== rowIdx);
+        return {
+          ...v,
+          specRows: next.length ? next : [{ label: '', value: '' }],
+        };
+      }),
+    }));
+  };
+
+  // ── variant rental config ───────────────────────────────────────────────────
+  const updateVariantRentalConfig = (vIdx, cfgIdx, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? {
+              ...v,
+              rentalConfigurations: (v.rentalConfigurations || []).map(
+                (cfg, j) => (j === cfgIdx ? { ...cfg, [field]: value } : cfg),
+              ),
+            }
+          : v,
+      ),
+    }));
+  };
+
+  const setVariantRentalPricingModel = (vIdx, model) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? {
+              ...v,
+              rentalPricingModel: model,
+              rentalConfigurations:
+                model === 'day'
+                  ? defaultRentalTermsDay()
+                  : defaultRentalTermsMonth(),
+            }
+          : v,
+      ),
+    }));
+  };
+
+  const addVariantRentalTerm = (vIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) => {
+        if (i !== vIdx) return v;
+        const unit = v.rentalPricingModel === 'day' ? 'day' : 'month';
+        const list = [...(v.rentalConfigurations || [])];
+        const last = list[list.length - 1] || {};
+        let preset;
+        if (unit === 'month') {
+          const nextM = (numOr(last.months, 12) || 12) + 3;
+          preset = { months: nextM, tierLabel: '', label: `${nextM} Months` };
+        } else {
+          const nextD = (numOr(last.days, 7) || 7) + 2;
+          preset = { days: nextD, tierLabel: '', label: `${nextD} Days` };
+        }
+        list.push(emptyRentalTier(preset, unit));
+        return { ...v, rentalConfigurations: list };
+      }),
+    }));
+  };
+
+  const removeVariantRentalTerm = (vIdx, cfgIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) => {
+        if (i !== vIdx) return v;
+        const list = v.rentalConfigurations || [];
+        if (list.length <= 1) return v;
+        return {
+          ...v,
+          rentalConfigurations: list.filter((_, j) => j !== cfgIdx),
+        };
+      }),
+    }));
+  };
+
+  // ── variant images ──────────────────────────────────────────────────────────
+  const onVariantFiles = (vIdx, e) => {
+    const selected = Array.from(e.target.files || []).slice(0, 5);
+    e.target.value = '';
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? { ...v, images: [...(v.images || []), ...selected].slice(0, 5) }
+          : v,
+      ),
+    }));
+  };
+
+  const removeVariantNewImage = (vIdx, imgIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? { ...v, images: (v.images || []).filter((_, j) => j !== imgIdx) }
+          : v,
+      ),
+    }));
+  };
+
+  const removeVariantExistingImage = (vIdx, imgIdx) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v, i) =>
+        i === vIdx
+          ? {
+              ...v,
+              existingVariantImages: (v.existingVariantImages || []).filter(
+                (_, j) => j !== imgIdx,
+              ),
+            }
+          : v,
+      ),
+    }));
+  };
+
+  // ── catalog row handler ─────────────────────────────────────────────────────
+  const addVariantFromProduct = (product) => {
+    setForm((prev) => ({
+      ...prev,
+      variants: [
+        ...prev.variants,
+        {
+          ...emptyFlexibleVariant(),
+          variantName: product.productName || '',
+          price: product.price || '',
+          stock:
+            product.stock === undefined || product.stock === null
+              ? ''
+              : String(product.stock),
+          rentalConfigurations: rentalConfigsFromStandardProduct(product),
+          existingVariantImages: existingImagesFromStandardProduct(product),
+        },
+      ],
+    }));
+  };
+
+  const handleStandardCatalogRowAdd = async (p) => {
+    if (fetchStandardListingTemplate) {
+      setTemplateApplyLoadingId(p._id);
+      try {
+        const template = await fetchStandardListingTemplate(p._id);
+        if (!template) {
+          toast.error('Could not load listing template.');
+          return;
+        }
+        const productCustomSpecs =
+          Array.isArray(template.productCustomSpecs) &&
+          template.productCustomSpecs.length
+            ? template.productCustomSpecs.map((r) => ({
+                label: r.label || '',
+                value: r.value || '',
+              }))
+            : [{ label: '', value: '' }];
+        const variants =
+          Array.isArray(template.variants) && template.variants.length
+            ? template.variants.map(mapVariantFromApi)
+            : [];
+        setForm((prev) => ({
+          ...prev,
+          productName: template.productName || prev.productName,
+          category: template.category || prev.category,
+          subCategory: template.subCategory || prev.subCategory,
+          brand: template.brand || prev.brand,
+          condition: template.condition || prev.condition,
+          shortDescription: template.shortDescription || prev.shortDescription,
+          description: template.description || prev.description,
+          specifications: template.specifications || {},
+          productCustomSpecs,
+          variants,
+          existingImages: existingImagesFromStandardProduct(template),
+        }));
+        toast.success(
+          'Template loaded — adjust details and save your listing.',
+        );
+      } catch (err) {
+        toast.error(
+          err?.response?.data?.message || 'Failed to load listing template.',
+        );
+      } finally {
+        setTemplateApplyLoadingId(null);
+      }
+      return;
+    }
+    addVariantFromProduct(p);
+  };
+
+  // ── submit ──────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.variants?.length) {
+      toast.error('Add at least one product variant.');
+      return;
+    }
+    for (let i = 0; i < form.variants.length; i++) {
+      if (!String(form.variants[i]?.variantName || '').trim()) {
+        toast.error(`Variant ${i + 1}: enter a variant name.`);
+        return;
+      }
+    }
+    const hasVariantImg = form.variants.some(
+      (v) =>
+        (v.images && v.images.length > 0) ||
+        (v.existingVariantImages && v.existingVariantImages.length > 0),
+    );
+    if (!hasVariantImg) {
+      toast.error('Add at least one image on a variant.');
+      return;
+    }
+    if (!String(form.productName || '').trim()) {
       toast.error('Product name is required.');
-      return false;
+      return;
     }
-    if (
-      !String(categoryName || '').trim() ||
-      !String(subCategoryName || '').trim()
-    ) {
+    if (!form.category || !form.subCategory) {
       toast.error('Category and sub-category are required.');
-      return false;
-    }
-    if (!newImages.length) {
-      toast.error('Add at least one product image.');
-      return false;
+      return;
     }
     if (!String(deliveryTimelineValue || '').trim()) {
       toast.error('Delivery timeline is required.');
-      return false;
+      return;
     }
-    if (!String(stock || '').trim()) {
+    if (!String(form.stock || '').trim()) {
       toast.error('Inventory count is required.');
-      return false;
+      return;
     }
-    const anyVariant = variants.some((v) =>
-      String(v?.variantName || '').trim(),
-    );
-    if (!anyVariant) {
-      toast.error('Enter at least one variant name.');
-      return false;
-    }
-    const anyTierPrice = rentalConfigurations.some(
-      (c) => toNum(c?.pricePerDay, 0) > 0,
-    );
-    if (!anyTierPrice) {
-      toast.error('Add at least one rental tier price.');
-      return false;
-    }
-    return true;
-  };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
+    const trimmedPrice = String(form.price ?? '').trim();
+    const anyVariantPrice = (form.variants || [])
+      .map((v) => String(v?.price ?? '').trim())
+      .find((p) => p.length > 0);
+    const derivedPrice =
+      trimmedPrice !== '' ? trimmedPrice : anyVariantPrice || '0';
+
+    const sumVariantStock = (form.variants || []).reduce(
+      (a, v) => a + (Number(v.stock) || 0),
+      0,
+    );
+    const firstVariantStock = Number(form.variants[0]?.stock) || 0;
+    const formStockStr = form.stock;
+    const hasFormStock =
+      formStockStr !== '' &&
+      formStockStr !== null &&
+      formStockStr !== undefined &&
+      !Number.isNaN(Number(formStockStr));
+    const derivedStockNum = hasFormStock
+      ? Number(formStockStr)
+      : sumVariantStock || firstVariantStock;
+    const derivedStock = String(derivedStockNum);
+
+    const variants = Array.isArray(form.variants) ? form.variants : [];
+    const v0 = variants[0] || {};
+
+    // Backend requires product-level images/existingImages.
+    const images = [];
+    const existingImages = [];
+    for (const v of variants) {
+      if (Array.isArray(v?.images)) {
+        for (const f of v.images) if (f) images.push(f);
+      }
+      if (Array.isArray(v?.existingVariantImages)) {
+        for (const u of v.existingVariantImages) if (u) existingImages.push(u);
+      }
+    }
+
+    const up = (x) => String(x ?? '').trim();
+    const isColorLabel = (label) => {
+      const k = up(label).toLowerCase();
+      return (
+        k === 'color' ||
+        k === 'colour' ||
+        k.includes('color') ||
+        k.includes('colour')
+      );
+    };
+    const isStorageLabel = (label) => {
+      const k = up(label).toLowerCase();
+      return (
+        k === 'storage' ||
+        k.includes('storage') ||
+        k.includes('capacity') ||
+        k.includes('ssd') ||
+        k.includes('hdd')
+      );
+    };
+    const isRamLabel = (label) => {
+      const k = up(label).toLowerCase();
+      return k === 'ram' || k.includes('ram') || k.includes('memory');
+    };
+
+    const extractColorStorageRamFromSpecRows = (specRows) => {
+      let color = '';
+      let storage = '';
+      let ram = '';
+      const rows = Array.isArray(specRows) ? specRows : [];
+      for (const row of rows) {
+        const label = up(row?.label);
+        const value = up(row?.value);
+        if (!label || !value) continue;
+        if (isColorLabel(label)) color = value;
+        else if (isStorageLabel(label)) storage = value;
+        else if (isRamLabel(label)) ram = value;
+      }
+      return { color, storage, ram };
+    };
+
+    // Build product.specifications from variant spec rows (but omit color/storage/ram
+    // so storefront can render them via product.variants[0].color/storage/ram).
+    const specMap = {};
+    const v0SpecRows = Array.isArray(v0?.specRows) ? v0.specRows : [];
+    for (const row of v0SpecRows) {
+      const label = up(row?.label);
+      const value = up(row?.value);
+      if (!label || !value) continue;
+      if (isColorLabel(label) || isStorageLabel(label) || isRamLabel(label)) {
+        continue;
+      }
+      specMap[label] = value;
+    }
 
     const variantsPayload = variants
-      .filter((v) => String(v.variantName || '').trim())
-      .map((v) => ({
-        variantName: String(v.variantName || '').trim(),
-        color: String(v.color || '').trim(),
-        storage: String(v.storage || '').trim(),
-        ram: String(v.ram || '').trim(),
-        condition: String(v.condition || 'Like New').trim(),
-        price: String(v.price || '').trim(),
-        stock: toNum(v.stock, 0),
-      }));
+      .filter((v) => up(v?.variantName))
+      .map((v) => {
+        const { color, storage, ram } = extractColorStorageRamFromSpecRows(
+          v?.specRows,
+        );
+        return {
+          variantName: up(v?.variantName),
+          color,
+          storage,
+          ram,
+          condition: 'Like New',
+          price: up(v?.price),
+          stock: toNum(v?.stock, 0),
+        };
+      });
 
-    const rentalPayload = rentalConfigurations.map((c) => ({
-      months: toNum(c.months, 0),
-      days: 0,
-      periodUnit: 'month',
-      label: String(c.label || '').trim(),
-      pricePerDay: toNum(c.pricePerDay, 0),
-      customerRent: toNum(c.pricePerDay, 0),
-      shippingCharges: 0,
-    }));
+    const rentalSource = Array.isArray(v0?.rentalConfigurations)
+      ? v0.rentalConfigurations
+      : [];
+    const rentalConfigurations = rentalSource.map((cfg) => {
+      const periodUnit = cfg?.periodUnit === 'day' ? 'day' : 'month';
+      const months = toNum(cfg?.months, periodUnit === 'month' ? 0 : 0);
+      const days = toNum(cfg?.days, periodUnit === 'day' ? 0 : 0);
+
+      const rentRaw =
+        cfg?.customerRent != null && up(cfg?.customerRent) !== ''
+          ? cfg.customerRent
+          : cfg?.vendorRent != null && up(cfg?.vendorRent) !== ''
+            ? cfg.vendorRent
+            : cfg?.pricePerDay != null && up(cfg?.pricePerDay) !== ''
+              ? cfg.pricePerDay
+              : 0;
+      const rent = toNum(rentRaw, 0);
+
+      const shipRaw =
+        cfg?.customerShipping != null && up(cfg?.customerShipping) !== ''
+          ? cfg.customerShipping
+          : cfg?.vendorShipping != null && up(cfg?.vendorShipping) !== ''
+            ? cfg.vendorShipping
+            : cfg?.shippingCharges != null && up(cfg?.shippingCharges) !== ''
+              ? cfg.shippingCharges
+              : 0;
+
+      return {
+        months,
+        days,
+        periodUnit,
+        label: up(cfg?.label),
+        pricePerDay: rent,
+        customerRent: rent,
+        shippingCharges: toNum(shipRaw, 0),
+      };
+    });
+
+    const refundableDeposit = toNum(v0?.refundableDeposit, 0);
 
     const payload = {
-      productName: String(productName).trim(),
+      productName: up(form.productName),
       type: 'Rental',
-      category: categoryName,
-      subCategory: subCategoryName,
-      brand: String(brand || '').trim(),
-      condition: condition || 'Good',
-      shortDescription: String(shortDescription || '').trim(),
-      description: String(description || '').trim(),
-      specifications: specifications || {},
+      category: up(form.category),
+      subCategory: up(form.subCategory),
+      brand: up(form.brand),
+      condition: up(form.condition || 'Good'),
+      shortDescription: up(form.shortDescription),
+      description: up(form.description),
+      specifications: {
+        ...(form.specifications && typeof form.specifications === 'object'
+          ? form.specifications
+          : {}),
+        ...specMap,
+      },
       variants: variantsPayload,
-      rentalConfigurations: rentalPayload,
-      refundableDeposit: toNum(refundableDeposit, 0),
+      rentalConfigurations,
+      refundableDeposit,
       logisticsVerification: {
-        inventoryOwnerName: String(inventoryOwnerName || '').trim(),
-        city: String(city || '').trim(),
+        inventoryOwnerName: up(form.logisticsVerification?.inventoryOwnerName),
+        city: up(form.logisticsVerification?.city),
         deliveryTimelineValue: toNum(deliveryTimelineValue, 0),
         deliveryTimelineUnit,
       },
-      existingImages: [],
-      images: newImages,
-      price: priceLabel,
-      stock: toNum(stock, 0),
+      existingImages: existingImages.slice(0, 5),
+      images: images.slice(0, 5),
+      price: derivedPrice,
+      stock: toNum(derivedStock, 0),
       status: 'Active',
       submissionStatus: 'published',
     };
@@ -446,388 +938,719 @@ function VendorManualProductModalVendorStyle({
 
   if (!isOpen) return null;
 
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
-      <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:p-4">
+      <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+        {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               Add New Listing
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Rental listing form</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              List your product, rental, or service
+            </p>
           </div>
           <button
-            type="button"
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
-            aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            ✕
           </button>
         </div>
 
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Category */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Category" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Category
-                </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => {
-                    setCategoryId(e.target.value);
-                    setSubCategoryId('');
-                  }}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Sub-category
-                </label>
-                <select
-                  value={subCategoryId}
-                  onChange={(e) => setSubCategoryId(e.target.value)}
-                  disabled={!categoryId}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                >
-                  <option value="">Select sub-category</option>
-                  {subCategories.map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <form
+          onSubmit={handleSubmit}
+          className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          {/* ── Listing type row ── */}
+          <div className="md:col-span-2 grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-orange-300 text-orange-600 bg-orange-50 text-center py-2 text-sm font-medium">
+              Add Rental
+            </div>
+            <div className="rounded-xl border text-gray-400 bg-gray-50 text-center py-2 text-sm">
+              Sales Configuration (Later)
             </div>
           </div>
 
-          {/* Basic */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Basic Information" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Product name
-                </label>
-                <input
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Brand
-                </label>
-                <input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  Condition
-                </label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                >
-                  <option>Brand New</option>
-                  <option>Like New</option>
-                  <option>Good</option>
-                  <option>Fair</option>
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs text-gray-500 mb-1">
-                  Short description
-                </label>
-                <input
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs text-gray-500 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Specifications */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Product Specifications" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {activeSpecFields.map((f) => (
-                <input
-                  key={f.key}
-                  value={specifications?.[f.key] || ''}
-                  onChange={(e) => handleChangeSpec(f.key, e.target.value)}
-                  placeholder={f.label}
-                  className="border rounded-xl px-3 py-2 text-sm"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Media */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Product Media" />
-            <div className="flex flex-wrap gap-3">
-              {newImages.map((file, i) => (
-                <div key={`${file.name}-${i}`} className="relative">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt=""
-                    className="h-24 w-24 rounded-xl object-cover border border-gray-200"
-                  />
+          {/* ── Standard catalog search panel ── */}
+          {/* {enableStandardProductSearch ? (
+            <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-4 py-4 border-b border-gray-100 bg-gray-50/70">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <Tag className="h-5 w-5" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Search Standard Listed Products
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Pick an admin template and tap Add to fill the form — then
+                      save as your vendor listing
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
+                      aria-hidden
+                    />
+                    <input
+                      type="search"
+                      value={standardSearch}
+                      onChange={(e) => setStandardSearch(e.target.value)}
+                      placeholder={standardSearchPlaceholder}
+                      className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                      autoComplete="off"
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setNewImages((prev) => prev.filter((_, j) => j !== i))
-                    }
-                    className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow"
-                    aria-label="Remove image"
+                    onClick={() => setStandardFilterOpen((o) => !o)}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shrink-0 ${
+                      standardCategoryFilter !== 'all'
+                        ? 'border-orange-300 bg-orange-50 text-orange-800'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
-                    <X className="h-3 w-3" />
+                    <Filter className="h-4 w-4" />
+                    Filter
                   </button>
                 </div>
-              ))}
-              <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 text-xs text-gray-500 hover:border-orange-400">
-                <span>Upload</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []).slice(
-                      0,
-                      5 - newImages.length,
-                    );
-                    setNewImages((prev) => [...prev, ...files]);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
+                {standardFilterOpen ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-gray-500">Category</span>
+                    <select
+                      value={standardCategoryFilter}
+                      onChange={(e) =>
+                        setStandardCategoryFilter(e.target.value)
+                      }
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm min-w-[160px]"
+                      aria-label="Filter by category"
+                    >
+                      <option value="all">All categories</option>
+                      {standardProductCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="max-h-[min(360px,50vh)] overflow-y-auto">
+                {standardCatalogLoading &&
+                (existingProducts || []).length === 0 ? (
+                  <div className="px-4 py-12 flex flex-col items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="inline-flex h-9 w-9 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    Loading listed products…
+                  </div>
+                ) : filteredStandardProducts.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-gray-500">
+                    {(existingProducts || []).filter((p) => p?._id).length === 0
+                      ? 'No listed products available. Create standard products first, or add variants manually below.'
+                      : 'No products match your search or filter.'}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {filteredStandardProducts.map((p) => (
+                      <li key={p._id}>
+                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/80">
+                          <img
+                            src={standardProductThumbUrl(p)}
+                            alt=""
+                            className="h-14 w-14 shrink-0 rounded-lg object-cover border border-gray-100"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {p.productName}
+                            </p>
+                            <p className="text-xs text-gray-500 tabular-nums">
+                              {standardProductPriceLabel(p)}
+                            </p>
+                            <p className="text-[11px] text-gray-500 mt-0.5 sm:hidden">
+                              {[p.category, p.subCategory]
+                                .filter(Boolean)
+                                .join(' · ') || '—'}
+                            </p>
+                          </div>
+                          <div className="hidden sm:block w-[7.5rem] shrink-0 text-xs text-gray-600 truncate">
+                            {p.category || '—'}
+                          </div>
+                          <div className="hidden md:block w-[7.5rem] shrink-0 text-xs text-gray-600 truncate">
+                            {p.subCategory || '—'}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!!templateApplyLoadingId}
+                            onClick={() => handleStandardCatalogRowAdd(p)}
+                            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            {templateApplyLoadingId === p._id ? '…' : 'Add'}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
+          ) : null} */}
+
+          {/* ── Basic Information ── */}
+          <div className="md:col-span-2">
+            <p className="text-sm font-semibold text-gray-900 mb-2">
+              Basic Information
+            </p>
           </div>
 
-          {/* Variants */}
-          <div className="md:col-span-2">
+          <input
+            name="productName"
+            value={form.productName}
+            onChange={handleChange}
+            placeholder="Product name"
+            className="border rounded-lg px-3 py-2"
+            required
+          />
+
+          <div className="border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600">
+            Listing Type:{' '}
+            <span className="font-medium text-gray-900">Rental</span>
+          </div>
+
+          <input
+            name="brand"
+            value={form.brand}
+            onChange={handleChange}
+            placeholder="Brand"
+            className="border rounded-lg px-3 py-2"
+          />
+
+          <select
+            name="condition"
+            value={form.condition}
+            onChange={handleChange}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option>Brand New</option>
+            <option>Like New</option>
+            <option>Good</option>
+            <option>Fair</option>
+          </select>
+
+          {/* Category */}
+          <select
+            name="category"
+            value={selectedCategoryId}
+            onChange={handleCategoryChange}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Sub-category */}
+          <select
+            name="subCategory"
+            value={
+              subCategories.find((s) => s.name === form.subCategory)?._id || ''
+            }
+            onChange={handleSubCategoryChange}
+            className="border rounded-lg px-3 py-2"
+            disabled={!selectedCategoryId}
+          >
+            <option value="">Select subcategory</option>
+            {subCategories.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+
+          {/* <input
+            name="shortDescription"
+            value={form.shortDescription}
+            onChange={handleChange}
+            placeholder="Short description"
+            className="border rounded-lg px-3 py-2 md:col-span-2"
+          /> */}
+
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Detailed description"
+            className="border rounded-lg px-3 py-2 md:col-span-2 min-h-[90px]"
+          />
+
+          {/* ── Product Specifications ── */}
+          {/* <div className="md:col-span-2 border-t pt-4 mt-1">
+            <p className="text-sm font-semibold text-gray-900 mb-2">
+              Product Specifications ({specLabel})
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {activeSpecFields.map((field) => (
+                <input
+                  key={field.key}
+                  value={form.specifications?.[field.key] || ''}
+                  onChange={(e) => handleSpecChange(field.key, e.target.value)}
+                  placeholder={field.label}
+                  className="border rounded-lg px-3 py-2"
+                />
+              ))}
+            </div>
+          </div> */}
+
+          {/* ── Product Variants (flexible listing form) ── */}
+          <div className="md:col-span-2 border-t pt-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-gray-900">
                 Product variants
               </p>
               <button
                 type="button"
-                onClick={() =>
-                  setVariants((prev) => [
-                    ...prev,
-                    {
-                      variantName: '',
-                      color: '',
-                      storage: '',
-                      ram: '',
-                      condition: 'Like New',
-                      price: '',
-                      stock: 0,
-                    },
-                  ])
-                }
-                className="px-3 py-1.5 rounded-lg border text-xs font-medium text-gray-700 hover:bg-gray-50"
+                onClick={addVariant}
+                className="px-3 py-1.5 rounded-lg border text-xs font-medium text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100"
               >
-                + Add Variant
+                + Add variant
               </button>
             </div>
 
-            <div className="space-y-3">
-              {variants.map((v, idx) => (
-                <div key={idx} className="border rounded-xl p-3 bg-white">
+            <div className="space-y-4">
+              {form.variants.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 py-10 flex flex-col items-center justify-center gap-2 text-sm text-gray-400">
+                  <p>No variants added yet</p>
+                  <button
+                    type="button"
+                    onClick={addVariant}
+                    className="px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-medium hover:bg-violet-700"
+                  >
+                    + Add first variant
+                  </button>
+                </div>
+              ) : null}
+
+              {form.variants.map((variant, index) => (
+                <div
+                  key={variant._clientKey || `flex-${index}`}
+                  className="rounded-xl border border-gray-200 bg-white p-4 space-y-4 shadow-sm"
+                >
+                  {/* Variant header */}
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-800">
+                      Variant {index + 1}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => removeVariant(index)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Remove variant
+                    </button>
+                  </div>
+
+                  {/* Variant name */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input
-                      value={v.variantName}
+                      value={variant.variantName || ''}
                       onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx
-                              ? { ...x, variantName: e.target.value }
-                              : x,
-                          ),
-                        )
+                        updateVariant(index, 'variantName', e.target.value)
                       }
-                      placeholder="Variant name"
-                      className="border rounded-lg px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={v.color}
-                      onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, color: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="Color"
-                      className="border rounded-lg px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={v.storage}
-                      onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, storage: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="Storage"
-                      className="border rounded-lg px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={v.ram}
-                      onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, ram: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="RAM"
-                      className="border rounded-lg px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={v.price}
-                      onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, price: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="Variant price"
-                      className="border rounded-lg px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={v.stock}
-                      onChange={(e) =>
-                        setVariants((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, stock: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      placeholder="Variant stock"
-                      type="number"
-                      className="border rounded-lg px-3 py-2 text-sm"
+                      placeholder="Variant name (e.g. 256GB Gold)"
+                      className="border rounded-lg px-3 py-2 md:col-span-3"
                     />
                   </div>
-                  {variants.length > 1 ? (
-                    <div className="pt-2 flex justify-end">
+
+                  {/* Product media */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-2">
+                      Product media
+                    </p>
+                    {(variant.existingVariantImages || []).length > 0 ? (
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-2">
+                        {(variant.existingVariantImages || []).map(
+                          (src, vi) => (
+                            <div
+                              key={`ve-${vi}`}
+                              className="relative h-20 rounded-lg border overflow-hidden"
+                            >
+                              <img
+                                src={src}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeVariantExistingImage(index, vi)
+                                }
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => onVariantFiles(index, e)}
+                      className="w-full text-sm border rounded-lg px-3 py-2"
+                    />
+                    {(variant.images || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {(variant.images || []).map((file, fi) => (
+                          <div
+                            key={fi}
+                            className="relative border rounded-lg p-1"
+                          >
+                            <VariantNewImagePreview file={file} />
+                            <button
+                              type="button"
+                              onClick={() => removeVariantNewImage(index, fi)}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Variant specifications */}
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-sm font-medium text-gray-900">
+                        Variant specifications
+                      </p>
                       <button
                         type="button"
-                        onClick={() =>
-                          setVariants((prev) =>
-                            prev.filter((_, i) => i !== idx),
-                          )
-                        }
-                        className="text-xs text-red-600 hover:text-red-700"
+                        onClick={() => addVariantSpecRow(index)}
+                        className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700"
                       >
-                        Remove
+                        + Add custom specification
                       </button>
                     </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Rental config */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Rental Configuration" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {rentalConfigurations.map((cfg, idx) => (
-                <div
-                  key={cfg.months ?? idx}
-                  className="rounded-xl border border-orange-200 bg-orange-50/30 p-3"
-                >
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                    {cfg.label || `${cfg.months} Months`}
-                  </p>
-                  <p className="text-sm font-semibold text-gray-900 mb-2">
-                    {cfg.months} Months
-                  </p>
-                  <label className="text-xs text-gray-600">Monthly rent</label>
-                  <input
-                    value={cfg.pricePerDay}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setRentalConfigurations((prev) =>
-                        prev.map((x, i) =>
-                          i === idx
-                            ? {
-                                ...x,
-                                pricePerDay: v,
-                                customerRent: toNum(v, 0),
+                    <div className="space-y-2">
+                      {(variant.specRows || [{ label: '', value: '' }]).map(
+                        (row, ri) => (
+                          <div
+                            key={ri}
+                            className="flex flex-wrap gap-2 items-center"
+                          >
+                            <input
+                              value={row.label}
+                              onChange={(e) =>
+                                updateVariantSpecRow(
+                                  index,
+                                  ri,
+                                  'label',
+                                  e.target.value,
+                                )
                               }
-                            : x,
+                              placeholder="Label"
+                              className="flex-1 min-w-[100px] border rounded-lg px-3 py-2 text-sm"
+                            />
+                            <input
+                              value={row.value}
+                              onChange={(e) =>
+                                updateVariantSpecRow(
+                                  index,
+                                  ri,
+                                  'value',
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Value"
+                              className="flex-1 min-w-[100px] border rounded-lg px-3 py-2 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeVariantSpecRow(index, ri)}
+                              className="px-2 py-1 text-red-600 text-sm"
+                            >
+                              ×
+                            </button>
+                          </div>
                         ),
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rental configuration card */}
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
+                    {/* Card header */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                          <DollarSign className="h-5 w-5" strokeWidth={2} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            Rental configuration
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Customer &amp; vendor pricing by term
+                          </p>
+                        </div>
+                      </div>
+                      {/* Allow vendor edit toggle */}
+                      {/* <div className="flex items-center gap-2 sm:shrink-0">
+                        <span className="text-xs text-gray-600 max-w-[9rem] sm:max-w-none leading-tight">
+                          Allow vendors to edit prices
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={
+                            variant.allowVendorEditRentalPrices !== false
+                          }
+                          onClick={() =>
+                            updateVariant(
+                              index,
+                              'allowVendorEditRentalPrices',
+                              !(variant.allowVendorEditRentalPrices !== false),
+                            )
+                          }
+                          className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                            variant.allowVendorEditRentalPrices !== false
+                              ? 'bg-emerald-500'
+                              : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                              variant.allowVendorEditRentalPrices !== false
+                                ? 'translate-x-5'
+                                : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                      </div> */}
+                    </div>
+
+                    {/* Pricing model toggle + Add term button */}
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                      <div className="inline-flex rounded-xl border border-gray-200 p-1 bg-white shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVariantRentalPricingModel(index, 'month')
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                            variant.rentalPricingModel !== 'day'
+                              ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          Month-wise
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVariantRentalPricingModel(index, 'day')
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                            variant.rentalPricingModel === 'day'
+                              ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-800'
+                          }`}
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          Day-wise
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addVariantRentalTerm(index)}
+                        className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-600 shadow-sm w-full lg:w-auto"
+                      >
+                        + Add more term
+                      </button>
+                    </div>
+
+                    {/* Single rental configuration section (Customer fields only) */}
+                    {(() => {
+                      const rentField = 'customerRent';
+                      const shipField = 'customerShipping';
+                      const rentLabel =
+                        variant.rentalPricingModel === 'day'
+                          ? 'Daily rent'
+                          : 'Monthly rent';
+
+                      return (
+                        <div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {(variant.rentalConfigurations || []).map(
+                              (cfg, cidx) => (
+                                <div
+                                  key={`rental-${cidx}`}
+                                  className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2"
+                                >
+                                  <div className="flex items-start justify-between gap-1">
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                      <input
+                                        type="text"
+                                        value={cfg.tierLabel || ''}
+                                        onChange={(e) =>
+                                          updateVariantRentalConfig(
+                                            index,
+                                            cidx,
+                                            'tierLabel',
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="SHORT TERM"
+                                        className="w-full text-[10px] font-semibold tracking-wide text-gray-400 uppercase border border-gray-200 rounded-lg px-2 py-1"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={cfg.label || ''}
+                                        onChange={(e) =>
+                                          updateVariantRentalConfig(
+                                            index,
+                                            cidx,
+                                            'label',
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder={
+                                          variant.rentalPricingModel === 'day'
+                                            ? '3 Days'
+                                            : '3 Months'
+                                        }
+                                        className="w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2 py-1"
+                                      />
+                                    </div>
+                                    {(variant.rentalConfigurations || [])
+                                      .length > 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeVariantRentalTerm(index, cidx)
+                                        }
+                                        className="shrink-0 text-gray-400 hover:text-red-600 text-sm px-1"
+                                        aria-label="Remove term"
+                                      >
+                                        ×
+                                      </button>
+                                    ) : null}
+                                  </div>
+
+                                  {/* Rent field */}
+                                  <div>
+                                    <label className="block text-[11px] text-gray-500 mb-1">
+                                      {rentLabel}
+                                    </label>
+                                    <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
+                                      <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                        ₹
+                                      </span>
+                                      <input
+                                        type="number"
+                                        value={cfg[rentField] ?? ''}
+                                        onChange={(e) =>
+                                          updateVariantRentalConfig(
+                                            index,
+                                            cidx,
+                                            rentField,
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="0"
+                                        className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Shipping field */}
+                                  <div>
+                                    <label className="block text-[11px] text-gray-500 mb-1">
+                                      Shipping charges
+                                    </label>
+                                    <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
+                                      <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                        ₹
+                                      </span>
+                                      <input
+                                        type="number"
+                                        value={cfg[shipField] ?? ''}
+                                        onChange={(e) =>
+                                          updateVariantRentalConfig(
+                                            index,
+                                            cidx,
+                                            shipField,
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="0"
+                                        className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </div>
                       );
-                    }}
-                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    placeholder="0"
-                  />
+                    })()}
+                  </div>
+
+                  {/* Refundable deposit per-variant */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-1">
+                      Refundable deposit
+                    </p>
+                    <input
+                      type="number"
+                      value={variant.refundableDeposit || ''}
+                      onChange={(e) =>
+                        updateVariant(
+                          index,
+                          'refundableDeposit',
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Amount"
+                      className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Refundable Deposit */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Refundable Deposit" />
-            <input
-              value={refundableDeposit}
-              onChange={(e) => setRefundableDeposit(e.target.value)}
-              className="w-full border rounded-xl px-3 py-2 text-sm"
-              placeholder="0"
-              inputMode="numeric"
-            />
-          </div>
-
-          {/* Logistics */}
-          <div className="md:col-span-2">
-            <SectionTitle title="Logistics & Verification" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* ── Logistics & Verification ── */}
+          <div className="md:col-span-2 border-t pt-4">
+            <p className="text-sm font-semibold text-gray-900 mb-2">
+              Logistics &amp; Verification
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Delivery timeline (vendor-specific) */}
               <div>
-                <label className="text-sm font-medium text-gray-800">
+                <label className="block text-xs text-gray-500 mb-1">
                   Delivery timeline <span className="text-red-500">*</span>
                 </label>
-                <div className="mt-1 flex rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
                   <input
                     value={deliveryTimelineValue}
                     onChange={(e) => setDeliveryTimelineValue(e.target.value)}
-                    className="flex-1 min-w-0 px-3 py-2.5 text-sm outline-none"
                     placeholder="e.g. 3"
+                    className="flex-1 min-w-0 px-3 py-2 text-sm outline-none border-0"
                   />
                   <select
                     value={deliveryTimelineUnit}
@@ -839,40 +1662,60 @@ function VendorManualProductModalVendorStyle({
                   </select>
                 </div>
               </div>
+
+              {/* Inventory count (vendor-specific) */}
               <div>
-                <label className="text-sm font-medium text-gray-800">
+                <label className="block text-xs text-gray-500 mb-1">
                   Inventory count <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   min={0}
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+                  name="stock"
+                  value={form.stock}
+                  onChange={handleChange}
                   placeholder="Units available"
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
                 />
               </div>
-              <div>
-                <label className="text-xs text-gray-500">
-                  Inventory owner (optional)
-                </label>
-                <input
-                  value={inventoryOwnerName}
-                  onChange={(e) => setInventoryOwnerName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">City (optional)</label>
-                <input
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                />
-              </div>
+
+              {/* Inventory owner name */}
+              {/* <input
+                type="text"
+                value={form.logisticsVerification?.inventoryOwnerName || ''}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    logisticsVerification: {
+                      ...(prev.logisticsVerification || {}),
+                      inventoryOwnerName: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="Inventory owner name"
+                className="border rounded-lg px-3 py-2"
+              /> */}
+
+              {/* City */}
+              {/* <input
+                type="text"
+                value={form.logisticsVerification?.city || ''}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    logisticsVerification: {
+                      ...(prev.logisticsVerification || {}),
+                      city: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="City"
+                className="border rounded-lg px-3 py-2"
+              /> */}
             </div>
           </div>
 
+          {/* ── Actions ── */}
           <div className="md:col-span-2 flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -882,40 +1725,14 @@ function VendorManualProductModalVendorStyle({
               Cancel
             </button>
             <button
-              type="button"
-              onClick={handleSubmit}
+              type="submit"
               className="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600"
             >
               Publish to store
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
-  );
-}
-
-export default function VendorManualProductModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  designMode = 'vendor',
-}) {
-  if (designMode === 'admin') {
-    return (
-      <VendorManualProductModalAdminStyle
-        isOpen={isOpen}
-        onClose={onClose}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  return (
-    <VendorManualProductModalVendorStyle
-      isOpen={isOpen}
-      onClose={onClose}
-      onSubmit={onSubmit}
-    />
   );
 }
