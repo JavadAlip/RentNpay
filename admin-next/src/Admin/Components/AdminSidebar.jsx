@@ -27,6 +27,7 @@ const AdminSidebar = () => {
     { to: '/kyc', label: 'KYC' },
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
+    { to: '/cart', label: 'Cart' },
     { to: '/orders', label: 'Orders' },
     { to: '/all-vendors', label: 'Vendors' },
     { to: '/users', label: 'Users' },
