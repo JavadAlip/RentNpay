@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiSignup } from '@/lib/userAuthApi';
+import { api } from '@/lib/axios';
+import { USER_AUTH } from '@/lib/userAuthApi';
 
 export default function Register() {
   const router = useRouter();
@@ -23,7 +24,11 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const res = await apiSignup({ fullName, emailAddress, password });
+      const res = await api.post(USER_AUTH.signup, {
+        fullName,
+        emailAddress,
+        password,
+      });
       setSuccess(res.data?.message || 'Signup successful. Please verify OTP.');
       setTimeout(() => router.push('/login'), 1200);
     } catch (err) {

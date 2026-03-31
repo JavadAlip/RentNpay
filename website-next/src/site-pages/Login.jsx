@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
-import { apiLogin } from '@/lib/userAuthApi';
-import { loginSuccess } from '@/store/slices/authSlice';
+import { api } from '@/lib/axios';
+import { USER_AUTH, normalizeUserFromApi } from '@/lib/userAuthApi';
+import { setCredentials } from '@/store/slices/authSlice';
 
 export default function Login() {
   const router = useRouter();
@@ -23,12 +24,11 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const res = await apiLogin({ emailAddress, password });
+      const res = await api.post(USER_AUTH.login, { emailAddress, password });
       const { token, user } = res.data || {};
-      if (token) {
-        localStorage.setItem('userToken', token);
-        localStorage.setItem('userData', JSON.stringify(user || {}));
-        dispatch(loginSuccess({ token, user }));
+      if (token && user) {
+        const normalized = normalizeUserFromApi(user);
+        dispatch(setCredentials({ token, user: normalized }));
         router.push('/');
       } else {
         setError('Unexpected login response.');

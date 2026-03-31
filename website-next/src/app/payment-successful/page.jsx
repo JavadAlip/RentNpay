@@ -1,5 +1,10 @@
-import PaymentSuccesful from "@/site-pages/PaymentSuccesful";
+import { Suspense } from 'react';
+import PaymentSuccesful from '@/site-pages/PaymentSuccesful';
 
 export default function PaymentSuccessfulPage() {
-  return <PaymentSuccesful />;
+  return (
+    <Suspense fallback={null}>
+      <PaymentSuccesful />
+    </Suspense>
+  );
 }
