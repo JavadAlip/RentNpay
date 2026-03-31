@@ -1,4 +1,5 @@
 import express from 'express';
+import upload from '../middleware/upload.js';
 import {
   signupUser,
   verifyUserOTP,
@@ -16,6 +17,7 @@ import {
   getMyWishlist,
   toggleWishlist,
 } from '../controller/user/wishlistController.js';
+import { getMyUserKyc, submitMyUserKyc } from '../controller/user/kycController.js';
 
 const router = express.Router();
 
@@ -34,5 +36,18 @@ router.delete('/addresses/:id', userAuth, deleteAddress);
 // wishlist
 router.get('/wishlist', userAuth, getMyWishlist);
 router.post('/wishlist/toggle', userAuth, toggleWishlist);
+
+// user kyc
+router.get('/kyc', userAuth, getMyUserKyc);
+router.post(
+  '/kyc',
+  userAuth,
+  upload.fields([
+    { name: 'aadhaarFront', maxCount: 1 },
+    { name: 'aadhaarBack', maxCount: 1 },
+    { name: 'panCard', maxCount: 1 },
+  ]),
+  submitMyUserKyc,
+);
 
 export default router;

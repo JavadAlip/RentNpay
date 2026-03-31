@@ -26,6 +26,25 @@
 //   next();
 // };
 import jwt from 'jsonwebtoken';
+import User from '../models/userAuthModel.js';
+
+export const protect = async (req, res, next) => {
+  try {
+    let token = req.headers.authorization;
+    if (!token) return res.status(401).json({ message: 'No token provided' });
+    if (token.startsWith('Bearer ')) token = token.split(' ')[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded?.id || decoded?.userId;
+    const user = userId ? await User.findById(userId).select('-password') : null;
+    if (!user) return res.status(401).json({ message: 'User not found' });
+
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(403).json({ message: 'Invalid or expired token' });
+  }
+};
 
 export const adminAuth = async (req, res, next) => {
   try {

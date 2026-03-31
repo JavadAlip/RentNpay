@@ -1,7 +1,7 @@
 import express from 'express';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
-import { adminAuth } from '../middleware/Auth.js';
+import { adminAuth } from '../middleware/auth.js';
 import { userAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();

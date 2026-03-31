@@ -1,6 +1,6 @@
 import express from 'express';
 import Product from '../models/Product.js';
-import { adminAuth } from '../middleware/Auth.js';
+import { adminAuth } from '../middleware/auth.js';
 import upload from '../middleware/upload.js';
 
 const router = express.Router();

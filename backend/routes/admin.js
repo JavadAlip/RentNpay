@@ -34,7 +34,7 @@ import {
   patchListingTemplateActive,
 } from '../controller/admin/listingTemplateController.js';
 import { getWishlistAnalytics } from '../controller/admin/wishlistController.js';
-import { adminAuth } from '../middleware/Auth.js';
+import { adminAuth } from '../middleware/auth.js';
 const router = express.Router();
 import upload from '../middleware/upload.js';
 
