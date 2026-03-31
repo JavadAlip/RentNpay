@@ -77,7 +77,7 @@ export default function Payment() {
     setLoading(true);
     try {
       const rentalDuration = Number(items?.[0]?.rentalMonths || 1);
-      await apiCreateOrder({
+      const orderRes = await apiCreateOrder({
         products: items.map((i) => ({
           product: i.productId,
           quantity: Number(i.quantity),
@@ -88,13 +88,21 @@ export default function Payment() {
         phone: selectedAddress.phone,
         name: selectedAddress.fullName,
       });
+      const createdOrderId = orderRes?.data?._id || '';
+      if (createdOrderId) {
+        localStorage.setItem('rentpay_last_order_id', createdOrderId);
+      }
 
       // Dummy success flow (real gateway like Razorpay/Stripe can replace this).
       setTimeout(() => {
         dispatch(clearCart());
         localStorage.removeItem('rentpay_checkout_selectedAddress');
         localStorage.removeItem('rentpay_checkout_instructions');
-        router.push('/payment-successful');
+        router.push(
+          createdOrderId
+            ? `/payment-successful?orderId=${encodeURIComponent(createdOrderId)}`
+            : '/payment-successful',
+        );
       }, 900);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not place order.');

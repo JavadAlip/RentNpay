@@ -48,6 +48,11 @@ export const apiGetMyAddresses = () => api.get('/users/addresses');
 export const apiCreateAddress = (data) => api.post('/users/addresses', data);
 export const apiUpdateAddress = (id, data) => api.put(`/users/addresses/${id}`, data);
 export const apiDeleteAddress = (id) => api.delete(`/users/addresses/${id}`);
+export const apiGetMyUserKyc = () => api.get('/users/kyc');
+export const apiSubmitMyUserKyc = (formData) =>
+  api.post('/users/kyc', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
 
 // ── USER ORDERS ───────────────────────────────
 export const apiCreateOrder = (data) => api.post('/orders', data);
