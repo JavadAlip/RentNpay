@@ -58,6 +58,7 @@ const emptyStore = {
 
 export default function VendorKycVerification() {
   const [form, setForm] = useState(defaultForm);
+  const [filePreviews, setFilePreviews] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -125,10 +126,43 @@ export default function VendorKycVerification() {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
-      setForm((prev) => ({ ...prev, [name]: files[0] || null }));
+      const f = files[0] || null;
+      setForm((prev) => ({ ...prev, [name]: f }));
+      if (f) {
+        const isImage = String(f.type || '').startsWith('image/');
+        const objectUrl = isImage ? URL.createObjectURL(f) : '';
+        setFilePreviews((prev) => ({
+          ...prev,
+          [name]: {
+            name: f.name,
+            type: f.type || '',
+            url: objectUrl,
+            isImage,
+          },
+        }));
+      }
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const renderFilePreview = (fieldName) => {
+    const fileMeta = filePreviews[fieldName];
+    if (!fileMeta) return null;
+    return (
+      <div className="mt-2 rounded-lg border border-gray-200 bg-white p-2">
+        <p className="text-[11px] text-gray-600 truncate">{fileMeta.name}</p>
+        {fileMeta.isImage && fileMeta.url ? (
+          <img
+            src={fileMeta.url}
+            alt={fileMeta.name || 'Selected file'}
+            className="mt-2 h-20 w-full object-cover rounded-md border border-gray-200"
+          />
+        ) : (
+          <p className="text-[11px] text-gray-500 mt-1">Preview not available for this file type.</p>
+        )}
+      </div>
+    );
   };
 
   const saveStep = async ({ targetStep, finalSubmit = false }) => {
@@ -284,132 +318,358 @@ export default function VendorKycVerification() {
           </div>
 
           {step === 1 && (
-            <>
-              <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">Owner&apos;s Photo</h2>
-                <input
-                  type="file"
-                  name="ownerPhoto"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className="w-full text-sm"
-                />
-              </section>
-
-              <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    name="fullName"
-                    value={form.fullName}
-                    onChange={handleChange}
-                    placeholder="Full Name"
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
-                    required
-                  />
-                  <input
-                    name="dateOfBirth"
-                    type="date"
-                    value={form.dateOfBirth}
-                    onChange={handleChange}
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
-                    required
-                  />
-                </div>
-                <textarea
-                  name="permanentAddress"
-                  value={form.permanentAddress}
-                  onChange={handleChange}
-                  placeholder="Permanent Address"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm min-h-24"
-                  required
-                />
-                <input
-                  name="contactNumber"
-                  value={form.contactNumber}
-                  onChange={handleChange}
-                  placeholder="Contact Number"
-                  className="w-full md:w-1/2 px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
-                  required
-                />
-              </section>
-
-              <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Identity Proofs (KYC Documents)
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Proprietor Information
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input
-                    name="panNumber"
-                    value={form.panNumber}
-                    onChange={handleChange}
-                    placeholder="PAN Card Number"
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
-                    required
-                  />
-                  <input
-                    name="aadhaarNumber"
-                    value={form.aadhaarNumber}
-                    onChange={handleChange}
-                    placeholder="Aadhaar Card Number"
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input type="file" name="panPhoto" accept="image/*" onChange={handleChange} className="w-full text-sm" />
-                  <input type="file" name="aadhaarFront" accept="image/*" onChange={handleChange} className="w-full text-sm" />
-                  <input type="file" name="aadhaarBack" accept="image/*" onChange={handleChange} className="w-full text-sm" />
-                </div>
-              </section>
+                <p className="text-sm text-gray-500 mt-1">
+                  Tell us about the business owner for KYC verification
+                </p>
+              </div>
 
-              <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">Personalize your Welcome Kit</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <select name="tshirtSize" value={form.tshirtSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm">
-                    <option value="">T-Shirt Size</option><option>S</option><option>M</option><option>L</option><option>XL</option>
-                  </select>
-                  <select name="jeansWaistSize" value={form.jeansWaistSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm">
-                    <option value="">Jeans/Waist Size</option><option>30</option><option>32</option><option>34</option><option>36</option>
-                  </select>
-                  <select name="shoeSize" value={form.shoeSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm">
-                    <option value="">Shoe Size</option><option>7</option><option>8</option><option>9</option><option>10</option>
-                  </select>
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 space-y-4">
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Owner&apos;s Photo</p>
+                  <p className="text-xs text-gray-500">Upload a clear photo for profile verification</p>
+                  <label className="mt-3 block cursor-pointer">
+                    <input type="file" name="ownerPhoto" accept="image/*" onChange={handleChange} className="hidden" />
+                    <div className="h-20 border rounded-xl bg-gray-50 flex items-center justify-center text-sm text-gray-700">
+                      Upload Image (JPG/PNG, Max 3MB)
+                    </div>
+                  </label>
+                  {renderFilePreview('ownerPhoto')}
                 </div>
-              </section>
-            </>
+
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Personal Information</p>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="Full Name" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+                    <input name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+                  </div>
+                  <textarea name="permanentAddress" value={form.permanentAddress} onChange={handleChange} placeholder="Address" className="mt-3 w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm min-h-20" />
+                  <input name="contactNumber" value={form.contactNumber} onChange={handleChange} placeholder="Number" className="mt-3 w-full md:w-1/2 px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+                </div>
+
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Identity Proofs (KYC Documents)</p>
+                  <p className="text-xs text-gray-500">Upload government-issued ID cards for verification</p>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input name="panNumber" value={form.panNumber} onChange={handleChange} placeholder="E.g. ABCDE1234F" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+                    <input name="aadhaarNumber" value={form.aadhaarNumber} onChange={handleChange} placeholder="XXXX XXXX XXXX" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block cursor-pointer"><input type="file" name="panPhoto" accept="image/*" onChange={handleChange} className="hidden" /><div className="h-20 border rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-700">Upload PAN Card Photo</div></label>
+                      {renderFilePreview('panPhoto')}
+                    </div>
+                    <div>
+                      <label className="block cursor-pointer"><input type="file" name="aadhaarFront" accept="image/*" onChange={handleChange} className="hidden" /><div className="h-20 border rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-700">Front</div></label>
+                      {renderFilePreview('aadhaarFront')}
+                    </div>
+                    <div>
+                      <label className="block cursor-pointer"><input type="file" name="aadhaarBack" accept="image/*" onChange={handleChange} className="hidden" /><div className="h-20 border rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-700">Back</div></label>
+                      {renderFilePreview('aadhaarBack')}
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] text-blue-700">
+                    Privacy: Your documents are encrypted and used only for KYC verification.
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Personalize your Welcome Kit</p>
+                  <p className="text-xs text-gray-500">Select sizes for your free Rentnpay partner uniform</p>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <select name="tshirtSize" value={form.tshirtSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"><option value="">Select size</option><option>S</option><option>M</option><option>L</option><option>XL</option></select>
+                    <select name="jeansWaistSize" value={form.jeansWaistSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"><option value="">Select size</option><option>30</option><option>32</option><option>34</option><option>36</option></select>
+                    <select name="shoeSize" value={form.shoeSize} onChange={handleChange} className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm"><option value="">Select size</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
 
           {step === 2 && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">Business Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input name="shopName" value={form.shopName} onChange={handleChange} placeholder="Shop Name" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-                <input name="businessCategory" value={form.businessCategory} onChange={handleChange} placeholder="Business Category" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Tell us about your Business
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Provide your shop details and business documents for verification
+                </p>
               </div>
-              <input name="shopActNumber" value={form.shopActNumber} onChange={handleChange} placeholder="Shop Act / MSME Number" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input type="file" name="shopActLicense" accept="image/*,.pdf" onChange={handleChange} className="w-full text-sm" />
-                <input type="file" name="gstCertificate" accept="image/*,.pdf" onChange={handleChange} className="w-full text-sm" />
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                  Business Information
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Enter your business name and category
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Shop Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      name="shopName"
+                      value={form.shopName}
+                      onChange={handleChange}
+                      placeholder="e.g. Rahul Electronics"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Business Category <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      name="businessCategory"
+                      value={form.businessCategory}
+                      onChange={handleChange}
+                      placeholder="Select category"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
               </div>
-              <input name="gstin" value={form.gstin} onChange={handleChange} placeholder="GSTIN (Optional)" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input name="primaryContactNumber" value={form.primaryContactNumber} onChange={handleChange} placeholder="Primary Service Contact" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-                <input name="secondaryContactNumber" value={form.secondaryContactNumber} onChange={handleChange} placeholder="Secondary/Technical Contact" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                  Business Verification
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Provide your business registration documents
+                </p>
+
+                <div className="space-y-1 mb-3">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Shop Act / MSME License Number{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="shopActNumber"
+                    value={form.shopActNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. SA/2025/12345 or MSME-001234"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    Enter your Shop Act registration or MSME certificate number
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-gray-700">Shop Act License</p>
+                    <label className="block cursor-pointer">
+                      <input
+                        type="file"
+                        name="shopActLicense"
+                        accept="image/*,.pdf"
+                        onChange={handleChange}
+                        className="hidden"
+                      />
+                      <div className="h-24 rounded-xl border border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-center px-3">
+                        <p className="text-sm text-gray-700">Upload Document</p>
+                        <p className="text-[11px] text-gray-500">PDF, JPG or PNG (Max 5MB)</p>
+                      </div>
+                    </label>
+                    {renderFilePreview('shopActLicense')}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-gray-700">
+                      GST Certificate (Optional)
+                    </p>
+                    <label className="block cursor-pointer">
+                      <input
+                        type="file"
+                        name="gstCertificate"
+                        accept="image/*,.pdf"
+                        onChange={handleChange}
+                        className="hidden"
+                      />
+                      <div className="h-24 rounded-xl border border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-center px-3">
+                        <p className="text-sm text-gray-700">Upload Document</p>
+                        <p className="text-[11px] text-gray-500">PDF, JPG or PNG (Max 5MB)</p>
+                      </div>
+                    </label>
+                    {renderFilePreview('gstCertificate')}
+                  </div>
+                </div>
+
+                <div className="space-y-1 mb-3">
+                  <label className="text-xs font-semibold text-gray-700">
+                    GSTIN <span className="text-gray-400">(Optional)</span>
+                  </label>
+                  <input
+                    name="gstin"
+                    value={form.gstin}
+                    onChange={handleChange}
+                    placeholder="E.G. 29ABCDE1234F1Z5"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    15-digit GST identification Number (if applicable)
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <p className="text-[11px] text-blue-700">
+                    Note: At least one document is required. GST Certificate is mandatory
+                    for businesses with annual turnover above ₹40 lakhs.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                  Support Contacts
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Contact numbers for customer and admin support
+                </p>
+
+                <div className="space-y-1 mb-3">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Primary Service Contact Number{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="primaryContactNumber"
+                    value={form.primaryContactNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    For customers to reach you regarding orders and services
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Secondary / Technical Support Contact{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="secondaryContactNumber"
+                    value={form.secondaryContactNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. +91 98765 43211"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    For admin to reach you regarding platform and technical issues
+                  </p>
+                </div>
               </div>
             </section>
           )}
 
           {step === 3 && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">Bank Details</h2>
-              <input name="accountHolderName" value={form.accountHolderName} onChange={handleChange} placeholder="Account Holder Name" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input name="accountNumber" value={form.accountNumber} onChange={handleChange} placeholder="Account Number" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-                <input name="confirmAccountNumber" value={form.confirmAccountNumber} onChange={handleChange} placeholder="Confirm Account Number" className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 p-4 sm:p-5 bg-white">
+                <p className="text-base font-semibold text-gray-900 mb-4">
+                  Bank Account Details
+                </p>
+
+                <div className="space-y-1 mb-3">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Account Holder Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="accountHolderName"
+                    value={form.accountHolderName}
+                    onChange={handleChange}
+                    placeholder="As per bank records"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Account Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      name="accountNumber"
+                      value={form.accountNumber}
+                      onChange={handleChange}
+                      placeholder="Enter account number"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Confirm Account Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      name="confirmAccountNumber"
+                      value={form.confirmAccountNumber}
+                      onChange={handleChange}
+                      placeholder="Re-enter account number"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 mb-1">
+                  <label className="text-xs font-semibold text-gray-700">
+                    IFSC Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="ifscCode"
+                    value={form.ifscCode}
+                    onChange={handleChange}
+                    placeholder="E.g. SBIN0001234"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-500">11-character bank branch code</p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold text-gray-700">
+                    Upload Cancelled Cheque / Bank Passbook{' '}
+                    <span className="text-red-500">*</span>
+                  </p>
+                  <label className="block cursor-pointer">
+                    <input
+                      type="file"
+                      name="cancelledCheque"
+                      accept="image/*,.pdf"
+                      onChange={handleChange}
+                      className="hidden"
+                    />
+                    <div className="w-full min-h-24 rounded-xl border border-gray-300 bg-gray-50 flex items-center justify-center text-center px-4">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {form.cancelledCheque
+                            ? form.cancelledCheque.name
+                            : 'Click to upload cancelled cheque'}
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          PDF or JPG, Max 5MB
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+                  {renderFilePreview('cancelledCheque')}
+                  <p className="text-[11px] text-gray-500">
+                    For account verification, write &quot;CANCELLED&quot; across the cheque.
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">
+                    Secure &amp; Confidential: All your bank and financial information is
+                    encrypted and stored securely. We will verify your details within
+                    24-48 hours.
+                  </p>
+                </div>
               </div>
-              <input name="ifscCode" value={form.ifscCode} onChange={handleChange} placeholder="IFSC Code" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm" />
-              <input type="file" name="cancelledCheque" accept="image/*,.pdf" onChange={handleChange} className="w-full text-sm" />
             </section>
           )}
 
