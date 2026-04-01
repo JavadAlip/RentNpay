@@ -923,7 +923,8 @@ export default function VendorKycVerification() {
                       Allow Walk-in Customers?
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      If ON, this location will show up on the "Find Store" map for users.
+                      If ON, this location will show up on the &quot;Find Store&quot; map
+                      for users.
                     </p>
                   </div>
                   <button
