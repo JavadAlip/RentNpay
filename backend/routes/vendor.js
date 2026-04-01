@@ -77,12 +77,7 @@ router.get('/kyc', vendorAuth, getMyKyc);
 router.post(
   '/kyc',
   vendorAuth,
-  upload.fields([
-    { name: 'ownerPhoto', maxCount: 1 },
-    { name: 'panPhoto', maxCount: 1 },
-    { name: 'aadhaarFront', maxCount: 1 },
-    { name: 'aadhaarBack', maxCount: 1 },
-  ]),
+  upload.any(),
   submitMyKyc,
 );
 
