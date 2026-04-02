@@ -35,42 +35,103 @@ export default function VendorKycStatus() {
       .finally(() => setLoading(false));
   }, []);
 
-  const docs = useMemo(() => {
-    const ownerPhoto = Boolean(kyc?.ownerPhoto);
-    const pan = Boolean(kyc?.panPhoto) && Boolean(kyc?.panNumber);
-    const aFront = Boolean(kyc?.aadhaarFront) && Boolean(kyc?.aadhaarNumber);
-    const aBack = Boolean(kyc?.aadhaarBack);
+  const sectionedDocs = useMemo(() => {
+    const globalStatus = String(kyc?.status || 'pending').toLowerCase();
+    const toneFor = (ok) => {
+      if (ok) return 'verified';
+      if (globalStatus === 'rejected') return 'rejected';
+      return 'pending';
+    };
+    const mk = (title, ok) => ({ title, ok, tone: toneFor(ok) });
 
-    const items = [
-      {
-        title: "Owner's Photo",
-        ok: ownerPhoto,
-      },
-      {
-        title: 'PAN Card',
-        ok: pan,
-      },
-      {
-        title: 'Aadhaar Card (Front)',
-        ok: aFront,
-      },
-      {
-        title: 'Aadhaar Card (Back)',
-        ok: aBack,
-      },
-    ];
+    const docs = {
+      proprietor: [mk("Owner's Photo", Boolean(kyc?.ownerPhoto))],
+      identity: [
+        mk('PAN Card', Boolean(kyc?.panPhoto) && Boolean(kyc?.panNumber)),
+        mk(
+          'Aadhaar Card (Front)',
+          Boolean(kyc?.aadhaarFront) && Boolean(kyc?.aadhaarNumber),
+        ),
+        mk('Aadhaar Card (Back)', Boolean(kyc?.aadhaarBack)),
+      ],
+      business: [
+        mk('Shop Act License', Boolean(kyc?.businessDetails?.shopActLicense)),
+        mk('GST Certificate', Boolean(kyc?.businessDetails?.gstCertificate)),
+      ],
+      store: [
+        mk(
+          'Store Frontage Photo',
+          Boolean(
+            kyc?.storeManagement?.stores?.[0]?.shopFrontPhotoName ||
+              kyc?.storeManagement?.stores?.length,
+          ),
+        ),
+      ],
+      bank: [mk('Cancelled Cheque', Boolean(kyc?.bankDetails?.cancelledCheque))],
+    };
 
-    return items;
+    return docs;
   }, [kyc]);
 
   const status = kyc?.status || 'pending';
-  const totalDocs = docs.length || 1;
-  const okDocs = docs.filter((d) => d.ok).length;
+  const allDocs = [
+    ...sectionedDocs.proprietor,
+    ...sectionedDocs.identity,
+    ...sectionedDocs.business,
+    ...sectionedDocs.store,
+    ...sectionedDocs.bank,
+  ];
+  const totalDocs = allDocs.length || 1;
+  const okDocs = allDocs.filter((d) => d.ok).length;
   const progressPct = Math.round((okDocs / totalDocs) * 100);
 
   const actionRequired = status === 'rejected';
   const pending = status === 'pending';
   const verified = status === 'approved';
+  const rejectedCount = allDocs.filter((d) => d.tone === 'rejected').length;
+  const pendingCount = allDocs.filter((d) => d.tone === 'pending').length;
+
+  const DocRow = ({ item }) => (
+    <div className="rounded-xl border border-gray-200 px-4 py-3 flex items-start justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-gray-900">{item.title}</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {item.tone === 'verified'
+            ? 'Document verified successfully'
+            : item.tone === 'rejected'
+              ? 'Document needs re-upload'
+              : 'Being reviewed by our verification team'}
+        </p>
+        {item.tone === 'rejected' ? (
+          <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 max-w-xl">
+            <p className="font-semibold">Reason for Rejection:</p>
+            <p className="mt-0.5">
+              {kyc?.rejectionReason ||
+                kyc?.adminComment ||
+                'Please upload a clearer document for verification.'}
+            </p>
+          </div>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-2">
+        {item.tone === 'rejected' ? (
+          <a
+            href="/vendor-kyc-verification"
+            className="px-3 py-2 rounded-lg border border-orange-300 text-orange-700 text-xs font-medium hover:bg-orange-50"
+          >
+            Choose New File
+          </a>
+        ) : null}
+        <span className={`px-2.5 py-1 rounded-full border text-xs ${badge(item.tone)}`}>
+          {item.tone === 'verified'
+            ? 'Verified'
+            : item.tone === 'rejected'
+              ? 'Rejected'
+              : 'Under Review'}
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -106,7 +167,7 @@ export default function VendorKycStatus() {
               </div>
             ) : (
               <>
-                <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
+                <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${actionRequired ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -132,18 +193,24 @@ export default function VendorKycStatus() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3 text-sm">
+                    <div className="flex gap-5 text-sm">
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Verified</p>
-                        <p className="font-semibold text-emerald-600">{verified ? okDocs : 0}</p>
+                        <p className="font-semibold text-emerald-600">
+                          {verified ? totalDocs : okDocs}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Pending</p>
-                        <p className="font-semibold text-amber-600">{pending ? totalDocs : 0}</p>
+                        <p className="font-semibold text-amber-600">
+                          {pending ? pendingCount || totalDocs : pendingCount}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Rejected</p>
-                        <p className="font-semibold text-rose-600">{actionRequired ? 1 : 0}</p>
+                        <p className="font-semibold text-rose-600">
+                          {actionRequired ? Math.max(1, rejectedCount) : rejectedCount}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -169,17 +236,7 @@ export default function VendorKycStatus() {
                     <p className="font-semibold text-gray-900">Proprietor Details</p>
                   </div>
                   <div className="p-4">
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Owner&apos;s Photo</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {docs[0]?.ok ? 'Document verified successfully' : 'Awaiting document review'}
-                        </p>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-full border text-xs ${docs[0]?.ok ? badge('verified') : badge(actionRequired ? 'rejected' : 'pending')}`}>
-                        {docs[0]?.ok ? 'Verified' : actionRequired ? 'Rejected' : 'Under Review'}
-                      </span>
-                    </div>
+                    <DocRow item={sectionedDocs.proprietor[0]} />
                   </div>
                 </div>
 
@@ -188,37 +245,38 @@ export default function VendorKycStatus() {
                     <p className="font-semibold text-gray-900">Identity Proof</p>
                   </div>
                   <div className="p-4 space-y-3">
-                    {docs.slice(1).map((d) => (
-                      <div key={d.title} className="rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{d.title}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {d.ok ? 'Document verified successfully' : 'Awaiting document review'}
-                          </p>
-                          {actionRequired ? (
-                            <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-                              <p className="font-semibold">Reason for Rejection:</p>
-                              <p className="mt-0.5">
-                                {kyc?.rejectionReason || kyc?.adminComment || 'Please re-upload a clear document.'}
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {actionRequired ? (
-                            <a
-                              href="/vendor-kyc-verification"
-                              className="px-3 py-2 rounded-lg border border-orange-300 text-orange-700 text-xs font-medium hover:bg-orange-50"
-                            >
-                              Choose New File
-                            </a>
-                          ) : null}
-                          <span className={`px-2.5 py-1 rounded-full border text-xs ${d.ok ? badge('verified') : badge(actionRequired ? 'rejected' : 'pending')}`}>
-                            {d.ok ? 'Verified' : actionRequired ? 'Rejected' : 'Under Review'}
-                          </span>
-                        </div>
-                      </div>
+                    {sectionedDocs.identity.map((d) => (
+                      <DocRow key={d.title} item={d} />
                     ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="font-semibold text-gray-900">Business Documents</p>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {sectionedDocs.business.map((d) => (
+                      <DocRow key={d.title} item={d} />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="font-semibold text-gray-900">Store Photos</p>
+                  </div>
+                  <div className="p-4">
+                    <DocRow item={sectionedDocs.store[0]} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="font-semibold text-gray-900">Bank Details</p>
+                  </div>
+                  <div className="p-4">
+                    <DocRow item={sectionedDocs.bank[0]} />
                   </div>
                 </div>
 

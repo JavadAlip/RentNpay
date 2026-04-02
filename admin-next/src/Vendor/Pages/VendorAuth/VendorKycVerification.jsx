@@ -332,13 +332,41 @@ export default function VendorKycVerification() {
                 <div>
                   <p className="text-base font-semibold text-gray-900">Owner&apos;s Photo</p>
                   <p className="text-xs text-gray-500">Upload a clear photo for profile verification</p>
-                  <label className="mt-3 block cursor-pointer">
-                    <input type="file" name="ownerPhoto" accept="image/*" onChange={handleChange} className="hidden" />
-                    <div className="h-20 border rounded-xl bg-gray-50 flex items-center justify-center text-sm text-gray-700">
-                      Upload Image (JPG/PNG, Max 3MB)
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="w-16 h-16 rounded-full border-2 border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                      {filePreviews.ownerPhoto?.isImage && filePreviews.ownerPhoto?.url ? (
+                        <img
+                          src={filePreviews.ownerPhoto.url}
+                          alt="Owner preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl text-gray-400">👤</span>
+                      )}
                     </div>
-                  </label>
-                  {renderFilePreview('ownerPhoto')}
+                    <div className="space-y-1">
+                      <label className="inline-block cursor-pointer">
+                        <input
+                          type="file"
+                          name="ownerPhoto"
+                          accept="image/*"
+                          onChange={handleChange}
+                          className="hidden"
+                        />
+                        <span className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Upload Image
+                        </span>
+                      </label>
+                      <p className="text-[11px] text-gray-500">
+                        JPG or PNG - Max 3MB - Face clearly visible
+                      </p>
+                      {filePreviews.ownerPhoto?.name ? (
+                        <p className="text-[11px] text-emerald-600 truncate max-w-xs">
+                          Selected: {filePreviews.ownerPhoto.name}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
 
                 <div>
