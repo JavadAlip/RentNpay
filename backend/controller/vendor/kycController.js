@@ -7,6 +7,8 @@ const uploadFileIfExists = async (file, folder) => {
   return result?.secure_url || '';
 };
 
+const storeFrontKey = (i) => `storeFront_${i}`;
+
 const getUploadedFile = (req, fieldName) => {
   // upload.fields(...) shape
   if (req?.files && !Array.isArray(req.files)) {
@@ -97,6 +99,53 @@ export const submitMyKyc = async (req, res) => {
       storesParsed = [];
     }
 
+    const prevStores = existing?.storeManagement?.stores || [];
+    const mergedStores = storesParsed.length > 0 ? storesParsed : prevStores;
+    const storesWithUrls = await Promise.all(
+      mergedStores.map(async (st, i) => {
+        const prev = prevStores[i] || {};
+        const frontFile = getUploadedFile(req, storeFrontKey(i));
+        const frontUrl = await uploadFileIfExists(frontFile, 'vendor-kyc');
+        return {
+          ...st,
+          shopFrontPhotoUrl:
+            frontUrl || st.shopFrontPhotoUrl || prev.shopFrontPhotoUrl || '',
+          additionalPhotoUrls: Array.isArray(st.additionalPhotoUrls)
+            ? st.additionalPhotoUrls
+            : prev.additionalPhotoUrls || [],
+        };
+      }),
+    );
+
+    let docReviews = {};
+    if (existing?.documentReviews && typeof existing.documentReviews === 'object') {
+      docReviews = { ...existing.documentReviews };
+    }
+
+    const clearReuploadIfNewFile = (reviewKey, hasNewFile) => {
+      if (!hasNewFile) return;
+      const entry = docReviews[reviewKey];
+      if (entry && entry.status === 'reupload_requested') {
+        delete docReviews[reviewKey];
+      }
+    };
+
+    clearReuploadIfNewFile('profile', Boolean(ownerPhoto));
+    clearReuploadIfNewFile('pan', Boolean(panPhoto));
+    clearReuploadIfNewFile('aadhaarFront', Boolean(aadhaarFront));
+    clearReuploadIfNewFile('aadhaarBack', Boolean(aadhaarBack));
+    clearReuploadIfNewFile('bank', Boolean(cancelledCheque));
+    clearReuploadIfNewFile('shopAct', Boolean(shopActLicense));
+    clearReuploadIfNewFile('gst', Boolean(gstCertificate));
+    for (let i = 0; i < storesWithUrls.length; i++) {
+      const frontFile = getUploadedFile(req, storeFrontKey(i));
+      clearReuploadIfNewFile(storeFrontKey(i), Boolean(frontFile));
+    }
+
+    const anyReuploadLeft = Object.values(docReviews).some(
+      (e) => e && e.status === 'reupload_requested',
+    );
+
     const next = {
       vendorId: req.vendor._id,
       fullName: fullName ?? existing?.fullName ?? '',
@@ -144,10 +193,7 @@ export const submitMyKyc = async (req, res) => {
           cancelledCheque || existing?.bankDetails?.cancelledCheque || '',
       },
       storeManagement: {
-        stores:
-          storesParsed.length > 0
-            ? storesParsed
-            : existing?.storeManagement?.stores || [],
+        stores: storesWithUrls,
         slaAccepted:
           String(slaAccepted) === 'true'
             ? true
@@ -185,7 +231,13 @@ export const submitMyKyc = async (req, res) => {
       currentStep: stepNum,
       status: 'draft',
       applicationSubmitted: false,
+      documentReviews: docReviews,
     };
+
+    if (!isFinalSubmit) {
+      next.awaitingVendorUpload = existing?.awaitingVendorUpload ?? false;
+      next.resubmittedPendingReview = existing?.resubmittedPendingReview ?? false;
+    }
 
     if (isFinalSubmit) {
       if (
@@ -207,6 +259,22 @@ export const submitMyKyc = async (req, res) => {
       next.applicationSubmitted = true;
       next.submittedAt = new Date();
       next.rejectionReason = '';
+      next.documentReviews = docReviews;
+
+      let nextAwaiting = anyReuploadLeft;
+      let nextResubmitted = Boolean(existing?.resubmittedPendingReview);
+      if (existing?.awaitingVendorUpload && !anyReuploadLeft) {
+        nextResubmitted = true;
+        nextAwaiting = false;
+      } else if (anyReuploadLeft) {
+        nextResubmitted = false;
+        nextAwaiting = true;
+      } else if (!existing?.awaitingVendorUpload && !existing?.resubmittedPendingReview) {
+        nextResubmitted = false;
+        nextAwaiting = false;
+      }
+      next.awaitingVendorUpload = nextAwaiting;
+      next.resubmittedPendingReview = nextResubmitted;
     }
 
     const kyc = await VendorKyc.findOneAndUpdate(

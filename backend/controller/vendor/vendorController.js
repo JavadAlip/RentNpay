@@ -59,7 +59,21 @@ export const verifyOTP = async (req, res) => {
 
     await vendor.save();
 
-    res.json({ message: 'Account verified successfully' });
+    const token = jwt.sign(
+      { vendorId: vendor._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+
+    res.json({
+      message: 'Account verified successfully',
+      token,
+      vendor: {
+        id: vendor._id,
+        fullName: vendor.fullName,
+        emailAddress: vendor.emailAddress,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

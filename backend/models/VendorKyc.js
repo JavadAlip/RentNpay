@@ -50,7 +50,9 @@ const vendorKycSchema = new mongoose.Schema(
           mapLat: { type: Number, default: null },
           mapLng: { type: Number, default: null },
           shopFrontPhotoName: { type: String, default: '', trim: true },
+          shopFrontPhotoUrl: { type: String, default: '' },
           additionalPhotoNames: [{ type: String, default: '' }],
+          additionalPhotoUrls: [{ type: String, default: '' }],
           deliveryZoneType: {
             type: String,
             enum: ['pan-india', 'hyper-local'],
@@ -85,6 +87,10 @@ const vendorKycSchema = new mongoose.Schema(
     },
     rejectionReason: { type: String, default: '' },
     adminComment: { type: String, default: '' },
+    /** Per-document admin feedback: key -> { status, comment, updatedAt } */
+    documentReviews: { type: mongoose.Schema.Types.Mixed, default: {} },
+    awaitingVendorUpload: { type: Boolean, default: false },
+    resubmittedPendingReview: { type: Boolean, default: false },
     reviewedAt: { type: Date, default: null },
     reviewedBy: { type: String, default: '' },
     submittedAt: { type: Date, default: Date.now },

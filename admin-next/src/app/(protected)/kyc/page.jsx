@@ -1,6 +1,5 @@
-import KycQueue from '@/admin-pages/KycQueue';
+import { redirect } from 'next/navigation';
 
-export default function KycQueuePage() {
-  return <KycQueue />;
+export default function KycIndexPage() {
+  redirect('/kyc/vendor');
 }
-

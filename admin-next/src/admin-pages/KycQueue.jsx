@@ -29,9 +29,14 @@ export default function KycQueue() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [queue, setQueue] = useState({ pending: [], approved: [], rejected: [] });
+  const [queue, setQueue] = useState({
+    pending: [],
+    resubmitted: [],
+    approved: [],
+    rejected: [],
+  });
   const [metrics, setMetrics] = useState({ avgReviewTimeMins: 0, approvalRate: 0 });
-  const [activeTab, setActiveTab] = useState('pending'); // pending | rejected | approved
+  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     const token =
@@ -44,7 +49,14 @@ export default function KycQueue() {
     setLoading(true);
     apiGetVendorKycQueue(token)
       .then((res) => {
-        setQueue(res.data?.queue || { pending: [], approved: [], rejected: [] });
+        setQueue(
+          res.data?.queue || {
+            pending: [],
+            resubmitted: [],
+            approved: [],
+            rejected: [],
+          },
+        );
         setMetrics(res.data?.metrics || { avgReviewTimeMins: 0, approvalRate: 0 });
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load KYC queue'))
@@ -53,6 +65,7 @@ export default function KycQueue() {
 
   const items = useMemo(() => {
     if (activeTab === 'pending') return queue.pending;
+    if (activeTab === 'resubmitted') return queue.resubmitted;
     if (activeTab === 'rejected') return queue.rejected;
     if (activeTab === 'approved') return queue.approved;
     return queue.pending;
@@ -83,7 +96,7 @@ export default function KycQueue() {
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <button
               className={`py-3 rounded-xl border text-left px-4 ${
                 activeTab === 'pending'
@@ -96,6 +109,20 @@ export default function KycQueue() {
               <p className="text-xs text-gray-500">Pending Review</p>
               <p className="text-base font-semibold text-gray-900">
                 {queue.pending.length}
+              </p>
+            </button>
+            <button
+              className={`py-3 rounded-xl border text-left px-4 ${
+                activeTab === 'resubmitted'
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-transparent bg-transparent hover:bg-gray-50'
+              }`}
+              onClick={() => setActiveTab('resubmitted')}
+              type="button"
+            >
+              <p className="text-xs text-gray-500">Resubmitted</p>
+              <p className="text-base font-semibold text-gray-900">
+                {queue.resubmitted.length}
               </p>
             </button>
             <button
@@ -113,7 +140,7 @@ export default function KycQueue() {
               </p>
             </button>
             <button
-              className={`py-3 rounded-xl border text-left px-4 sm:col-span-2 ${
+              className={`py-3 rounded-xl border text-left px-4 ${
                 activeTab === 'approved'
                   ? 'border-emerald-300 bg-emerald-50'
                   : 'border-transparent bg-transparent hover:bg-gray-50'
@@ -199,7 +226,7 @@ export default function KycQueue() {
                         {item.status === 'pending' ? (
                           <button
                             type="button"
-                            onClick={() => router.push(`/kyc/${item.vendorId}`)}
+                            onClick={() => router.push(`/kyc/vendor/${item.vendorId}`)}
                             className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                           >
                             Review Now

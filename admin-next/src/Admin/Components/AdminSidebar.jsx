@@ -13,7 +13,8 @@ const AdminSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
-  const [kycPendingCount, setKycPendingCount] = useState(0);
+  const [kycQueueCounts, setKycQueueCounts] = useState({ pending: 0, resubmitted: 0 });
+  const [kycOpen, setKycOpen] = useState(true);
 
   const logout = async () => {
     await dispatch(adminLogout());
@@ -22,9 +23,8 @@ const AdminSidebar = () => {
 
   const [systemOpen, setSystemOpen] = useState(true);
 
+  const dashboardLink = { to: '/dashboard', label: 'Dashboard' };
   const links = [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/kyc', label: 'KYC' },
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
     { to: '/cart', label: 'Cart' },
@@ -45,9 +45,13 @@ const AdminSidebar = () => {
     if (!token) return;
     apiGetVendorKycQueue(token)
       .then((r) => {
-        setKycPendingCount(r.data?.counts?.pending || 0);
+        const c = r.data?.counts || {};
+        setKycQueueCounts({
+          pending: c.pending || 0,
+          resubmitted: c.resubmitted || 0,
+        });
       })
-      .catch(() => setKycPendingCount(0));
+      .catch(() => setKycQueueCounts({ pending: 0, resubmitted: 0 }));
   }, []);
 
   return (
@@ -105,6 +109,75 @@ const AdminSidebar = () => {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 space-y-1">
+          <Link
+            href={dashboardLink.to}
+            onClick={() => setMobileOpen(false)}
+            className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+              pathname === dashboardLink.to
+                ? 'bg-orange-50 text-orange-600 font-medium'
+                : ''
+            }`}
+            title={dashboardLink.label}
+          >
+            <span className="inline-flex items-center gap-2 min-w-0">
+              {sidebarOpen ? dashboardLink.label : dashboardLink.label.charAt(0)}
+            </span>
+          </Link>
+
+          <div className="mx-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setKycOpen((v) => !v)}
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                pathname?.startsWith('/kyc')
+                  ? 'bg-orange-50 text-orange-600 font-medium'
+                  : ''
+              }`}
+              title="KYC"
+            >
+              <span className="inline-flex items-center gap-2">
+                {sidebarOpen ? 'KYC' : 'K'}
+                {sidebarOpen &&
+                kycQueueCounts.pending + kycQueueCounts.resubmitted > 0 ? (
+                  <span className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white">
+                    {kycQueueCounts.pending + kycQueueCounts.resubmitted > 9
+                      ? '9+'
+                      : kycQueueCounts.pending + kycQueueCounts.resubmitted}
+                  </span>
+                ) : null}
+              </span>
+              {sidebarOpen ? (
+                <span className="text-xs text-gray-400">{kycOpen ? '▼' : '▶'}</span>
+              ) : null}
+            </button>
+            {sidebarOpen && kycOpen ? (
+              <div className="mt-1 ml-2 space-y-0.5">
+                <Link
+                  href="/kyc/vendor"
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === '/kyc/vendor' || pathname?.startsWith('/kyc/vendor/')
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  Vendor
+                </Link>
+                <Link
+                  href="/kyc/customer"
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === '/kyc/customer'
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  Customer
+                </Link>
+              </div>
+            ) : null}
+          </div>
+
           {links.map((l) => {
             const isActive = pathname === l.to;
             return (
@@ -119,11 +192,6 @@ const AdminSidebar = () => {
               >
                 <span className="inline-flex items-center gap-2 min-w-0">
                   {sidebarOpen ? l.label : l.label.charAt(0)}
-                  {l.to === '/kyc' && sidebarOpen && kycPendingCount > 0 ? (
-                    <span className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white">
-                      {kycPendingCount > 9 ? '9+' : kycPendingCount}
-                    </span>
-                  ) : null}
                 </span>
               </Link>
             );

@@ -318,4 +318,12 @@ export const apiReviewVendorKyc = (vendorId, payload, token) =>
     },
   });
 
+export const apiRequestVendorKycDocumentReupload = (vendorId, body, token) =>
+  API.post(`/admin/kyc/${vendorId}/request-reupload`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
 export default API;

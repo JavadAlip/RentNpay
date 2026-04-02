@@ -13,6 +13,7 @@ import {
   getVendorKycQueue,
   getVendorKycReview,
   reviewVendorKyc,
+  requestVendorKycDocumentReupload,
 } from '../controller/admin/kycController.js';
 import {
   createCategory,
@@ -98,6 +99,11 @@ router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
 
 // Vendor KYC approvals
 router.get('/kyc/queue', adminAuth, getVendorKycQueue);
+router.post(
+  '/kyc/:vendorId/request-reupload',
+  adminAuth,
+  requestVendorKycDocumentReupload,
+);
 router.get('/kyc/:vendorId', adminAuth, getVendorKycReview);
 router.put('/kyc/:vendorId', adminAuth, reviewVendorKyc);
 

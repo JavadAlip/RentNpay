@@ -27,7 +27,12 @@ export const vendorVerifyOtp = createAsyncThunk(
     try {
       const response = await apiVendorVerifyOtp(otpData);
       localStorage.removeItem('vendorPendingEmail');
-      return response.data; // { message: 'Account verified successfully' }
+      const data = response.data;
+      if (data?.token) {
+        localStorage.setItem('vendorToken', data.token);
+        localStorage.setItem('vendorUser', JSON.stringify(data.vendor || null));
+      }
+      return data;
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'OTP verification failed',
@@ -121,10 +126,15 @@ const vendorSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(vendorVerifyOtp.fulfilled, (state) => {
+      .addCase(vendorVerifyOtp.fulfilled, (state, action) => {
         state.loading = false;
         state.otpVerified = true;
         state.pendingEmail = null;
+        if (action.payload?.token) {
+          state.isAuthenticated = true;
+          state.token = action.payload.token;
+          state.user = action.payload.vendor || null;
+        }
       })
       .addCase(vendorVerifyOtp.rejected, (state, action) => {
         state.loading = false;

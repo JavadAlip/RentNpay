@@ -44,6 +44,7 @@ const emptyStore = {
   mapLat: null,
   mapLng: null,
   shopFrontPhotoName: '',
+  shopFrontPhotoFile: null,
   additionalPhotoNames: [],
   deliveryZoneType: 'pan-india',
   serviceRadiusKm: 15,
@@ -208,9 +209,21 @@ export default function VendorKycVerification() {
       if (form.gstCertificate) payload.append('gstCertificate', form.gstCertificate);
       if (form.cancelledCheque) payload.append('cancelledCheque', form.cancelledCheque);
 
+      // Upload store front photos as separate multipart fields.
+      // Backend expects keys like: storeFront_0, storeFront_1, ...
+      (form.stores || []).forEach((s, i) => {
+        if (s.shopFrontPhotoFile instanceof File) {
+          payload.append(`storeFront_${i}`, s.shopFrontPhotoFile);
+        }
+      });
+
       const res = await apiSubmitVendorKyc(payload, token);
       const nextStatus = res.data?.kyc?.status || '';
       if (nextStatus) setStatus(nextStatus);
+      setForm((prev) => ({
+        ...prev,
+        stores: (prev.stores || []).map((s) => ({ ...s, shopFrontPhotoFile: null })),
+      }));
       if (finalSubmit) {
         window.location.href = '/vendor-dashboard';
       } else {
@@ -858,12 +871,15 @@ export default function VendorKycVerification() {
               </div>
               <input
                 type="file"
-                onChange={(e) =>
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
                   setDraftStore((p) => ({
                     ...p,
-                    shopFrontPhotoName: e.target.files?.[0]?.name || '',
-                  }))
-                }
+                    shopFrontPhotoName: f?.name || '',
+                    shopFrontPhotoFile: f,
+                  }));
+                }}
                 className="w-full text-sm"
               />
               {draftStore.shopFrontPhotoName ? (

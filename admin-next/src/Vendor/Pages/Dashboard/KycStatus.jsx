@@ -36,41 +36,95 @@ export default function VendorKycStatus() {
   }, []);
 
   const sectionedDocs = useMemo(() => {
-    const globalStatus = String(kyc?.status || 'pending').toLowerCase();
-    const toneFor = (ok) => {
-      if (ok) return 'verified';
-      if (globalStatus === 'rejected') return 'rejected';
-      return 'pending';
-    };
-    const mk = (title, ok) => ({ title, ok, tone: toneFor(ok) });
+    if (!kyc) {
+      return {
+        proprietor: [],
+        identity: [],
+        business: [],
+        store: [],
+        bank: [],
+      };
+    }
+    const globalStatus = String(kyc.status || 'pending').toLowerCase();
+    const dr = kyc.documentReviews && typeof kyc.documentReviews === 'object' ? kyc.documentReviews : {};
 
-    const docs = {
-      proprietor: [mk("Owner's Photo", Boolean(kyc?.ownerPhoto))],
+    const mk = (docKey, title, fileOk) => {
+      const rev = dr[docKey];
+      if (globalStatus === 'approved') {
+        return { docKey, title, ok: fileOk, tone: 'verified', message: '', showReupload: false };
+      }
+      if (rev?.status === 'reupload_requested') {
+        return {
+          docKey,
+          title,
+          ok: fileOk,
+          tone: 'rejected',
+          message:
+            rev.comment ||
+            'Please upload a clearer document for verification.',
+          showReupload: true,
+        };
+      }
+      if (globalStatus === 'rejected') {
+        return {
+          docKey,
+          title,
+          ok: fileOk,
+          tone: 'rejected',
+          message:
+            kyc.rejectionReason ||
+            kyc.adminComment ||
+            'Please update your KYC as requested.',
+          showReupload: true,
+        };
+      }
+      return {
+        docKey,
+        title,
+        ok: fileOk,
+        tone: 'pending',
+        message: '',
+        showReupload: false,
+      };
+    };
+
+    const stores = Array.isArray(kyc.storeManagement?.stores)
+      ? kyc.storeManagement.stores
+      : [];
+    const storeRows = stores.length
+      ? stores.map((st, i) =>
+          mk(
+            `storeFront_${i}`,
+            `Store front — ${st.storeName || `Store ${i + 1}`}`,
+            Boolean(st.shopFrontPhotoUrl),
+          ),
+        )
+      : [
+          mk(
+            'storeFront_0',
+            'Store front photo',
+            Boolean(stores[0]?.shopFrontPhotoUrl),
+          ),
+        ];
+
+    return {
+      proprietor: [mk('profile', "Owner's Photo", Boolean(kyc.ownerPhoto))],
       identity: [
-        mk('PAN Card', Boolean(kyc?.panPhoto) && Boolean(kyc?.panNumber)),
+        mk('pan', 'PAN Card', Boolean(kyc.panPhoto) && Boolean(kyc.panNumber)),
         mk(
+          'aadhaarFront',
           'Aadhaar Card (Front)',
-          Boolean(kyc?.aadhaarFront) && Boolean(kyc?.aadhaarNumber),
+          Boolean(kyc.aadhaarFront) && Boolean(kyc.aadhaarNumber),
         ),
-        mk('Aadhaar Card (Back)', Boolean(kyc?.aadhaarBack)),
+        mk('aadhaarBack', 'Aadhaar Card (Back)', Boolean(kyc.aadhaarBack)),
       ],
       business: [
-        mk('Shop Act License', Boolean(kyc?.businessDetails?.shopActLicense)),
-        mk('GST Certificate', Boolean(kyc?.businessDetails?.gstCertificate)),
+        mk('shopAct', 'Shop Act License', Boolean(kyc.businessDetails?.shopActLicense)),
+        mk('gst', 'GST Certificate', Boolean(kyc.businessDetails?.gstCertificate)),
       ],
-      store: [
-        mk(
-          'Store Frontage Photo',
-          Boolean(
-            kyc?.storeManagement?.stores?.[0]?.shopFrontPhotoName ||
-              kyc?.storeManagement?.stores?.length,
-          ),
-        ),
-      ],
-      bank: [mk('Cancelled Cheque', Boolean(kyc?.bankDetails?.cancelledCheque))],
+      store: storeRows,
+      bank: [mk('bank', 'Cancelled Cheque', Boolean(kyc.bankDetails?.cancelledCheque))],
     };
-
-    return docs;
   }, [kyc]);
 
   const status = kyc?.status || 'pending';
@@ -85,16 +139,22 @@ export default function VendorKycStatus() {
   const okDocs = allDocs.filter((d) => d.ok).length;
   const progressPct = Math.round((okDocs / totalDocs) * 100);
 
-  const actionRequired = status === 'rejected';
+  const docReviews = kyc?.documentReviews && typeof kyc.documentReviews === 'object' ? kyc.documentReviews : {};
+  const anyReuploadRequested = Object.values(docReviews).some(
+    (r) => r?.status === 'reupload_requested',
+  );
+  const actionRequired = status === 'rejected' || anyReuploadRequested;
   const pending = status === 'pending';
   const verified = status === 'approved';
   const rejectedCount = allDocs.filter((d) => d.tone === 'rejected').length;
   const pendingCount = allDocs.filter((d) => d.tone === 'pending').length;
 
-  const DocRow = ({ item }) => (
-    <div className="rounded-xl border border-gray-200 px-4 py-3 flex items-start justify-between gap-3">
-      <div>
-        <p className="text-sm font-medium text-gray-900">{item.title}</p>
+  const DocRow = ({ item }) => {
+    if (!item) return null;
+    return (
+      <div className="rounded-xl border border-gray-200 px-4 py-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-900">{item.title || item.docKey}</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {item.tone === 'verified'
             ? 'Document verified successfully'
@@ -102,22 +162,18 @@ export default function VendorKycStatus() {
               ? 'Document needs re-upload'
               : 'Being reviewed by our verification team'}
         </p>
-        {item.tone === 'rejected' ? (
+        {item.tone === 'rejected' && item.message ? (
           <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 max-w-xl">
             <p className="font-semibold">Reason for Rejection:</p>
-            <p className="mt-0.5">
-              {kyc?.rejectionReason ||
-                kyc?.adminComment ||
-                'Please upload a clearer document for verification.'}
-            </p>
+            <p className="mt-0.5">{item.message}</p>
           </div>
         ) : null}
       </div>
-      <div className="flex items-center gap-2">
-        {item.tone === 'rejected' ? (
+      <div className="flex items-center gap-2 shrink-0">
+        {item.showReupload ? (
           <a
             href="/vendor-kyc-verification"
-            className="px-3 py-2 rounded-lg border border-orange-300 text-orange-700 text-xs font-medium hover:bg-orange-50"
+            className="px-3 py-2 rounded-lg border border-orange-300 text-orange-700 text-xs font-medium hover:bg-orange-50 whitespace-nowrap"
           >
             Choose New File
           </a>
@@ -131,7 +187,8 @@ export default function VendorKycStatus() {
         </span>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -165,6 +222,10 @@ export default function VendorKycStatus() {
               <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl">
                 {error}
               </div>
+            ) : !kyc ? (
+              <div className="p-6 text-sm text-gray-600 bg-white border border-gray-200 rounded-xl">
+                KYC not found.
+              </div>
             ) : (
               <>
                 <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
@@ -185,7 +246,11 @@ export default function VendorKycStatus() {
                         </p>
                         <p className="text-sm text-gray-500 mt-0.5">
                           {actionRequired
-                            ? (kyc?.rejectionReason || kyc?.adminComment || 'Some documents need to be re-uploaded.')
+                            ? anyReuploadRequested
+                              ? 'Admin requested a clearer upload for one or more documents. See the reasons below.'
+                              : kyc?.rejectionReason ||
+                                kyc?.adminComment ||
+                                'Some documents need to be re-uploaded.'
                             : verified
                               ? 'Your KYC has been approved. You can now create products.'
                               : 'Submitted and waiting for admin review.'}
@@ -266,8 +331,10 @@ export default function VendorKycStatus() {
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="font-semibold text-gray-900">Store Photos</p>
                   </div>
-                  <div className="p-4">
-                    <DocRow item={sectionedDocs.store[0]} />
+                  <div className="p-4 space-y-3">
+                    {sectionedDocs.store.map((d) => (
+                      <DocRow key={d.docKey} item={d} />
+                    ))}
                   </div>
                 </div>
 
