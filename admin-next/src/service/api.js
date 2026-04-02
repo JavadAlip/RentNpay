@@ -326,4 +326,27 @@ export const apiRequestVendorKycDocumentReupload = (vendorId, body, token) =>
     },
   });
 
+// ── CUSTOMER KYC APIs ───────────────────────────────────────────
+export const apiGetCustomerKycQueue = (token) =>
+  API.get('/admin/kyc/customer/queue', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiGetCustomerKycReview = (userId, token) =>
+  API.get(`/admin/kyc/customer/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiReviewCustomerKyc = (userId, payload, token) =>
+  API.put(`/admin/kyc/customer/${userId}`, payload, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
 export default API;

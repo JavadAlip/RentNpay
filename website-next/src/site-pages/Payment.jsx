@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../store/slices/cartSlice';
@@ -19,6 +19,7 @@ export default function Payment() {
   const dispatch = useDispatch();
 
   const { items } = useSelector((s) => s.cart);
+  const isPaymentSuccessFlowRef = useRef(false);
 
   const total = useMemo(() => {
     return items.reduce(
@@ -45,7 +46,9 @@ export default function Payment() {
   const [nameOnCard, setNameOnCard] = useState('');
 
   useEffect(() => {
-    if (items.length === 0) {
+    // Prevent redirect-to-cart while we are clearing cart as part of a
+    // successful "Pay now" flow (we still navigate to payment-successful).
+    if (items.length === 0 && !isPaymentSuccessFlowRef.current) {
       router.replace('/cart');
       return;
     }
@@ -94,16 +97,15 @@ export default function Payment() {
       }
 
       // Dummy success flow (real gateway like Razorpay/Stripe can replace this).
-      setTimeout(() => {
-        dispatch(clearCart());
-        localStorage.removeItem('rentpay_checkout_selectedAddress');
-        localStorage.removeItem('rentpay_checkout_instructions');
-        router.push(
-          createdOrderId
-            ? `/payment-successful?orderId=${encodeURIComponent(createdOrderId)}`
-            : '/payment-successful',
-        );
-      }, 900);
+      isPaymentSuccessFlowRef.current = true;
+      dispatch(clearCart());
+      localStorage.removeItem('rentpay_checkout_selectedAddress');
+      localStorage.removeItem('rentpay_checkout_instructions');
+      router.push(
+        createdOrderId
+          ? `/payment-successful?orderId=${encodeURIComponent(createdOrderId)}`
+          : '/payment-successful',
+      );
     } catch (err) {
       setError(err.response?.data?.message || 'Could not place order.');
       setLoading(false);

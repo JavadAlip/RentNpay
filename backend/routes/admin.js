@@ -14,6 +14,9 @@ import {
   getVendorKycReview,
   reviewVendorKyc,
   requestVendorKycDocumentReupload,
+  getCustomerKycQueue,
+  getCustomerKycReview,
+  reviewCustomerKyc,
 } from '../controller/admin/kycController.js';
 import {
   createCategory,
@@ -106,5 +109,10 @@ router.post(
 );
 router.get('/kyc/:vendorId', adminAuth, getVendorKycReview);
 router.put('/kyc/:vendorId', adminAuth, reviewVendorKyc);
+
+// Customer KYC approvals
+router.get('/kyc/customer/queue', adminAuth, getCustomerKycQueue);
+router.get('/kyc/customer/:userId', adminAuth, getCustomerKycReview);
+router.put('/kyc/customer/:userId', adminAuth, reviewCustomerKyc);
 
 export default router;

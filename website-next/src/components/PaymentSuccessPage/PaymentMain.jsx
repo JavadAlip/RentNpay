@@ -28,6 +28,7 @@ const PaymentMain = () => {
   const [loadingKyc, setLoadingKyc] = useState(false);
   const [submittingKyc, setSubmittingKyc] = useState(false);
   const [kycError, setKycError] = useState('');
+  const [dispatchStage, setDispatchStage] = useState('idle'); // idle | waiting | redirecting
 
   const [aadhaarFrontFile, setAadhaarFrontFile] = useState(null);
   const [aadhaarBackFile, setAadhaarBackFile] = useState(null);
@@ -117,6 +118,15 @@ const PaymentMain = () => {
     } finally {
       setSubmittingKyc(false);
     }
+  };
+
+  const handleDispatch = () => {
+    if (dispatchStage !== 'idle') return;
+    setDispatchStage('waiting');
+    setTimeout(() => {
+      setDispatchStage('redirecting');
+      router.push('/orders');
+    }, 3000);
   };
 
   return (
@@ -270,7 +280,7 @@ const PaymentMain = () => {
                         <input
                           ref={doc.inputRef}
                           type="file"
-                          accept=".jpg,.jpeg,.png,.pdf"
+                          accept="image/*,.pdf"
                           className="hidden"
                           onChange={(e) => doc.onChange(e.target.files?.[0] || null)}
                         />
@@ -306,16 +316,27 @@ const PaymentMain = () => {
 
               <button
                 type="button"
-                onClick={submitKyc}
-                disabled={submittingKyc || loadingKyc || dispatchEnabled}
+                onClick={() => {
+                  if (dispatchEnabled) return handleDispatch();
+                  return submitKyc();
+                }}
+                disabled={submittingKyc || loadingKyc || dispatchStage !== 'idle'}
                 className={`w-full py-3 rounded-xl text-sm font-medium ${
-                  dispatchEnabled
+                  dispatchStage === 'redirecting'
                     ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-60'
+                    : dispatchStage === 'waiting'
+                      ? 'bg-amber-100 text-amber-700'
+                      : dispatchEnabled
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-60'
                 }`}
               >
                 {dispatchEnabled
-                  ? 'Dispatch & Delivery'
+                  ? dispatchStage === 'waiting'
+                    ? 'Dispatching...'
+                    : dispatchStage === 'redirecting'
+                      ? 'Redirecting...'
+                      : 'Dispatch & Delivery'
                   : submittingKyc
                     ? 'Submitting KYC...'
                     : 'Submit KYC & Enable Dispatch'}

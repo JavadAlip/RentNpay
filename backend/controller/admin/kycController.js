@@ -1,6 +1,9 @@
 import VendorKyc from '../../models/VendorKyc.js';
 import Vendor from '../../models/vendorAuthModel.js';
 import Product from '../../models/Product.js';
+import UserKyc from '../../models/UserKyc.js';
+import User from '../../models/userAuthModel.js';
+import Address from '../../models/Address.js';
 
 const BASE_DOC_KEYS = [
   'profile',
@@ -93,13 +96,17 @@ export const getVendorKycQueue = async (req, res) => {
 
     const productAgg = await Product.aggregate([
       { $match: { vendorId: { $in: vendorIds } } },
-      { $group: { _id: '$vendorId', type: { $first: '$type' }, category: { $first: '$category' } } },
+      {
+        $group: {
+          _id: '$vendorId',
+          type: { $first: '$type' },
+          category: { $first: '$category' },
+        },
+      },
     ]);
     const prodMap = new Map(productAgg.map((x) => [String(x._id), x]));
 
-    const pendingFirst = pendingAll.filter(
-      (k) => !k.resubmittedPendingReview,
-    );
+    const pendingFirst = pendingAll.filter((k) => !k.resubmittedPendingReview);
     const resubmitted = pendingAll.filter((k) => k.resubmittedPendingReview);
 
     const mapList = (list) =>
@@ -114,7 +121,9 @@ export const getVendorKycQueue = async (req, res) => {
 
     const approvalRate =
       approved.length + rejected.length > 0
-        ? Math.round((approved.length * 100) / (approved.length + rejected.length))
+        ? Math.round(
+            (approved.length * 100) / (approved.length + rejected.length),
+          )
         : 0;
 
     const reviewed = [...approved, ...rejected].filter((x) => x.reviewedAt);
@@ -170,7 +179,12 @@ const buildReviewDocuments = (kyc) => {
   pushDoc('profile', 'Profile / Owner photo', 'identity', kyc.ownerPhoto);
   pushDoc('aadhaarFront', 'Aadhaar Card (Front)', 'identity', kyc.aadhaarFront);
   pushDoc('aadhaarBack', 'Aadhaar Card (Back)', 'identity', kyc.aadhaarBack);
-  pushDoc('bank', 'Bank — Cancelled cheque', 'bank', kyc.bankDetails?.cancelledCheque);
+  pushDoc(
+    'bank',
+    'Bank — Cancelled cheque',
+    'bank',
+    kyc.bankDetails?.cancelledCheque,
+  );
 
   const stores = kyc.storeManagement?.stores || [];
   if (stores.length === 0) {
@@ -306,7 +320,9 @@ export const requestVendorKycDocumentReupload = async (req, res) => {
     }
     const msg = String(comment || '').trim();
     if (!msg) {
-      return res.status(400).json({ message: 'Comment is required for re-upload request' });
+      return res
+        .status(400)
+        .json({ message: 'Comment is required for re-upload request' });
     }
 
     const kyc = await VendorKyc.findOne({ vendorId });
@@ -329,6 +345,181 @@ export const requestVendorKycDocumentReupload = async (req, res) => {
     await kyc.save();
 
     res.json({ message: 'Re-upload requested', kyc });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ────────────────────────────────────────────────────────────────
+// Customer (User) KYC approvals
+// ────────────────────────────────────────────────────────────────
+
+const getCustomerIdType = (kyc) => {
+  if (kyc?.aadhaarFront && kyc?.aadhaarBack) return 'Aadhaar';
+  if (kyc?.panCard) return 'PAN';
+  return 'Document';
+};
+
+export const getCustomerKycQueue = async (req, res) => {
+  try {
+    const [pending, approved, rejected] = await Promise.all([
+      UserKyc.find({ status: 'pending' })
+        .populate('userId', 'fullName emailAddress')
+        .sort({ submittedAt: -1 }),
+      UserKyc.find({ status: 'approved' })
+        .populate('userId', 'fullName emailAddress')
+        .sort({ submittedAt: -1 }),
+      UserKyc.find({ status: 'rejected' })
+        .populate('userId', 'fullName emailAddress')
+        .sort({ submittedAt: -1 }),
+    ]);
+
+    const mapList = (list) =>
+      list.map((k) => ({
+        userId: k.userId?._id,
+        _id: k._id,
+        customerName: k.userId?.fullName || '',
+        customerEmail: k.userId?.emailAddress || '',
+        idType: getCustomerIdType(k),
+        submittedAt: k.submittedAt,
+        status: k.status,
+        rejectionReason: k.rejectionReason || '',
+        reviewedAt: k.reviewedAt,
+        reviewedBy: k.reviewedBy || '',
+      }));
+
+    res.json({
+      queue: {
+        pending: mapList(pending),
+        approved: mapList(approved),
+        rejected: mapList(rejected),
+      },
+      counts: {
+        pending: pending.length,
+        approved: approved.length,
+        rejected: rejected.length,
+      },
+      metrics: {
+        avgReviewTimeMins: 0,
+        approvalRate: pending.length
+          ? Math.round((approved.length * 100) / pending.length)
+          : 0,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getCustomerKycReview = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const kyc = await UserKyc.findOne({ userId }).populate(
+      'userId',
+      'fullName emailAddress',
+    );
+
+    if (!kyc) return res.status(404).json({ message: 'KYC not found' });
+
+    const addressDoc = await Address.findOne({ user: kyc.userId?._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const permanentAddress = addressDoc
+      ? `${addressDoc.addressLine || ''}${addressDoc.area ? `, ${addressDoc.area}` : ''}${
+          addressDoc.city ? `, ${addressDoc.city}` : ''
+        }${addressDoc.pincode ? ` - ${addressDoc.pincode}` : ''}`.trim()
+      : kyc.permanentAddress || '';
+
+    const contactNumber = addressDoc?.phone || kyc.contactNumber || '';
+    const dateOfBirth = kyc.dateOfBirth || '';
+    const aadhaarNumber = kyc.aadhaarNumber || '';
+    const panNumber = kyc.panNumber || '';
+
+    const idType =
+      kyc.aadhaarFront && kyc.aadhaarBack
+        ? 'Aadhaar'
+        : kyc.panCard
+          ? 'PAN'
+          : 'Document';
+    const idNumber = idType === 'Aadhaar' ? aadhaarNumber : panNumber;
+
+    const documents = [
+      {
+        key: 'aadhaarFront',
+        label: 'Aadhaar Card (Front)',
+        category: 'identity',
+        src: kyc.aadhaarFront || '',
+      },
+      {
+        key: 'aadhaarBack',
+        label: 'Aadhaar Card (Back)',
+        category: 'identity',
+        src: kyc.aadhaarBack || '',
+      },
+      {
+        key: 'panCard',
+        label: 'PAN Card',
+        category: 'identity',
+        src: kyc.panCard || '',
+      },
+    ];
+
+    res.json({
+      kyc: {
+        _id: kyc._id,
+        userId: kyc.userId?._id,
+        customerName: kyc.userId?.fullName || '',
+        customerEmail: kyc.userId?.emailAddress || '',
+        customerId: `CUST-${
+          String(kyc.userId?._id || kyc.userId || '')
+            .slice(-6)
+            .toUpperCase() || '—'
+        }`,
+        dateOfBirth,
+        permanentAddress,
+        contactNumber,
+        idType,
+        idNumber,
+        aadhaarFront: kyc.aadhaarFront,
+        aadhaarBack: kyc.aadhaarBack,
+        panCard: kyc.panCard,
+        status: kyc.status,
+        rejectionReason: kyc.rejectionReason,
+        submittedAt: kyc.submittedAt,
+        reviewedAt: kyc.reviewedAt,
+        documents,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const reviewCustomerKyc = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status, comment } = req.body;
+
+    const nextStatus = String(status || '').toLowerCase();
+    if (!['approved', 'rejected', 'pending'].includes(nextStatus)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const kyc = await UserKyc.findOne({ userId });
+    if (!kyc) return res.status(404).json({ message: 'KYC not found' });
+
+    const adminEmail = req.admin?.email || '';
+
+    kyc.status = nextStatus;
+    kyc.rejectionReason =
+      nextStatus === 'rejected' ? String(comment || '') : '';
+    kyc.reviewedAt = new Date();
+    // userKycSchema doesn't have reviewedBy, but we can store it anyway if schema allows.
+    kyc.reviewedBy = adminEmail;
+
+    await kyc.save();
+    res.json({ message: 'Customer KYC updated', kyc });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
