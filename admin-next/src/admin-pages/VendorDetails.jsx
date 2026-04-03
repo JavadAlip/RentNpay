@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { apiGetAdminVendorDetails } from '@/service/api';
+import { X } from 'lucide-react';
+import { apiGetAdminVendorDetails, apiGetAdminVendorKycReview } from '@/service/api';
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const parsePrice = (raw) => {
@@ -9,11 +10,43 @@ const parsePrice = (raw) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const urlLooksLikePdf = (url) => {
+  if (!url) return false;
+  const base = String(url).split('?')[0].toLowerCase();
+  return base.endsWith('.pdf');
+};
+
+/** Build the three admin cards from a VendorKyc-shaped object (matches backend getVendorDetails). */
+function buildKycDocumentsFromKyc(kyc) {
+  if (!kyc) return null;
+  const gstUrl = kyc.businessDetails?.gstCertificate || '';
+  const panUrl = kyc.panPhoto || '';
+  const stores = kyc.storeManagement?.stores || [];
+  const shopUrl =
+    stores.find((s) => String(s.shopFrontPhotoUrl || '').trim())?.shopFrontPhotoUrl || '';
+  const doc = (docId, title, url) => ({
+    id: docId,
+    title,
+    url: String(url || '').trim(),
+    status: String(url || '').trim() ? 'Uploaded' : 'Not Uploaded',
+  });
+  return [
+    doc('gst', 'GST Certificate', gstUrl),
+    doc('pan', 'Business PAN', panUrl),
+    doc('shop', 'Shop Photo', shopUrl),
+  ];
+}
+
+function kycDocumentsHaveAnyUrl(docs) {
+  return (docs || []).some((d) => String(d?.url || '').trim());
+}
+
 export default function VendorDetails({ vendorId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
   const [search, setSearch] = useState('');
+  const [kycPreviewUrl, setKycPreviewUrl] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -22,27 +55,45 @@ export default function VendorDetails({ vendorId }) {
     if (!token) {
       setError('Please login again to continue.');
       setLoading(false);
-      return;
+      return undefined;
     }
     if (!vendorId) {
       setError('Invalid vendor id.');
       setLoading(false);
-      return;
+      return undefined;
     }
 
     setLoading(true);
-    apiGetAdminVendorDetails(vendorId, token)
-      .then((res) => {
+    setError('');
+
+    (async () => {
+      try {
+        const res = await apiGetAdminVendorDetails(vendorId, token);
+        let payload = res.data || null;
         if (!mounted) return;
-        setData(res.data || null);
-      })
-      .catch((err) => {
+
+        const fromDetails = payload?.kycDocuments;
+        if (!kycDocumentsHaveAnyUrl(fromDetails)) {
+          try {
+            const kycRes = await apiGetAdminVendorKycReview(vendorId, token);
+            const kyc = kycRes.data?.kyc;
+            const built = buildKycDocumentsFromKyc(kyc);
+            if (built?.length) {
+              payload = { ...payload, kycDocuments: built };
+            }
+          } catch {
+            /* keep vendor details payload */
+          }
+        }
+
+        setData(payload);
+      } catch (err) {
         if (!mounted) return;
         setError(err.response?.data?.message || 'Failed to load vendor details.');
-      })
-      .finally(() => {
+      } finally {
         if (mounted) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       mounted = false;
@@ -64,11 +115,20 @@ export default function VendorDetails({ vendorId }) {
     const docs = data?.kycDocuments || [];
     if (docs.length) return docs;
     return [
-      { id: 'gst', title: 'GST Certificate', status: 'Not Uploaded' },
-      { id: 'pan', title: 'Business PAN', status: 'Not Uploaded' },
-      { id: 'shop', title: 'Shop Photo', status: 'Not Uploaded' },
+      { id: 'gst', title: 'GST Certificate', url: '', status: 'Not Uploaded' },
+      { id: 'pan', title: 'Business PAN', url: '', status: 'Not Uploaded' },
+      { id: 'shop', title: 'Shop Photo', url: '', status: 'Not Uploaded' },
     ];
   }, [data?.kycDocuments]);
+
+  useEffect(() => {
+    if (!kycPreviewUrl) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setKycPreviewUrl(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [kycPreviewUrl]);
 
   if (loading) {
     return (
@@ -234,23 +294,92 @@ export default function VendorDetails({ vendorId }) {
           <h2 className="font-semibold text-gray-900">KYC Documents</h2>
         </div>
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          {kycDocs.map((doc) => (
-            <div key={doc.id} className="rounded-xl border border-gray-200 overflow-hidden">
-              <div className="h-24 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                Preview
-              </div>
-              <div className="p-3">
-                <p className="font-medium text-sm text-gray-900">{doc.title}</p>
-                <p className="text-xs text-gray-500 mt-1">{doc.status}</p>
-                <div className="mt-2 flex gap-2">
-                  <button className="px-3 py-1.5 rounded-md border border-gray-300 text-xs">View</button>
-                  <button className="px-3 py-1.5 rounded-md bg-[#F97316] text-white text-xs">Upload</button>
+          {kycDocs.map((doc) => {
+            const hasFile = Boolean(String(doc.url || '').trim());
+            return (
+              <div key={doc.id} className="rounded-xl border border-gray-200 overflow-hidden">
+                <div className="h-28 bg-gray-100 flex items-center justify-center overflow-hidden">
+                  {hasFile ? (
+                    urlLooksLikePdf(doc.url) ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-2 text-center">
+                        <span className="text-xs font-medium text-gray-600">PDF document</span>
+                        <span className="text-[11px] text-gray-400 truncate max-w-full">{doc.title}</span>
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={doc.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <span className="text-gray-400 text-sm">No preview</span>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="font-medium text-sm text-gray-900">{doc.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{doc.status}</p>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      disabled={!hasFile}
+                      onClick={() => hasFile && setKycPreviewUrl(doc.url)}
+                      className={`px-3 py-1.5 rounded-md border border-gray-300 text-xs ${
+                        hasFile
+                          ? 'hover:bg-gray-50 text-gray-900'
+                          : 'opacity-50 cursor-not-allowed text-gray-500'
+                      }`}
+                    >
+                      View
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {kycPreviewUrl ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75"
+          role="presentation"
+          onClick={() => setKycPreviewUrl(null)}
+        >
+          <div
+            className="relative max-w-[min(100vw-2rem,1200px)] max-h-[90vh] w-full"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative rounded-xl overflow-hidden bg-white shadow-xl max-h-[90vh] flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setKycPreviewUrl(null)}
+                className="absolute top-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/70"
+                aria-label="Close preview"
+              >
+                <X size={20} strokeWidth={2.5} />
+              </button>
+              {urlLooksLikePdf(kycPreviewUrl) ? (
+                <iframe
+                  title="KYC document preview"
+                  src={kycPreviewUrl}
+                  className="w-full min-h-[75vh] border-0 bg-white pt-14"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={kycPreviewUrl}
+                  alt="KYC document"
+                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain pt-14 pb-4 px-4"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100">

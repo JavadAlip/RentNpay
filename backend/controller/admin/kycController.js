@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import VendorKyc from '../../models/VendorKyc.js';
 import Vendor from '../../models/vendorAuthModel.js';
 import Product from '../../models/Product.js';
@@ -221,10 +222,20 @@ const buildReviewDocuments = (kyc) => {
 export const getVendorKycReview = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const kyc = await VendorKyc.findOne({ vendorId }).populate(
-      'vendorId',
-      'fullName emailAddress',
-    );
+    const raw = String(vendorId || '').trim();
+    const populateVendor = {
+      path: 'vendorId',
+      select: 'fullName emailAddress',
+    };
+    let kyc = null;
+    if (mongoose.Types.ObjectId.isValid(raw)) {
+      kyc = await VendorKyc.findOne({
+        vendorId: new mongoose.Types.ObjectId(raw),
+      }).populate(populateVendor);
+    }
+    if (!kyc) {
+      kyc = await VendorKyc.findOne({ vendorId: raw }).populate(populateVendor);
+    }
 
     if (!kyc) return res.status(404).json({ message: 'KYC not found' });
 

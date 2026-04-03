@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import Vendor from '../../models/vendorAuthModel.js';
 import Product from '../../models/Product.js';
 import User from '../../models/userAuthModel.js';
@@ -210,6 +211,42 @@ export const getVendorDetails = async (req, res) => {
       totalProducts: products.length,
     };
 
+    const vendorIdStr = String(id || '').trim();
+    let kycRecord = null;
+    if (mongoose.Types.ObjectId.isValid(vendorIdStr)) {
+      const oid = new mongoose.Types.ObjectId(vendorIdStr);
+      kycRecord = await VendorKyc.findOne({ vendorId: oid }).lean();
+    }
+    if (!kycRecord) {
+      kycRecord = await VendorKyc.findOne({ vendorId: vendorIdStr }).lean();
+    }
+    const kycDocuments = [];
+    if (kycRecord) {
+      const gstUrl = kycRecord.businessDetails?.gstCertificate || '';
+      const panUrl = kycRecord.panPhoto || '';
+      const stores = kycRecord.storeManagement?.stores || [];
+      const shopUrl =
+        stores.find((s) => String(s.shopFrontPhotoUrl || '').trim())?.shopFrontPhotoUrl ||
+        '';
+      const doc = (docId, title, url) => ({
+        id: docId,
+        title,
+        url: String(url || '').trim(),
+        status: String(url || '').trim() ? 'Uploaded' : 'Not Uploaded',
+      });
+      kycDocuments.push(
+        doc('gst', 'GST Certificate', gstUrl),
+        doc('pan', 'Business PAN', panUrl),
+        doc('shop', 'Shop Photo', shopUrl),
+      );
+    } else {
+      kycDocuments.push(
+        { id: 'gst', title: 'GST Certificate', url: '', status: 'Not Uploaded' },
+        { id: 'pan', title: 'Business PAN', url: '', status: 'Not Uploaded' },
+        { id: 'shop', title: 'Shop Photo', url: '', status: 'Not Uploaded' },
+      );
+    }
+
     res.json({
       vendor: {
         _id: vendor._id,
@@ -230,7 +267,7 @@ export const getVendorDetails = async (req, res) => {
         status: p.status,
         image: p.image,
       })),
-      kycDocuments: [],
+      kycDocuments,
       financials: {
         totalEarnings,
         pendingSettlement,

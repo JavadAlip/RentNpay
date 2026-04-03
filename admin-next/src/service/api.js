@@ -252,6 +252,14 @@ export const apiGetAdminVendorDetails = (id, token) =>
     },
   });
 
+/** Full vendor KYC payload (same source as KYC review page) — useful fallback for document URLs. */
+export const apiGetAdminVendorKycReview = (vendorId, token) =>
+  API.get(`/admin/kyc/${vendorId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Get All Users
 export const apiGetAllUsers = (token) =>
   API.get('/admin/get-users', {
