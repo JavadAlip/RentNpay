@@ -1,13 +1,11 @@
-/**
- * Storefront rental pricing: read vendor rentalConfigurations so day/month
- * products don’t fall back to ₹0 when `price` is missing or "0".
- */
-
 export function pickProductRentalConfigurations(product) {
   const top = product?.rentalConfigurations;
   if (Array.isArray(top) && top.length) return top;
   const v0 = product?.variants?.[0];
-  if (Array.isArray(v0?.rentalConfigurations) && v0.rentalConfigurations.length) {
+  if (
+    Array.isArray(v0?.rentalConfigurations) &&
+    v0.rentalConfigurations.length
+  ) {
     return v0.rentalConfigurations;
   }
   return [];
@@ -36,9 +34,8 @@ export function getRentalListingAmount(product) {
     const isDay = configs.some((c) => c?.periodUnit === 'day');
     if (isDay) {
       const tier =
-        configs.find(
-          (c) => c?.periodUnit === 'day' && Number(c?.days) === 3,
-        ) || configs.find((c) => c?.periodUnit === 'day');
+        configs.find((c) => c?.periodUnit === 'day' && Number(c?.days) === 3) ||
+        configs.find((c) => c?.periodUnit === 'day');
       if (tier) {
         const amt = tierRentAmount(tier);
         if (amt > 0) return Math.round(amt);
@@ -71,20 +68,16 @@ export function getRentalListingSuffix(product) {
   const isDay = configs.some((c) => c?.periodUnit === 'day');
   if (isDay) {
     const tier =
-      configs.find(
-        (c) => c?.periodUnit === 'day' && Number(c?.days) === 3,
-      ) || configs.find((c) => c?.periodUnit === 'day');
+      configs.find((c) => c?.periodUnit === 'day' && Number(c?.days) === 3) ||
+      configs.find((c) => c?.periodUnit === 'day');
     const d = tier && Number(tier.days) > 0 ? Number(tier.days) : 3;
     return d === 3 ? '/3d' : `/${d}d`;
   }
   const tier =
-    configs.find(
-      (c) => c?.periodUnit !== 'day' && Number(c?.months) === 3,
-    ) ||
+    configs.find((c) => c?.periodUnit !== 'day' && Number(c?.months) === 3) ||
     configs.find(
       (c) =>
-        (c?.periodUnit === 'month' || !c?.periodUnit) &&
-        Number(c?.months) > 0,
+        (c?.periodUnit === 'month' || !c?.periodUnit) && Number(c?.months) > 0,
     ) ||
     configs.find((c) => Number(c?.months) > 0);
   const m = tier && Number(tier.months) > 0 ? Number(tier.months) : 3;
@@ -113,4 +106,48 @@ export function getProductDeliveryEtaLabel(product) {
     return `${n} hour${n !== 1 ? 's' : ''}`;
   }
   return `${n} day${n !== 1 ? 's' : ''}`;
+}
+
+/**
+ * Smallest “monthly equivalent” rent across storefront rental products.
+ * Month tiers: tier amount ÷ months (e.g. ₹600 for 3 months → ₹200/mo).
+ * Day tiers: per-day rate × 30 (rough monthly for comparison).
+ * Returns null if nothing usable; callers may fall back to a static headline.
+ */
+export function getLowestMonthlyEquivalentAmongProducts(products) {
+  if (!Array.isArray(products) || !products.length) return null;
+  let minEq = Infinity;
+  for (const p of products) {
+    if (String(p?.type) !== 'Rental') continue;
+    const configs = pickProductRentalConfigurations(p);
+    for (const cfg of configs) {
+      const periodUnit = cfg?.periodUnit === 'day' ? 'day' : 'month';
+      const months = Number(cfg?.months) || 0;
+      const days = Number(cfg?.days) || 0;
+      const amt = tierRentAmount(cfg);
+      if (!amt || amt <= 0) continue;
+      let monthlyEq;
+      if (periodUnit === 'day') {
+        monthlyEq = amt * 30;
+      } else if (months > 0) {
+        monthlyEq = amt / months;
+      } else {
+        continue;
+      }
+      if (monthlyEq < minEq) minEq = monthlyEq;
+    }
+  }
+  if (Number.isFinite(minEq) && minEq < Infinity) {
+    return Math.max(0, Math.round(minEq));
+  }
+  let minPrice = Infinity;
+  for (const p of products) {
+    if (String(p?.type) !== 'Rental') continue;
+    const v = parseDigitsPrice(p?.price);
+    if (v > 0 && v < minPrice) minPrice = v;
+  }
+  if (Number.isFinite(minPrice) && minPrice < Infinity) {
+    return Math.round(minPrice);
+  }
+  return null;
 }

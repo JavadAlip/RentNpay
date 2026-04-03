@@ -1,8 +1,55 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
+import { apiGetStorefrontVendorProducts } from '@/lib/api';
+import { getLowestMonthlyEquivalentAmongProducts } from '@/lib/rentalPriceDisplay';
 import { Wallet, Wrench, Car } from 'lucide-react';
 
+const FALLBACK_HEADLINE_MO = 1299;
+
 const RentMain = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiGetStorefrontVendorProducts('limit=500')
+      .then((res) => {
+        if (!mounted) return;
+        const all = res.data?.products || [];
+        setProducts(all.filter((p) => p.type === 'Rental'));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setProducts([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const lowestMonthly = useMemo(
+    () => getLowestMonthlyEquivalentAmongProducts(products),
+    [products],
+  );
+
+  const headlineAmount = useMemo(() => {
+    if (typeof lowestMonthly === 'number' && lowestMonthly > 0) {
+      return lowestMonthly;
+    }
+    return FALLBACK_HEADLINE_MO;
+  }, [lowestMonthly]);
+
+  const headlineLabel = useMemo(() => {
+    if (loading) return '…';
+    return `₹${headlineAmount.toLocaleString('en-IN')}/Mo`;
+  }, [loading, headlineAmount]);
+
   return (
     <div className="w-full bg-white font-manrope">
       <div className="max-w-6xl mx-auto px-4 py-6">
@@ -19,18 +66,19 @@ const RentMain = () => {
             <h1 className="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-tight mb-0.5 sm:mb-1">
               Rent The Set For
             </h1>
-            <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">
-              ₹1,299/Mo
+            <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 tabular-nums">
+              {headlineLabel}
             </h2>
             <p className="text-white/80 text-xs sm:text-sm mb-3 sm:mb-5">
               Maintenance Included — 4 visits per year
             </p>
-            <button
-              className="w-fit px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg transition-transform hover:scale-105"
+            <Link
+              href="/products"
+              className="w-fit px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-white text-xs sm:text-sm font-semibold shadow-lg transition-transform hover:scale-105 inline-flex items-center justify-center"
               style={{ backgroundColor: '#F5A623' }}
             >
               Rent Now
-            </button>
+            </Link>
           </div>
         </div>
 
