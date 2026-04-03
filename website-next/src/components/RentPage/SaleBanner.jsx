@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { IMG_HOME_SCREENS as mainimg } from '@/lib/assetPlaceholders';
+import { IMG_HOME_SCREENS as fallbackBanner } from '@/lib/assetPlaceholders';
+import homeScreen from './../../assets/images/Home-Screens.png';
 
-const banners = [mainimg, mainimg, mainimg];
+const banners = [homeScreen, homeScreen, homeScreen];
 
 const SaleBanner = () => {
   const [index, setIndex] = useState(0);
@@ -23,8 +24,12 @@ const SaleBanner = () => {
         {/* Banner Image */}
         <div className="overflow-hidden rounded-xl">
           <img
-            src={banners[index]}
+            src={banners[index]?.src || banners[index]}
             alt="banner"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = fallbackBanner;
+            }}
             className="w-full h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px] object-cover transition-all duration-500"
           />
         </div>

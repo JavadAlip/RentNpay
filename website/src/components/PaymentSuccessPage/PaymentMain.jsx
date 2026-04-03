@@ -32,7 +32,7 @@ const PaymentMain = () => {
             <div className="mt-4 h-px bg-gray-200 max-w-sm mx-auto" />
 
             <p className="mt-3 text-xs sm:text-sm text-gray-700">
-              🎉 Thank you for choosing Rentnpay!
+              Thank you for choosing Rentnpay!
             </p>
           </div>
 

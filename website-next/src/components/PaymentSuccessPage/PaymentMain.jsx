@@ -144,13 +144,14 @@ const PaymentMain = () => {
               Order Placed !
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-gray-500">
-              Order <span className="font-medium">{prettyOrderId}</span> confirmed
+              Order <span className="font-medium">{prettyOrderId}</span>{' '}
+              confirmed
             </p>
 
             <div className="mt-4 h-px bg-gray-200 max-w-sm mx-auto" />
 
             <p className="mt-3 text-xs sm:text-sm text-gray-700">
-              🎉 Thank you for choosing Rentnpay!
+              Thank you for choosing Rentnpay!
             </p>
           </div>
 
@@ -282,7 +283,9 @@ const PaymentMain = () => {
                           type="file"
                           accept="image/*,.pdf"
                           className="hidden"
-                          onChange={(e) => doc.onChange(e.target.files?.[0] || null)}
+                          onChange={(e) =>
+                            doc.onChange(e.target.files?.[0] || null)
+                          }
                         />
                         <div className="w-10 h-10 mx-auto mb-2 rounded-lg border flex items-center justify-center">
                           {fileName || alreadyUploaded ? (
@@ -291,7 +294,9 @@ const PaymentMain = () => {
                             <Upload className="w-4 h-4 text-gray-400" />
                           )}
                         </div>
-                        <p className="text-xs font-medium text-gray-700">{doc.label}</p>
+                        <p className="text-xs font-medium text-gray-700">
+                          {doc.label}
+                        </p>
                         <p className="text-[10px] text-gray-400 mt-1 truncate">
                           {fileName
                             ? fileName
@@ -320,7 +325,9 @@ const PaymentMain = () => {
                   if (dispatchEnabled) return handleDispatch();
                   return submitKyc();
                 }}
-                disabled={submittingKyc || loadingKyc || dispatchStage !== 'idle'}
+                disabled={
+                  submittingKyc || loadingKyc || dispatchStage !== 'idle'
+                }
                 className={`w-full py-3 rounded-xl text-sm font-medium ${
                   dispatchStage === 'redirecting'
                     ? 'bg-emerald-100 text-emerald-700'
@@ -351,7 +358,9 @@ const PaymentMain = () => {
               <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
                 <p className="text-xs text-gray-600">
                   Current KYC status:{' '}
-                  <span className="font-semibold capitalize">{kycState.status}</span>
+                  <span className="font-semibold capitalize">
+                    {kycState.status}
+                  </span>
                 </p>
                 {dispatchEnabled ? (
                   <p className="text-xs text-emerald-600 mt-1 inline-flex items-center gap-1">

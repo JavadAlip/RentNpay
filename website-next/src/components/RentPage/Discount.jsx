@@ -1,5 +1,6 @@
 import React from 'react';
-import { IMG_DIS1 as dis1, IMG_DIS2 as dis2 } from '@/lib/assetPlaceholders';
+import dis1 from './../../assets/images/dis1.png';
+import dis2 from './../../assets/images/dis2.png';
 
 const images = [dis1, dis2];
 
@@ -9,11 +10,11 @@ const Discount = () => {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {images.map((img, index) => (
-            <div key={index} className="overflow-hidden rounded-xl bg-white">
+            <div key={index} className="overflow-hidden rounded-xl ">
               <img
-                src={img}
+                src={img?.src || img}
                 alt="discount banner"
-                className="w-full h-auto object-contain"
+                className="w-full h-[400px] object-contain"
               />
             </div>
           ))}

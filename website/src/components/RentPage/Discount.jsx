@@ -14,7 +14,7 @@ const Discount = () => {
               <img
                 src={img}
                 alt="discount banner"
-                className="w-full h-auto object-contain"
+                className="w-full h-[240px] object-contain"
               />
             </div>
           ))}
