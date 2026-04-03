@@ -111,27 +111,99 @@ function buildListingFormData(form) {
   return payload;
 }
 
-function getThreeMonthRentalTier(listing) {
-  const pick = (configs) => {
-    if (!Array.isArray(configs)) return null;
-    return configs.find((c) => Number(c.months) === 3) ?? null;
+/** All rental tiers on template (product-level + each variant). */
+function collectAllRentalTiers(listing) {
+  const out = [];
+  const push = (configs) => {
+    if (!Array.isArray(configs)) return;
+    for (const c of configs) {
+      if (c && typeof c === 'object') out.push(c);
+    }
   };
-  let tier = pick(listing?.rentalConfigurations);
-  if (tier) return tier;
+  push(listing?.rentalConfigurations);
   for (const v of listing?.variants || []) {
-    tier = pick(v.rentalConfigurations);
-    if (tier) return tier;
+    push(v?.rentalConfigurations);
   }
-  return null;
+  return out;
 }
 
-function formatThreeMonthPriceLine(listing) {
-  const tier = getThreeMonthRentalTier(listing);
-  if (!tier) return null;
-  const raw = tier.pricePerDay;
-  if (raw === undefined || raw === null || String(raw).trim() === '')
-    return null;
-  return `3 mo · ${raw}/day`;
+/** Prefer vendor rent; then stored per-tier rate; last legacy fallback to customer rent. */
+function tierVendorDisplayAmount(cfg) {
+  const n = (k) => {
+    const v = Number(cfg?.[k]);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  };
+  return n('vendorRent') || n('pricePerDay') || n('customerRent');
+}
+
+function pickMonthTier(tiers) {
+  const monthTiers = tiers.filter((c) => {
+    const unit = c?.periodUnit === 'day' ? 'day' : 'month';
+    return unit === 'month' && Number(c?.months) > 0;
+  });
+  if (!monthTiers.length) return null;
+  const exact3 = monthTiers.find((c) => Number(c.months) === 3);
+  if (exact3) return exact3;
+  return [...monthTiers].sort(
+    (a, b) => Number(a.months) - Number(b.months),
+  )[0];
+}
+
+function pickDayTier(tiers) {
+  const dayTiers = tiers.filter(
+    (c) => c?.periodUnit === 'day' && Number(c?.days) > 0,
+  );
+  if (!dayTiers.length) return null;
+  const exact3 = dayTiers.find((c) => Number(c.days) === 3);
+  if (exact3) return exact3;
+  return [...dayTiers].sort((a, b) => Number(a.days) - Number(b.days))[0];
+}
+
+/**
+ * Table subtitle: vendor rent only. If both day + month tiers exist → month wins.
+ * Formats: ₹X/3month, ₹X/6month, ₹X/3day, etc.
+ */
+function formatListingTablePriceLine(listing) {
+  const tiers = collectAllRentalTiers(listing);
+  const hasMonth = tiers.some((c) => {
+    const unit = c?.periodUnit === 'day' ? 'day' : 'month';
+    return unit === 'month' && Number(c?.months) > 0;
+  });
+  const hasDay = tiers.some(
+    (c) => c?.periodUnit === 'day' && Number(c?.days) > 0,
+  );
+
+  let chosen = null;
+  let kind = null;
+  if (hasMonth && hasDay) {
+    chosen = pickMonthTier(tiers);
+    kind = 'month';
+  } else if (hasMonth) {
+    chosen = pickMonthTier(tiers);
+    kind = 'month';
+  } else if (hasDay) {
+    chosen = pickDayTier(tiers);
+    kind = 'day';
+  }
+
+  if (chosen && kind) {
+    const amt = tierVendorDisplayAmount(chosen);
+    if (amt > 0) {
+      const f = Math.round(amt).toLocaleString('en-IN');
+      if (kind === 'month') {
+        const m = Number(chosen.months) || 3;
+        return m === 3 ? `₹${f}/3month` : `₹${f}/${m}month`;
+      }
+      const d = Number(chosen.days) || 3;
+      return d === 3 ? `₹${f}/3day` : `₹${f}/${d}day`;
+    }
+  }
+
+  const raw = listing?.price;
+  if (raw != null && String(raw).trim() !== '' && String(raw).trim() !== '0') {
+    return String(raw).trim();
+  }
+  return null;
 }
 
 function listingGalleryUrls(listing) {
@@ -777,7 +849,7 @@ const CustomListings = () => {
               {!loading &&
                 filtered.map((t) => {
                   const active = t.isActive !== false;
-                  const threeMoLine = formatThreeMonthPriceLine(t);
+                  const priceLine = formatListingTablePriceLine(t);
                   return (
                     <tr key={t._id} className="hover:bg-gray-50/80">
                       <td className="px-4 py-3">
@@ -796,10 +868,7 @@ const CustomListings = () => {
                               {t.productName}
                             </p>
                             <p className="text-xs text-gray-500 tabular-nums">
-                              {threeMoLine ||
-                                (t.price != null && String(t.price).trim()
-                                  ? t.price
-                                  : '—')}
+                              {priceLine || '—'}
                             </p>
                             {t.sku ? (
                               <p className="text-[11px] text-gray-400">
