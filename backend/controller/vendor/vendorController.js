@@ -6,23 +6,47 @@ import Product from '../../models/Product.js';
 import Offer from '../../models/Offer.js';
 import VendorKyc from '../../models/VendorKyc.js';
 
+const normalizeMobileDigits = (raw) => {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length >= 10) {
+    return digits.length > 10 ? digits.slice(-10) : digits;
+  }
+  return digits;
+};
+
 export const signupVendor = async (req, res) => {
   try {
-    const { fullName, emailAddress, password } = req.body;
+    const { fullName, emailAddress, password, mobileNumber, referralCode } = req.body;
+
+    const mobile = normalizeMobileDigits(mobileNumber);
+    if (!mobile || mobile.length < 10) {
+      return res.status(400).json({
+        message: 'Valid mobile number is required (at least 10 digits)',
+      });
+    }
 
     const existing = await Vendor.findOne({ emailAddress });
     if (existing) {
       return res.status(400).json({ message: 'Email already exists' });
     }
 
+    const existingMobile = await Vendor.findOne({ mobileNumber: mobile });
+    if (existingMobile) {
+      return res.status(400).json({ message: 'Mobile number already registered' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const ref = String(referralCode || '').trim().slice(0, 64);
 
     const vendor = new Vendor({
       fullName,
       emailAddress,
       password: hashedPassword,
+      mobileNumber: mobile,
+      referralCode: ref,
       otp,
       otpExpire: Date.now() + 5 * 60 * 1000, // 5 mins
     });
@@ -72,6 +96,8 @@ export const verifyOTP = async (req, res) => {
         id: vendor._id,
         fullName: vendor.fullName,
         emailAddress: vendor.emailAddress,
+        mobileNumber: vendor.mobileNumber || '',
+        referralCode: vendor.referralCode || '',
       },
     });
   } catch (error) {
@@ -112,6 +138,8 @@ export const loginVendor = async (req, res) => {
         id: vendor._id,
         fullName: vendor.fullName,
         emailAddress: vendor.emailAddress,
+        mobileNumber: vendor.mobileNumber || '',
+        referralCode: vendor.referralCode || '',
       },
     });
   } catch (error) {

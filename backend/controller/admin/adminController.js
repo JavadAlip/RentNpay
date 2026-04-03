@@ -156,7 +156,7 @@ export const getVendorDetails = async (req, res) => {
   try {
     const { id } = req.params;
     const vendor = await Vendor.findById(id).select(
-      'fullName emailAddress isVerified createdAt',
+      'fullName emailAddress isVerified createdAt mobileNumber referralCode',
     );
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
@@ -252,6 +252,8 @@ export const getVendorDetails = async (req, res) => {
         _id: vendor._id,
         fullName: vendor.fullName,
         emailAddress: vendor.emailAddress,
+        mobileNumber: vendor.mobileNumber || '',
+        referralCode: vendor.referralCode || '',
         isVerified: vendor.isVerified,
         createdAt: vendor.createdAt,
         vendorCode: `VEN-${String(vendor._id).slice(-4).toUpperCase()}`,

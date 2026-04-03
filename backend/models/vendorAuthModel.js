@@ -15,6 +15,16 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    mobileNumber: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    referralCode: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     isVerified: {
       type: Boolean,
       default: false,

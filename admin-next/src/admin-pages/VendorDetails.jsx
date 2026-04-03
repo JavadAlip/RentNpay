@@ -209,7 +209,15 @@ export default function VendorDetails({ vendorId }) {
           </div>
           <div>
             <p className="text-xs text-gray-500">Phone</p>
-            <p className="font-medium text-gray-900">-</p>
+            <p className="font-medium text-gray-900">
+              {vendor.mobileNumber ? String(vendor.mobileNumber) : '-'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Referral code</p>
+            <p className="font-medium text-gray-900">
+              {vendor.referralCode ? String(vendor.referralCode) : '-'}
+            </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Member Since</p>
