@@ -324,6 +324,7 @@ export default function VendorProductAddModal({
 
   const [variantIndices, setVariantIndices] = useState([]);
   const [rentalPricingModel, setRentalPricingModel] = useState('month');
+  const [allowVendorPriceEdit, setAllowVendorPriceEdit] = useState(false);
   const [rentalTiers, setRentalTiers] = useState(defaultMonthTiers());
   const [refundableDeposit, setRefundableDeposit] = useState('');
 
@@ -391,6 +392,7 @@ export default function VendorProductAddModal({
     setSelectedTemplateVariantIndex(0);
     setVariantIndices([]);
     setRentalPricingModel('month');
+    setAllowVendorPriceEdit(false);
     setRentalTiers(defaultMonthTiers());
     setRefundableDeposit('');
     setLogistics({
@@ -430,6 +432,8 @@ export default function VendorProductAddModal({
     const nVar = Array.isArray(p.variants) ? p.variants.length : 0;
     setVariantIndices(nVar ? Array.from({ length: nVar }, (_, i) => i) : []);
     setSelectedTemplateVariantIndex(0);
+    // Existing vendor listings are allowed to edit their own prices.
+    setAllowVendorPriceEdit(true);
     const rc = Array.isArray(p.rentalConfigurations)
       ? p.rentalConfigurations
       : [];
@@ -559,6 +563,16 @@ export default function VendorProductAddModal({
       const vModel =
         t.variants?.[0]?.rentalPricingModel === 'day' ? 'day' : 'month';
       setRentalPricingModel(vModel);
+      // Determine if admin template allows vendor to edit rental prices.
+      const variantsArr = Array.isArray(t.variants) ? t.variants : [];
+      const canEditFromVariants = variantsArr.some(
+        (v) => v && v.allowVendorEditRentalPrices !== false,
+      );
+      const canEditFromRoot =
+        t.allowVendorEditRentalPrices !== undefined
+          ? t.allowVendorEditRentalPrices !== false
+          : false;
+      setAllowVendorPriceEdit(canEditFromVariants || canEditFromRoot);
       setRefundableDeposit(getTemplateRefundableDeposit(t, 0));
       const lv = t.logisticsVerification || {};
       setLogistics((prev) => ({
@@ -905,6 +919,9 @@ export default function VendorProductAddModal({
   // Lock admin-provided details for vendor (view only).
   // Vendor can still edit stock, logistics, and rental terms if not locked.
   const detailsLocked = mode === 'edit' || !!fullTemplate;
+  // Rental pricing fields can be unlocked for vendors when admin explicitly allows it.
+  const rentalFieldsLocked =
+    mode === 'edit' ? false : !!fullTemplate && !allowVendorPriceEdit;
 
   const displayVariants =
     fullTemplate && Array.isArray(fullTemplate.variants)
@@ -1372,9 +1389,9 @@ export default function VendorProductAddModal({
               <SectionCard
                 title="Rental Configuration"
                 icon={DollarSign}
-                showLock={detailsLocked}
+                showLock={rentalFieldsLocked}
                 headerRight={
-                  detailsLocked ? null : (
+                  rentalFieldsLocked ? null : (
                     <button
                       type="button"
                       onClick={addRentalTier}
@@ -1394,7 +1411,7 @@ export default function VendorProductAddModal({
                         ? 'bg-white shadow text-gray-900'
                         : 'text-gray-600'
                     }`}
-                    disabled={detailsLocked}
+                    disabled={rentalFieldsLocked}
                   >
                     Month-wise
                   </button>
@@ -1406,7 +1423,7 @@ export default function VendorProductAddModal({
                         ? 'bg-white shadow text-gray-900'
                         : 'text-gray-600'
                     }`}
-                    disabled={detailsLocked}
+                    disabled={rentalFieldsLocked}
                   >
                     Day-wise
                   </button>
@@ -1446,7 +1463,7 @@ export default function VendorProductAddModal({
                             updateTier(i, 'monthlyRent', e.target.value)
                           }
                           className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
-                          disabled={detailsLocked}
+                          disabled={rentalFieldsLocked}
                         />
                       </div>
                       <label className="text-xs text-gray-600 mt-2 block">
@@ -1462,10 +1479,10 @@ export default function VendorProductAddModal({
                             updateTier(i, 'shippingCharges', e.target.value)
                           }
                           className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
-                          disabled={detailsLocked}
+                          disabled={rentalFieldsLocked}
                         />
                       </div>
-                      {!detailsLocked && rentalTiers.length > 1 ? (
+                      {!rentalFieldsLocked && rentalTiers.length > 1 ? (
                         <button
                           type="button"
                           onClick={() => removeRentalTier(i)}
