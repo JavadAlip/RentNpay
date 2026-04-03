@@ -67,6 +67,15 @@ export const apiGetMyProducts = (token) =>
     },
   });
 
+/** Per-tenure market lows (₹/month or ₹/day) excluding current vendor — manual product modal. */
+export const apiGetVendorMarketLowRentalTenures = (params, token) =>
+  API.get('/vendor/market-low-rental-tenures', {
+    params: params || {},
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Vendor Customers summary
 export const apiGetVendorCustomers = (token) =>
   API.get('/vendor/customers', {

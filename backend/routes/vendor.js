@@ -7,6 +7,7 @@ import {
   updateProduct,
   deleteProduct,
   getProductById,
+  getMarketLowRentalTenures,
 } from '../controller/vendor/productController.js';
 import {
   getListingTemplateForVendor,
@@ -57,6 +58,9 @@ router.post(
 
 // Get My Products
 router.get('/my-products', vendorAuth, getMyProducts);
+
+// Lowest per-tenure rates (other vendors) — manual listing “Market low”
+router.get('/market-low-rental-tenures', vendorAuth, getMarketLowRentalTenures);
 
 // Browse admin listing templates (active only) — for “Add from standard catalog”
 router.get('/listing-templates', vendorAuth, listListingTemplatesForVendor);

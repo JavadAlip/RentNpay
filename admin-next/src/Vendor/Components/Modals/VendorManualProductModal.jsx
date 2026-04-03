@@ -3,7 +3,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, DollarSign, Filter, Search, Tag } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Filter,
+  Search,
+  Tag,
+  TrendingDown,
+  Zap,
+} from 'lucide-react';
+import { apiGetVendorMarketLowRentalTenures } from '@/service/api';
 
 import {
   getCategories,
@@ -98,9 +108,7 @@ function derivedPriceLabelFromVariantRentals(v0) {
     return d === 3 ? `₹${f}/3d` : `₹${f}/${d}d`;
   }
   const t =
-    configs.find(
-      (c) => c?.periodUnit !== 'day' && toNum(c?.months, 0) === 3,
-    ) ||
+    configs.find((c) => c?.periodUnit !== 'day' && toNum(c?.months, 0) === 3) ||
     configs.find(
       (c) =>
         (c?.periodUnit === 'month' || !c?.periodUnit) &&
@@ -380,6 +388,11 @@ export default function VendorManualProductModal({
   // ── vendor-specific logistics extras ───────────────────────────────────────
   const [deliveryTimelineValue, setDeliveryTimelineValue] = useState('');
   const [deliveryTimelineUnit, setDeliveryTimelineUnit] = useState('Days');
+  const [marketLowTenures, setMarketLowTenures] = useState({
+    month: {},
+    day: {},
+  });
+  const [marketLowLoading, setMarketLowLoading] = useState(false);
 
   // ── reset on open ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -392,7 +405,44 @@ export default function VendorManualProductModal({
     setStandardFilterOpen(false);
     setDeliveryTimelineValue('');
     setDeliveryTimelineUnit('Days');
+    setMarketLowTenures({ month: {}, day: {} });
+    setMarketLowLoading(false);
   }, [isOpen, dispatch]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
+    const cat = String(form.category || '').trim();
+    const sub = String(form.subCategory || '').trim();
+    if (!token || !cat || !sub) {
+      setMarketLowTenures({ month: {}, day: {} });
+      return undefined;
+    }
+    let cancelled = false;
+    setMarketLowLoading(true);
+    apiGetVendorMarketLowRentalTenures(
+      { category: cat, subCategory: sub },
+      token,
+    )
+      .then((res) => {
+        if (cancelled) return;
+        const m = res?.data?.month || {};
+        const d = res?.data?.day || {};
+        setMarketLowTenures({ month: m, day: d });
+      })
+      .catch(() => {
+        if (!cancelled) setMarketLowTenures({ month: {}, day: {} });
+      })
+      .finally(() => {
+        if (!cancelled) setMarketLowLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, form.category, form.subCategory]);
 
   // ── sync category select when form.category changes (template apply) ────────
   useEffect(() => {
@@ -802,9 +852,7 @@ export default function VendorManualProductModal({
       .find((pr) => pr.length > 0);
     const fromRental = derivedPriceLabelFromVariantRentals(v0);
     const derivedPrice =
-      trimmedPrice !== ''
-        ? trimmedPrice
-        : anyVariantPrice || fromRental || '0';
+      trimmedPrice !== '' ? trimmedPrice : anyVariantPrice || fromRental || '0';
 
     const sumVariantStock = variants.reduce(
       (a, v) => a + (Number(v.stock) || 0),
@@ -924,15 +972,6 @@ export default function VendorManualProductModal({
               : 0;
       const rent = toNum(rentRaw, 0);
 
-      const shipRaw =
-        cfg?.customerShipping != null && up(cfg?.customerShipping) !== ''
-          ? cfg.customerShipping
-          : cfg?.vendorShipping != null && up(cfg?.vendorShipping) !== ''
-            ? cfg.vendorShipping
-            : cfg?.shippingCharges != null && up(cfg?.shippingCharges) !== ''
-              ? cfg.shippingCharges
-              : 0;
-
       return {
         months,
         days,
@@ -940,7 +979,7 @@ export default function VendorManualProductModal({
         label: up(cfg?.label),
         pricePerDay: rent,
         customerRent: rent,
-        shippingCharges: toNum(shipRaw, 0),
+        shippingCharges: 0,
       };
     });
 
@@ -1450,7 +1489,9 @@ export default function VendorManualProductModal({
                             Rental configuration
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Customer &amp; vendor pricing by term
+                            Set competitive rental prices for different tenure
+                            options. Market low shows the best rate among other
+                            vendors in this category (you’re excluded).
                           </p>
                         </div>
                       </div>
@@ -1530,127 +1571,183 @@ export default function VendorManualProductModal({
                       </button>
                     </div>
 
-                    {/* Single rental configuration section (Customer fields only) */}
+                    {/* Tenure cards: market low + your price + match */}
                     {(() => {
                       const rentField = 'customerRent';
-                      const shipField = 'customerShipping';
-                      const rentLabel =
-                        variant.rentalPricingModel === 'day'
-                          ? 'Daily rent'
-                          : 'Monthly rent';
-
                       return (
                         <div>
+                          {!String(form.category || '').trim() ||
+                          !String(form.subCategory || '').trim() ? (
+                            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                              Select category and sub-category above to load
+                              market-low benchmarks for each term.
+                            </p>
+                          ) : null}
                           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                             {(variant.rentalConfigurations || []).map(
-                              (cfg, cidx) => (
-                                <div
-                                  key={`rental-${cidx}`}
-                                  className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2"
-                                >
-                                  <div className="flex items-start justify-between gap-1">
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                      <input
-                                        type="text"
-                                        value={cfg.tierLabel || ''}
-                                        onChange={(e) =>
-                                          updateVariantRentalConfig(
-                                            index,
-                                            cidx,
-                                            'tierLabel',
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="SHORT TERM"
-                                        className="w-full text-[10px] font-semibold tracking-wide text-gray-400 uppercase border border-gray-200 rounded-lg px-2 py-1"
-                                      />
-                                      <input
-                                        type="text"
-                                        value={cfg.label || ''}
-                                        onChange={(e) =>
-                                          updateVariantRentalConfig(
-                                            index,
-                                            cidx,
-                                            'label',
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder={
-                                          variant.rentalPricingModel === 'day'
-                                            ? '3 Days'
-                                            : '3 Months'
-                                        }
-                                        className="w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2 py-1"
-                                      />
-                                    </div>
-                                    {(variant.rentalConfigurations || [])
-                                      .length > 1 ? (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          removeVariantRentalTerm(index, cidx)
-                                        }
-                                        className="shrink-0 text-gray-400 hover:text-red-600 text-sm px-1"
-                                        aria-label="Remove term"
-                                      >
-                                        ×
-                                      </button>
+                              (cfg, cidx) => {
+                                const isDayModel =
+                                  variant.rentalPricingModel === 'day';
+                                const tenureLen = isDayModel
+                                  ? numOr(cfg.days, 0)
+                                  : numOr(cfg.months, 0);
+                                const lowMap = isDayModel
+                                  ? marketLowTenures.day
+                                  : marketLowTenures.month;
+                                const perUnit =
+                                  tenureLen > 0
+                                    ? (lowMap?.[tenureLen] ??
+                                      lowMap?.[String(tenureLen)])
+                                    : undefined;
+                                const hasLow =
+                                  perUnit != null &&
+                                  Number.isFinite(Number(perUnit)) &&
+                                  Number(perUnit) > 0;
+                                const marketLine = marketLowLoading
+                                  ? 'Loading…'
+                                  : hasLow
+                                    ? isDayModel
+                                      ? `₹${formatInrCompact(Number(perUnit))}/day`
+                                      : `₹${formatInrCompact(Number(perUnit))}/mo`
+                                    : '—';
+                                const onMatchLowest = () => {
+                                  if (!hasLow || tenureLen <= 0) return;
+                                  const total = Math.round(
+                                    Number(perUnit) * tenureLen,
+                                  );
+                                  updateVariantRentalConfig(
+                                    index,
+                                    cidx,
+                                    rentField,
+                                    String(total),
+                                  );
+                                };
+                                const showPopular =
+                                  !isDayModel && numOr(cfg.months, 0) === 12;
+
+                                return (
+                                  <div
+                                    key={`rental-${cidx}`}
+                                    className="relative rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2.5"
+                                  >
+                                    {showPopular ? (
+                                      <span className="absolute top-2 right-2 rounded-full bg-orange-500 text-[9px] font-bold text-white px-2 py-0.5">
+                                        POPULAR
+                                      </span>
                                     ) : null}
-                                  </div>
-
-                                  {/* Rent field */}
-                                  <div>
-                                    <label className="block text-[11px] text-gray-500 mb-1">
-                                      {rentLabel}
-                                    </label>
-                                    <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
-                                      <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
-                                        ₹
-                                      </span>
-                                      <input
-                                        type="number"
-                                        value={cfg[rentField] ?? ''}
-                                        onChange={(e) =>
-                                          updateVariantRentalConfig(
-                                            index,
-                                            cidx,
-                                            rentField,
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="0"
-                                        className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
-                                      />
+                                    <div className="flex items-start justify-between gap-1 pr-14">
+                                      <div className="min-w-0 flex-1 space-y-1">
+                                        <input
+                                          type="text"
+                                          value={cfg.tierLabel || ''}
+                                          onChange={(e) =>
+                                            updateVariantRentalConfig(
+                                              index,
+                                              cidx,
+                                              'tierLabel',
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder="SHORT TERM"
+                                          className="w-full text-[10px] font-semibold tracking-wide text-gray-400 uppercase border border-gray-200 rounded-lg px-2 py-1"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={cfg.label || ''}
+                                          onChange={(e) =>
+                                            updateVariantRentalConfig(
+                                              index,
+                                              cidx,
+                                              'label',
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            isDayModel ? '3 Days' : '3 Months'
+                                          }
+                                          className="w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2 py-1"
+                                        />
+                                      </div>
+                                      {(variant.rentalConfigurations || [])
+                                        .length > 1 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeVariantRentalTerm(index, cidx)
+                                          }
+                                          className="shrink-0 text-gray-400 hover:text-red-600 text-sm px-1"
+                                          aria-label="Remove term"
+                                        >
+                                          ×
+                                        </button>
+                                      ) : null}
                                     </div>
-                                  </div>
 
-                                  {/* Shipping field */}
-                                  <div>
-                                    <label className="block text-[11px] text-gray-500 mb-1">
-                                      Shipping charges
-                                    </label>
-                                    <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
-                                      <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
-                                        ₹
-                                      </span>
-                                      <input
-                                        type="number"
-                                        value={cfg[shipField] ?? ''}
-                                        onChange={(e) =>
-                                          updateVariantRentalConfig(
-                                            index,
-                                            cidx,
-                                            shipField,
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="0"
-                                        className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
-                                      />
+                                    <div className="rounded-lg bg-emerald-50/80 border border-emerald-100 px-2.5 py-2">
+                                      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                        <TrendingDown
+                                          className="h-3.5 w-3.5 shrink-0"
+                                          strokeWidth={2.5}
+                                        />
+                                        Market low
+                                      </div>
+                                      <p className="text-sm font-semibold text-emerald-700 tabular-nums mt-0.5">
+                                        {marketLine}
+                                      </p>
+                                      <p className="text-[10px] text-emerald-600/90 mt-0.5">
+                                        {isDayModel
+                                          ? 'Lowest per-day rate for this tenure'
+                                          : 'Lowest per-month rate for this tenure'}
+                                      </p>
                                     </div>
+
+                                    <div>
+                                      <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                                        Your price
+                                      </label>
+                                      {/* <p className="text-[10px] text-gray-500 mb-1">
+                                        Total rent for this term (same basis as
+                                        storefront)
+                                      </p> */}
+                                      <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
+                                        <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                          ₹
+                                        </span>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={cfg[rentField] ?? ''}
+                                          onChange={(e) =>
+                                            updateVariantRentalConfig(
+                                              index,
+                                              cidx,
+                                              rentField,
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder="0"
+                                          className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
+                                        />
+                                      </div>
+                                      {/* <p className="text-[10px] text-gray-400 mt-1">
+                                        {isDayModel
+                                          ? `For ${tenureLen || '—'} day block`
+                                          : `For ${tenureLen || '—'} month block`}
+                                      </p> */}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={onMatchLowest}
+                                      disabled={!hasLow || tenureLen <= 0}
+                                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-45 disabled:cursor-not-allowed"
+                                    >
+                                      <Zap className="h-3.5 w-3.5" />
+                                      Match lowest
+                                    </button>
                                   </div>
-                                </div>
-                              ),
+                                );
+                              },
                             )}
                           </div>
                         </div>

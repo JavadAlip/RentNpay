@@ -269,3 +269,106 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+function pickProductRentalConfigurations(product) {
+  const top = product?.rentalConfigurations;
+  if (Array.isArray(top) && top.length) return top;
+  const v0 = product?.variants?.[0];
+  if (
+    Array.isArray(v0?.rentalConfigurations) &&
+    v0.rentalConfigurations.length
+  ) {
+    return v0.rentalConfigurations;
+  }
+  return [];
+}
+
+function tierRentAmount(cfg) {
+  const n = (k) => {
+    const v = Number(String(cfg?.[k] ?? '').replace(/,/g, ''));
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  };
+  return n('customerRent') || n('pricePerDay') || n('vendorRent') || 0;
+}
+
+/**
+ * Lowest per-month / per-day rate by tenure across other vendors’ rental listings
+ * (excludes current vendor). Used in manual product modal “Market low”.
+ */
+export const getMarketLowRentalTenures = async (req, res) => {
+  try {
+    const category = String(req.query.category || '').trim();
+    const subCategory = String(req.query.subCategory || '').trim();
+    const vendorId = req.vendor._id;
+
+    const baseQuery = {
+      type: 'Rental',
+      submissionStatus: { $in: ['published', 'pending_approval'] },
+      vendorId: { $ne: vendorId },
+    };
+
+    const narrowQuery = { ...baseQuery };
+    if (category) narrowQuery.category = category;
+    if (subCategory) narrowQuery.subCategory = subCategory;
+
+    let products = await Product.find(narrowQuery)
+      .select('rentalConfigurations variants')
+      .lean();
+
+    if ((!products || products.length === 0) && category && subCategory) {
+      products = await Product.find({
+        ...baseQuery,
+        category,
+      })
+        .select('rentalConfigurations variants')
+        .lean();
+    }
+
+    if (!products || products.length === 0) {
+      products = await Product.find(baseQuery)
+        .select('rentalConfigurations variants')
+        .lean();
+    }
+
+    const monthMin = {};
+    const dayMin = {};
+
+    for (const p of products) {
+      const configs = pickProductRentalConfigurations(p);
+      for (const cfg of configs) {
+        const periodUnit = cfg?.periodUnit === 'day' ? 'day' : 'month';
+        const amt = tierRentAmount(cfg);
+        if (!amt || amt <= 0) continue;
+
+        if (periodUnit === 'day') {
+          const days = Number(cfg?.days) || 0;
+          if (days <= 0) continue;
+          const perDay = amt / days;
+          const prev = dayMin[days];
+          if (prev == null || perDay < prev) dayMin[days] = perDay;
+        } else {
+          const months = Number(cfg?.months) || 0;
+          if (months <= 0) continue;
+          const perMonth = amt / months;
+          const prev = monthMin[months];
+          if (prev == null || perMonth < prev) monthMin[months] = perMonth;
+        }
+      }
+    }
+
+    const roundMap = (obj) => {
+      const out = {};
+      for (const k of Object.keys(obj)) {
+        out[String(k)] = Math.round(obj[k]);
+      }
+      return out;
+    };
+
+    res.json({
+      month: roundMap(monthMin),
+      day: roundMap(dayMin),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
