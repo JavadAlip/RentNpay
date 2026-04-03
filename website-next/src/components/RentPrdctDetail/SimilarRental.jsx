@@ -6,6 +6,7 @@ import { apiGetStorefrontVendorProducts } from '@/lib/api';
 import {
   getRentalListingAmount,
   getRentalListingSuffix,
+  getProductDeliveryEtaLabel,
 } from '@/lib/rentalPriceDisplay';
 import { useRouter } from 'next/navigation';
 
@@ -142,7 +143,7 @@ const SimilarRental = () => {
                       {inStock ? (
                         <span className="flex items-center gap-1 text-[10px] sm:text-xs bg-blue-100 text-blue-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full w-fit">
                           <Truck size={10} />
-                          2-4 days
+                          {getProductDeliveryEtaLabel(item) || 'Varies'}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-[10px] sm:text-xs bg-purple-100 text-purple-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full w-fit">

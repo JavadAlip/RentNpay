@@ -12,6 +12,7 @@ import {
 import {
   getRentalListingAmount,
   getRentalListingSuffix,
+  getProductDeliveryEtaLabel,
 } from '@/lib/rentalPriceDisplay';
 import { useSelector } from 'react-redux';
 
@@ -217,7 +218,9 @@ const Trending = () => {
               const hasOffer = !!offer && discount > 0;
               const tag = offer?.sticker || 'Bestseller';
               const statusType = item.stock > 0 ? 'delivery' : 'pickup';
-              const status = item.stock > 0 ? '2-4 days' : 'Self-Pickup';
+              const deliveryEta = getProductDeliveryEtaLabel(item);
+              const status =
+                item.stock > 0 ? deliveryEta || 'Varies' : 'Self-Pickup';
               const rating = (
                 4 +
                 ((item.productName?.length || 3) % 10) / 10

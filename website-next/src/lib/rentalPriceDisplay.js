@@ -99,3 +99,18 @@ export function getProductListPriceValue(product) {
   }
   return parseDigitsPrice(product.price);
 }
+
+/**
+ * Compact delivery ETA from `logisticsVerification` (storefront cards / lists).
+ * Returns null when missing or invalid — callers may show a short fallback.
+ */
+export function getProductDeliveryEtaLabel(product) {
+  const lv = product?.logisticsVerification || {};
+  const n = Number(lv.deliveryTimelineValue);
+  const unit = String(lv.deliveryTimelineUnit || 'Days').toLowerCase();
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (unit === 'hours') {
+    return `${n} hour${n !== 1 ? 's' : ''}`;
+  }
+  return `${n} day${n !== 1 ? 's' : ''}`;
+}

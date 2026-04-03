@@ -5,6 +5,7 @@ import { Heart, Bell, ShoppingCart, Star, Truck, MapPin } from 'lucide-react';
 import {
   getRentalListingAmount,
   getRentalListingSuffix,
+  getProductDeliveryEtaLabel,
 } from '@/lib/rentalPriceDisplay';
 
 const parsePrice = (raw) => {
@@ -27,6 +28,10 @@ const ProductCard = ({ product, offer }) => {
     ? Math.max(0, Math.round(base - (base * discount) / 100))
     : base;
   const inStock = Number(stock || 0) > 0;
+  const deliveryEta = getProductDeliveryEtaLabel(product);
+  const deliveryLabel = inStock
+    ? deliveryEta || 'Varies'
+    : 'Self-Pickup';
   const rating = (4 + ((productName?.length || 3) % 10) / 10).toFixed(1);
 
   return (
@@ -65,7 +70,7 @@ const ProductCard = ({ product, offer }) => {
             ) : (
               <MapPin className="w-3 h-3" />
             )}
-            {inStock ? '2-4 days' : 'Self-Pickup'}
+            {deliveryLabel}
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-white font-semibold">
             <Star className="w-3 h-3 fill-white" />
