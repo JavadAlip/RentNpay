@@ -72,6 +72,49 @@ const toNum = (v, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+function formatInrCompact(n) {
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
+}
+
+/** When form-level price is empty, derive label from first variant rental tiers */
+function derivedPriceLabelFromVariantRentals(v0) {
+  const configs = Array.isArray(v0?.rentalConfigurations)
+    ? v0.rentalConfigurations
+    : [];
+  if (!configs.length) return '';
+  const isDay = configs.some((c) => c?.periodUnit === 'day');
+  const rent = (c) =>
+    toNum(c?.customerRent ?? c?.vendorRent ?? c?.pricePerDay, 0);
+  if (isDay) {
+    const t =
+      configs.find((c) => c?.periodUnit === 'day' && toNum(c?.days, 0) === 3) ||
+      configs.find((c) => c?.periodUnit === 'day');
+    if (!t) return '';
+    const amt = rent(t);
+    const d = toNum(t?.days, 3) || 3;
+    const f = formatInrCompact(amt);
+    if (!f) return '';
+    return d === 3 ? `₹${f}/3d` : `₹${f}/${d}d`;
+  }
+  const t =
+    configs.find(
+      (c) => c?.periodUnit !== 'day' && toNum(c?.months, 0) === 3,
+    ) ||
+    configs.find(
+      (c) =>
+        (c?.periodUnit === 'month' || !c?.periodUnit) &&
+        toNum(c?.months, 0) > 0,
+    ) ||
+    configs.find((c) => toNum(c?.months, 0) > 0);
+  if (!t) return '';
+  const amt = rent(t);
+  const m = toNum(t?.months, 3) || 3;
+  const f = formatInrCompact(amt);
+  if (!f) return '';
+  return m === 3 ? `₹${f}/3mo` : `₹${f}/${m}mo`;
+}
+
 let _variantKeySeq = 0;
 function newVariantClientKey() {
   // Deterministic key generator to avoid SSR/CSR hydration mismatches.
@@ -750,18 +793,24 @@ export default function VendorManualProductModal({
       return;
     }
 
-    const trimmedPrice = String(form.price ?? '').trim();
-    const anyVariantPrice = (form.variants || [])
-      .map((v) => String(v?.price ?? '').trim())
-      .find((p) => p.length > 0);
-    const derivedPrice =
-      trimmedPrice !== '' ? trimmedPrice : anyVariantPrice || '0';
+    const variants = Array.isArray(form.variants) ? form.variants : [];
+    const v0 = variants[0] || {};
 
-    const sumVariantStock = (form.variants || []).reduce(
+    const trimmedPrice = String(form.price ?? '').trim();
+    const anyVariantPrice = variants
+      .map((v) => String(v?.price ?? '').trim())
+      .find((pr) => pr.length > 0);
+    const fromRental = derivedPriceLabelFromVariantRentals(v0);
+    const derivedPrice =
+      trimmedPrice !== ''
+        ? trimmedPrice
+        : anyVariantPrice || fromRental || '0';
+
+    const sumVariantStock = variants.reduce(
       (a, v) => a + (Number(v.stock) || 0),
       0,
     );
-    const firstVariantStock = Number(form.variants[0]?.stock) || 0;
+    const firstVariantStock = Number(variants[0]?.stock) || 0;
     const formStockStr = form.stock;
     const hasFormStock =
       formStockStr !== '' &&
@@ -772,9 +821,6 @@ export default function VendorManualProductModal({
       ? Number(formStockStr)
       : sumVariantStock || firstVariantStock;
     const derivedStock = String(derivedStockNum);
-
-    const variants = Array.isArray(form.variants) ? form.variants : [];
-    const v0 = variants[0] || {};
 
     // Backend requires product-level images/existingImages.
     const images = [];

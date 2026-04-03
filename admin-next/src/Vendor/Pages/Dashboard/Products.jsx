@@ -16,6 +16,84 @@ import VendorProductAddModal from '../../Components/Modals/VendorProductAddModal
 import VendorManualProductModal from '../../Components/Modals/VendorManualProductModal';
 import { apiGetMyVendorKyc } from '@/service/api';
 
+function formatInrAmount(n) {
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
+}
+
+function pickProductRentalConfigurations(product) {
+  const top = product?.rentalConfigurations;
+  if (Array.isArray(top) && top.length) return top;
+  const v0 = product?.variants?.[0];
+  if (Array.isArray(v0?.rentalConfigurations) && v0.rentalConfigurations.length) {
+    return v0.rentalConfigurations;
+  }
+  return [];
+}
+
+function tierRentAmount(tier) {
+  const n = (k) => {
+    const v = Number(String(tier?.[k] ?? '').replace(/,/g, ''));
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  };
+  return n('customerRent') || n('pricePerDay') || n('vendorRent') || 0;
+}
+
+/** Subtitle under product name: 3d / 3mo from rental tiers, else legacy `price` */
+function getInventoryPriceLabel(product) {
+  if (product?.type && String(product.type) !== 'Rental') {
+    const raw = product?.price;
+    if (raw != null && String(raw).trim() !== '' && String(raw).trim() !== '0') {
+      return String(raw).trim();
+    }
+    return '—';
+  }
+
+  const configs = pickProductRentalConfigurations(product);
+  if (configs.length) {
+    const isDay = configs.some((c) => c?.periodUnit === 'day');
+    if (isDay) {
+      const tier =
+        configs.find(
+          (c) => c?.periodUnit === 'day' && Number(c?.days) === 3,
+        ) || configs.find((c) => c?.periodUnit === 'day');
+      if (tier) {
+        const amt = tierRentAmount(tier);
+        const d = Number(tier?.days) > 0 ? Number(tier.days) : 3;
+        const f = formatInrAmount(amt);
+        if (f) return d === 3 ? `₹${f} / 3d` : `₹${f} / ${d}d`;
+      }
+    } else {
+      const tier =
+        configs.find(
+          (c) =>
+            c?.periodUnit !== 'day' &&
+            Number(c?.months) === 3,
+        ) ||
+        configs.find(
+          (c) =>
+            c?.periodUnit === 'month' ||
+            (!c?.periodUnit && Number(c?.months) > 0),
+        ) ||
+        configs.find((c) => Number(c?.months) > 0);
+      if (tier) {
+        const amt = tierRentAmount(tier);
+        const m = Number(tier?.months) > 0 ? Number(tier.months) : 3;
+        const f = formatInrAmount(amt);
+        if (f) return m === 3 ? `₹${f} / 3mo` : `₹${f} / ${m}mo`;
+      }
+    }
+  }
+
+  const raw = product?.price;
+  const s = raw != null ? String(raw).trim() : '';
+  if (s && s !== '0') {
+    if (/[₹]|rs\.?|\/mo|\/month|\/d|\/day/i.test(s)) return s;
+    return `₹${s}/mo`;
+  }
+  return '—';
+}
+
 const Products = () => {
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.product);
@@ -404,7 +482,7 @@ const Products = () => {
                               <div>
                                 <p className="font-medium">{p.productName}</p>
                                 <p className="text-xs text-gray-500">
-                                  {p.price}
+                                  {getInventoryPriceLabel(p)}
                                 </p>
                               </div>
                             </div>
