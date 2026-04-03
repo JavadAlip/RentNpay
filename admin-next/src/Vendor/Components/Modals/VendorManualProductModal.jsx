@@ -976,6 +976,8 @@ export default function VendorManualProductModal({
       stock: toNum(derivedStock, 0),
       status: 'Active',
       submissionStatus: 'published',
+      createdVia: 'manual',
+      allowVendorEditRentalPrices: true,
     };
 
     const ok = await onSubmit?.(payload);

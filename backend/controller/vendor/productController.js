@@ -78,6 +78,16 @@ const normalizeProductPayload = (body) => {
   data.existingImages = parseJsonField(body.existingImages, []);
   data.stock = toNumber(body.stock, 0);
   data.status = deriveStockStatus(data.stock);
+  // Creation metadata (optional; forwarded from frontend when available)
+  if (body.createdVia === 'manual' || body.createdVia === 'template') {
+    data.createdVia = body.createdVia;
+  }
+  if (
+    body.allowVendorEditRentalPrices === true ||
+    body.allowVendorEditRentalPrices === 'true'
+  ) {
+    data.allowVendorEditRentalPrices = true;
+  }
   const subs = ['draft', 'pending_approval', 'published'];
   data.submissionStatus = subs.includes(body.submissionStatus)
     ? body.submissionStatus

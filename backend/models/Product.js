@@ -148,6 +148,17 @@ const productSchema = new mongoose.Schema(
       enum: ['Active', 'Low Stock', 'Out of Stock'],
       default: 'Active',
     },
+    /** How this vendor product was created: 'template' (from admin listing) or 'manual'. */
+    createdVia: {
+      type: String,
+      enum: ['template', 'manual'],
+      default: 'manual',
+    },
+    /** Whether admin allowed this vendor listing to edit rental prices (snapshotted at creation). */
+    allowVendorEditRentalPrices: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

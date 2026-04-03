@@ -316,6 +316,8 @@ export default function VendorProductAddModal({
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [specs, setSpecs] = useState({});
+  /** Editable label/value rows when vendor may edit specs (manual listing). */
+  const [specRowList, setSpecRowList] = useState([{ label: '', value: '' }]);
 
   // Which variant's spec grid should be shown in the form.
   // We keep this as the template's variant index (not the filtered list index).
@@ -389,6 +391,7 @@ export default function VendorProductAddModal({
     setShortDescription('');
     setDescription('');
     setSpecs({});
+    setSpecRowList([{ label: '', value: '' }]);
     setSelectedTemplateVariantIndex(0);
     setVariantIndices([]);
     setRentalPricingModel('month');
@@ -416,11 +419,16 @@ export default function VendorProductAddModal({
     setCondition(p.condition || 'Good');
     setShortDescription(p.shortDescription || '');
     setDescription(p.description || '');
-    setSpecs(
+    const specObj =
       p.specifications && typeof p.specifications === 'object'
         ? { ...p.specifications }
-        : {},
-    );
+        : {};
+    setSpecs(specObj);
+    const specRows = Object.entries(specObj).map(([label, value]) => ({
+      label,
+      value: String(value ?? ''),
+    }));
+    setSpecRowList(specRows.length ? specRows : [{ label: '', value: '' }]);
     setExistingImages(
       Array.isArray(p.images) && p.images.length
         ? p.images.filter(Boolean).slice(0, 5)
@@ -432,8 +440,15 @@ export default function VendorProductAddModal({
     const nVar = Array.isArray(p.variants) ? p.variants.length : 0;
     setVariantIndices(nVar ? Array.from({ length: nVar }, (_, i) => i) : []);
     setSelectedTemplateVariantIndex(0);
-    // Existing vendor listings are allowed to edit their own prices.
-    setAllowVendorPriceEdit(true);
+    // Existing listings: treat anything that is not explicitly "template" as manual.
+    const createdVia = p.createdVia === 'template' ? 'template' : 'manual';
+    if (createdVia === 'manual') {
+      setAllowVendorPriceEdit(true);
+    } else if (p.allowVendorEditRentalPrices !== undefined) {
+      setAllowVendorPriceEdit(p.allowVendorEditRentalPrices !== false);
+    } else {
+      setAllowVendorPriceEdit(false);
+    }
     const rc = Array.isArray(p.rentalConfigurations)
       ? p.rentalConfigurations
       : [];
@@ -675,6 +690,23 @@ export default function VendorProductAddModal({
     );
   };
 
+  const updateSpecRow = (idx, field, value) => {
+    setSpecRowList((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
+    );
+  };
+
+  const addSpecRow = () => {
+    setSpecRowList((prev) => [...prev, { label: '', value: '' }]);
+  };
+
+  const removeSpecRow = (idx) => {
+    setSpecRowList((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      return next.length ? next : [{ label: '', value: '' }];
+    });
+  };
+
   const buildVariantsPayload = () => {
     if (fullTemplate && Array.isArray(fullTemplate.variants)) {
       // Template "variant specs" sometimes come as top-level `template.specifications`
@@ -862,6 +894,13 @@ export default function VendorProductAddModal({
         ? `₹${rentalTiers[0].monthlyRent}/mo`
         : fullTemplate?.price || '0';
 
+    const createdVia =
+      mode === 'create'
+        ? 'template'
+        : initialData?.createdVia === 'template'
+          ? 'template'
+          : 'manual';
+
     onSubmit({
       productName: String(productName).trim(),
       type: 'Rental',
@@ -887,6 +926,8 @@ export default function VendorProductAddModal({
       stock: toNum(stock, 0),
       status: 'Active',
       submissionStatus,
+      createdVia,
+      allowVendorEditRentalPrices: allowVendorPriceEdit,
     });
   };
 
@@ -909,6 +950,25 @@ export default function VendorProductAddModal({
     if (s) setSubCategoryId(s._id);
   }, [isOpen, mode, initialData, subCategories]);
 
+  // Keep `specs` in sync when vendor can edit specifications (manual / non-template).
+  const createdViaInitialForSync =
+    initialData?.createdVia === 'template' ? 'template' : 'manual';
+  const isTemplateBasedForSync =
+    !!fullTemplate || createdViaInitialForSync === 'template';
+  const detailsLockedForSync =
+    (mode === 'create' && !!fullTemplate) ||
+    (mode === 'edit' && isTemplateBasedForSync);
+
+  useEffect(() => {
+    if (!isOpen || detailsLockedForSync) return;
+    const next = {};
+    specRowList.forEach(({ label, value }) => {
+      const k = String(label).trim();
+      if (k) next[k] = String(value ?? '').trim();
+    });
+    setSpecs(next);
+  }, [isOpen, detailsLockedForSync, specRowList]);
+
   if (!isOpen) return null;
 
   const showDetailSections =
@@ -916,12 +976,20 @@ export default function VendorProductAddModal({
     fullTemplate ||
     (customListing && categoryId && subCategoryId);
 
-  // Lock admin-provided details for vendor (view only).
-  // Vendor can still edit stock, logistics, and rental terms if not locked.
-  const detailsLocked = mode === 'edit' || !!fullTemplate;
+  // Template-based vs manual listings
+  const createdViaInitial =
+    initialData?.createdVia === 'template' ? 'template' : 'manual';
+  const isTemplateBased = !!fullTemplate || createdViaInitial === 'template';
+
+  // Lock admin-provided details for vendor (view only) only for template-based listings.
+  const detailsLocked =
+    (mode === 'create' && !!fullTemplate) ||
+    (mode === 'edit' && isTemplateBased);
+
   // Rental pricing fields can be unlocked for vendors when admin explicitly allows it.
   const rentalFieldsLocked =
-    mode === 'edit' ? false : !!fullTemplate && !allowVendorPriceEdit;
+    (mode === 'create' && !!fullTemplate && !allowVendorPriceEdit) ||
+    (mode === 'edit' && isTemplateBased && !allowVendorPriceEdit);
 
   const displayVariants =
     fullTemplate && Array.isArray(fullTemplate.variants)
@@ -1070,13 +1138,15 @@ export default function VendorProductAddModal({
                     className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={onCustomListing}
-                  className="inline-flex items-center justify-center gap-1 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 shrink-0"
-                >
-                  + Custom Listing
-                </button>
+                {mode === 'create' ? (
+                  <button
+                    type="button"
+                    onClick={onCustomListing}
+                    className="inline-flex items-center justify-center gap-1 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 shrink-0"
+                  >
+                    + Custom Listing
+                  </button>
+                ) : null}
               </div>
               <div className="max-h-[min(280px,40vh)] overflow-y-auto rounded-xl border border-gray-100">
                 {loadingList && templates.length === 0 ? (
@@ -1300,22 +1370,79 @@ export default function VendorProductAddModal({
                     />
                   </div>
                 </div>
-                {specEntries.length > 0 ? (
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {specEntries.map(([k, v]) => (
-                      <div key={k}>
-                        <label className="text-xs text-gray-500 capitalize">
-                          {k}
-                        </label>
-                        <input
-                          value={String(v)}
-                          readOnly
-                          className="mt-1 w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    ))}
+                {detailsLocked ? (
+                  specEntries.length > 0 ? (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {specEntries.map(([k, v]) => (
+                        <div key={k}>
+                          <label className="text-xs text-gray-500 capitalize">
+                            {k}
+                          </label>
+                          <input
+                            value={String(v)}
+                            readOnly
+                            className="mt-1 w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-800">
+                        Product specifications
+                      </p>
+                      <button
+                        type="button"
+                        onClick={addSpecRow}
+                        className="shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700"
+                      >
+                        + Add specification
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {specRowList.map((row, idx) => (
+                        <div
+                          key={idx}
+                          className="flex flex-wrap gap-2 items-end rounded-xl border border-gray-100 bg-white p-3"
+                        >
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="text-xs text-gray-500">Label</label>
+                            <input
+                              value={row.label}
+                              onChange={(e) =>
+                                updateSpecRow(idx, 'label', e.target.value)
+                              }
+                              placeholder="e.g. Weight"
+                              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="text-xs text-gray-500">Value</label>
+                            <input
+                              value={row.value}
+                              onChange={(e) =>
+                                updateSpecRow(idx, 'value', e.target.value)
+                              }
+                              placeholder="e.g. 200g"
+                              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                            />
+                          </div>
+                          {specRowList.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => removeSpecRow(idx)}
+                              className="text-xs text-red-600 hover:underline pb-1"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ) : null}
+                )}
               </SectionCard>
 
               {fullTemplate && displayVariants.length > 0 ? (

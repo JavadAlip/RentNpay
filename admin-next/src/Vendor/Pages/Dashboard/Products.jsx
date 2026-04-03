@@ -238,6 +238,15 @@ const Products = () => {
     payload.append('stock', String(form.stock));
     payload.append('status', status);
     payload.append('submissionStatus', form.submissionStatus || 'published');
+    if (form.createdVia) {
+      payload.append('createdVia', form.createdVia);
+    }
+    if (form.allowVendorEditRentalPrices !== undefined) {
+      payload.append(
+        'allowVendorEditRentalPrices',
+        String(form.allowVendorEditRentalPrices),
+      );
+    }
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
@@ -298,6 +307,15 @@ const Products = () => {
     payload.append('stock', String(form.stock));
     payload.append('status', status);
     payload.append('submissionStatus', form.submissionStatus || 'published');
+    if (form.createdVia) {
+      payload.append('createdVia', form.createdVia);
+    }
+    if (form.allowVendorEditRentalPrices !== undefined) {
+      payload.append(
+        'allowVendorEditRentalPrices',
+        String(form.allowVendorEditRentalPrices),
+      );
+    }
     if (Array.isArray(form.images) && form.images.length) {
       form.images.slice(0, 5).forEach((img) => payload.append('images', img));
     }
@@ -448,6 +466,7 @@ const Products = () => {
                       <th className="px-4 py-3 text-left">SubCategory</th>
                       <th className="px-4 py-3 text-left">Stock</th>
                       <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Create type</th>
                       <th className="px-4 py-3 text-left">Active</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
@@ -464,6 +483,8 @@ const Products = () => {
                             : 'bg-green-100 text-green-600';
                       const isActiveOnStorefront =
                         p.submissionStatus !== 'draft';
+                      const createTypeLabel =
+                        p.createdVia === 'template' ? 'automatic' : 'manual';
 
                       return (
                         <tr key={p._id} className="border-t">
@@ -521,6 +542,13 @@ const Products = () => {
                             </span>
                           </td>
 
+                          {/* Create type */}
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-700">
+                              {createTypeLabel}
+                            </span>
+                          </td>
+
                           {/* Active toggle (controls storefront visibility) */}
                           <td className="px-4 py-3">
                             <button
@@ -574,7 +602,7 @@ const Products = () => {
                     {!loading && filteredProducts.length === 0 && (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           className="px-4 py-8 text-center text-gray-500"
                         >
                           No products found.
