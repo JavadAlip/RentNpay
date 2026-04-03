@@ -1,45 +1,203 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
+import { apiGetVendorNotifications } from '../../../service/api';
+
+function clearedStorageKey(vendorId) {
+  const id = vendorId || 'session';
+  return `vendorNotifLastClearedAt:${id}`;
+}
+
+function formatRelativeTime(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 45) return 'just now';
+  if (sec < 3600) return `${Math.max(1, Math.floor(sec / 60))} min ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} hr ago`;
+  if (sec < 604800) return `${Math.floor(sec / 86400)} day ago`;
+  return date.toLocaleDateString();
+}
 
 const VendorTopBar = () => {
   const { user } = useSelector((state) => state.vendor);
   const [mounted, setMounted] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [, bumpRelativeLabels] = useState(0);
+  const wrapRef = useRef(null);
+
+  const [notifications, setNotifications] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState(null);
+  /** Bumps when user opens the panel so badge recalculates after “mark seen” */
+  const [lastClearedVersion, setLastClearedVersion] = useState(0);
+
+  const vendorId = user?._id || user?.id || '';
+
+  const loadNotifications = useCallback(async () => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
+    if (!token) {
+      setNotifications([]);
+      setNotificationCount(0);
+      return;
+    }
+    setNotificationsLoading(true);
+    setNotificationsError(null);
+    try {
+      const { data } = await apiGetVendorNotifications(token);
+      const list = Array.isArray(data?.notifications) ? data.notifications : [];
+      setNotifications(list);
+      const c = Number(data?.count);
+      setNotificationCount(Number.isFinite(c) ? c : list.length);
+    } catch (e) {
+      setNotificationsError(
+        e?.response?.data?.message || e?.message || 'Failed to load',
+      );
+      setNotifications([]);
+      setNotificationCount(0);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    loadNotifications();
+  }, [notificationsOpen, loadNotifications]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const id = setInterval(() => bumpRelativeLabels((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, [notificationsOpen]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setNotificationsOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [notificationsOpen]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const onPointer = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+    };
+  }, [notificationsOpen]);
+
   const fullName = mounted ? user?.fullName : '';
   const initialsName = mounted ? user?.fullName : '';
 
+  const visibleBadgeCount = useMemo(() => {
+    if (!mounted || typeof window === 'undefined') return 0;
+    let clearedMs = null;
+    try {
+      const raw = localStorage.getItem(clearedStorageKey(vendorId));
+      if (raw) {
+        const t = new Date(raw).getTime();
+        if (!Number.isNaN(t)) clearedMs = t;
+      }
+    } catch {
+      clearedMs = null;
+    }
+    if (clearedMs == null) {
+      return Math.min(Math.max(0, notificationCount), 99);
+    }
+    const unread = notifications.filter((n) => {
+      const t = new Date(n.at).getTime();
+      return !Number.isNaN(t) && t > clearedMs;
+    }).length;
+    return Math.min(unread, 99);
+  }, [
+    mounted,
+    notifications,
+    notificationCount,
+    lastClearedVersion,
+    vendorId,
+  ]);
+
+  const badgeText =
+    visibleBadgeCount > 99 ? '99+' : String(visibleBadgeCount || '');
+
+  const handleBellClick = () => {
+    if (notificationsOpen) {
+      setNotificationsOpen(false);
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          clearedStorageKey(vendorId),
+          new Date().toISOString(),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    setLastClearedVersion((v) => v + 1);
+    setNotificationsOpen(true);
+  };
+
   return (
     <header className="w-full bg-white border-b border-gray-200 pl-14 md:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
+      {notificationsOpen && (
+        <button
+          type="button"
+          aria-label="Close notifications"
+          className="fixed inset-0 z-30 bg-black/20 md:bg-transparent"
+          onClick={() => setNotificationsOpen(false)}
+        />
+      )}
+
       <div className="flex flex-col min-w-0">
         <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
           Vendor Dashboard
         </h1>
-        {/* <p className="text-[11px] md:text-xs text-gray-500">
-          February 2026 · Comprehensive financial overview and performance
-          metrics
-        </p> */}
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* <button className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
-          <span>Mumbai</span>
-        </button> */}
-
-        {/* <button className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50">
-          IN
-        </button> */}
-
-        <div className="flex items-center gap-2">
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50">
+        <div className="flex items-center gap-2 relative" ref={wrapRef}>
+          <button
+            type="button"
+            onClick={handleBellClick}
+            aria-expanded={notificationsOpen}
+            aria-haspopup="dialog"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          >
             <span className="sr-only">Notifications</span>
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />
+            {visibleBadgeCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
+                {badgeText}
+              </span>
+            )}
             <svg
               className="w-5 h-5"
               fill="none"
@@ -54,6 +212,69 @@ const VendorTopBar = () => {
               />
             </svg>
           </button>
+
+          {notificationsOpen && (
+            <div
+              role="dialog"
+              aria-label="Notifications"
+              className="fixed left-3 right-3 top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-40 md:absolute md:left-auto md:right-0 md:top-full md:mt-2 md:w-[min(100vw-2rem,22rem)] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+            >
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-900">
+                  Notifications
+                </p>
+                <span className="text-[11px] text-gray-400">
+                  Last 5 updates
+                </span>
+              </div>
+              {notificationsLoading && (
+                <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                  Loading…
+                </p>
+              )}
+              {!notificationsLoading && notificationsError && (
+                <p className="px-4 py-6 text-sm text-red-600 text-center">
+                  {notificationsError}
+                </p>
+              )}
+              {!notificationsLoading &&
+                !notificationsError &&
+                notifications.length === 0 && (
+                  <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                    No recent activity yet.
+                  </p>
+                )}
+              {!notificationsLoading &&
+                !notificationsError &&
+                notifications.length > 0 && (
+                  <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50">
+                    {notifications.map((n) => {
+                      const at =
+                        n.at != null ? new Date(n.at) : new Date(NaN);
+                      return (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                            onClick={() => setNotificationsOpen(false)}
+                          >
+                            <p className="text-sm font-medium text-gray-900">
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                              {n.detail}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-1">
+                              {formatRelativeTime(at)}
+                            </p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+            </div>
+          )}
 
           <div className="hidden lg:flex items-center gap-2">
             <div className="text-right">

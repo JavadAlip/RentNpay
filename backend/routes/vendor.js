@@ -20,6 +20,7 @@ import {
   upsertVendorOffer,
 } from '../controller/vendor/offerController.js';
 import { getMyKyc, submitMyKyc } from '../controller/vendor/kycController.js';
+import { getVendorNotifications } from '../controller/vendor/notificationController.js';
 import {
   signupVendor,
   verifyOTP,
@@ -74,6 +75,7 @@ router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
 router.get('/kyc', vendorAuth, getMyKyc);
+router.get('/notifications', vendorAuth, getVendorNotifications);
 router.post(
   '/kyc',
   vendorAuth,

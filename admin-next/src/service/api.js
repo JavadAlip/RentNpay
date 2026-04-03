@@ -33,6 +33,13 @@ export const apiGetMyVendorKyc = (token) =>
     },
   });
 
+export const apiGetVendorNotifications = (token) =>
+  API.get('/vendor/notifications', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiSubmitVendorKyc = (data, token) =>
   API.post('/vendor/kyc', data, {
     headers: {
