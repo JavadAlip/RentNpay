@@ -160,6 +160,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { addToCart } from '@/store/slices/cartSlice';
 import {
   useAuthModal,
@@ -306,6 +307,75 @@ function normalizeRentalPlansFromProduct(product) {
   return out;
 }
 
+// ─── Calendar helpers (daily rental date picker) ─────────────────────────────
+const ORANGE = '#FF7000';
+
+function localTodayIso() {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, '0');
+  const d = String(t.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseLocalIso(iso) {
+  if (!iso || typeof iso !== 'string') return null;
+  const [y, mo, da] = iso.split('-').map((x) => parseInt(x, 10));
+  if (!y || !mo || !da) return null;
+  return new Date(y, mo - 1, da);
+}
+
+function startOfLocalDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addLocalDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+function toLocalIso(d) {
+  const x = startOfLocalDay(d);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, '0');
+  const day = String(x.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatRangeLine(iso) {
+  const d = parseLocalIso(iso);
+  if (!d) return '';
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: '2-digit',
+  });
+}
+
+function buildMonthGrid(year, monthIndex) {
+  const first = new Date(year, monthIndex, 1);
+  const last = new Date(year, monthIndex + 1, 0);
+  const daysInMonth = last.getDate();
+  const startWeekday = first.getDay();
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(new Date(year, monthIndex, day));
+  }
+  return cells;
+}
+
+function isDateInRangeInclusive(day, startIso, endIso) {
+  if (!startIso || !endIso) return false;
+  const t = startOfLocalDay(day).getTime();
+  const a = startOfLocalDay(parseLocalIso(startIso)).getTime();
+  const b = startOfLocalDay(parseLocalIso(endIso)).getTime();
+  return t >= a && t <= b;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 const RentPrdctMain = ({ product, offer }) => {
   const dispatch = useDispatch();
@@ -315,6 +385,12 @@ const RentPrdctMain = ({ product, offer }) => {
   const { items } = useSelector((s) => s.cart);
   const { pushToast } = useToast();
   const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
 
   // ── Real data first, static fallback second ──────────────────────────────
   const productName = product?.productName || 'Rental product';
@@ -367,6 +443,32 @@ const RentPrdctMain = ({ product, offer }) => {
     () => plans.find((p) => p.id === selectedPlanId) || plans[0],
     [plans, selectedPlanId],
   );
+
+  const isDailyProduct = useMemo(
+    () => plans.some((p) => p.periodUnit === 'day'),
+    [plans],
+  );
+
+  const requiredDaysForPlan = useMemo(() => {
+    if (!plan || plan.periodUnit !== 'day') return 0;
+    return plan.rawDays || 0;
+  }, [plan]);
+
+  const todayIso = useMemo(() => localTodayIso(), []);
+
+  const maxDateIso = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 3);
+    return toLocalIso(d);
+  }, []);
+
+  useEffect(() => {
+    // Reset date range whenever plan changes (for daily products)
+    setStartDate('');
+    setEndDate('');
+    const n = new Date();
+    setCalendarMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+  }, [plan?.id]);
 
   const discountPercent = Number(offer?.discountPercent || 0);
   const hasOffer = discountPercent > 0;
@@ -437,10 +539,84 @@ const RentPrdctMain = ({ product, offer }) => {
     return `${plan.rentalMonths || 1} months`;
   }, [plan]);
 
+  const isValidDailyRange = useMemo(() => {
+    if (!isDailyProduct || !requiredDaysForPlan) return true;
+    if (!startDate || !endDate) return false;
+    const start = parseLocalIso(startDate);
+    const end = parseLocalIso(endDate);
+    if (!start || !end) return false;
+    if (startOfLocalDay(end) < startOfLocalDay(start)) return false;
+    const diffDays =
+      Math.round(
+        (startOfLocalDay(end).getTime() - startOfLocalDay(start).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+    return diffDays === requiredDaysForPlan;
+  }, [isDailyProduct, requiredDaysForPlan, startDate, endDate]);
+
+  const calendarCells = useMemo(
+    () => buildMonthGrid(calendarMonth.getFullYear(), calendarMonth.getMonth()),
+    [calendarMonth],
+  );
+
+  const canPrevCalendarMonth = useMemo(() => {
+    const today = new Date();
+    const firstThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return calendarMonth.getTime() > firstThisMonth.getTime();
+  }, [calendarMonth]);
+
+  const canNextCalendarMonth = useMemo(() => {
+    const max = parseLocalIso(maxDateIso);
+    if (!max) return true;
+    const nextCal = new Date(
+      calendarMonth.getFullYear(),
+      calendarMonth.getMonth() + 1,
+      1,
+    );
+    if (nextCal.getFullYear() > max.getFullYear()) return false;
+    if (
+      nextCal.getFullYear() === max.getFullYear() &&
+      nextCal.getMonth() > max.getMonth()
+    )
+      return false;
+    return true;
+  }, [calendarMonth, maxDateIso]);
+
+  const handleCalendarDayClick = (day) => {
+    if (!requiredDaysForPlan) return;
+    const start = startOfLocalDay(day);
+    const today = startOfLocalDay(new Date());
+    if (start.getTime() < today.getTime()) {
+      pushToast('You can only select today or future dates.', 'error');
+      return;
+    }
+    const end = addLocalDays(start, requiredDaysForPlan - 1);
+    const maxD = parseLocalIso(maxDateIso);
+    if (!maxD || startOfLocalDay(end).getTime() > startOfLocalDay(maxD).getTime()) {
+      pushToast(
+        'Choose an earlier start date so the full rental fits within the booking window.',
+        'error',
+      );
+      return;
+    }
+    setStartDate(toLocalIso(start));
+    setEndDate(toLocalIso(end));
+  };
+
   const handleAddToCart = () => {
     (async () => {
       const productId = product?._id;
       if (!productId) return;
+
+      if (isDailyProduct && !isValidDailyRange) {
+        pushToast(
+          `Please select exactly ${requiredDaysForPlan} day${
+            requiredDaysForPlan > 1 ? 's' : ''
+          } on the calendar.`,
+          'error',
+        );
+        return;
+      }
 
       if (items?.length) {
         const cartRentalMonths = items?.[0]?.rentalMonths;
@@ -495,6 +671,16 @@ const RentPrdctMain = ({ product, offer }) => {
     (async () => {
       const productId = product?._id;
       if (!productId) return;
+
+      if (isDailyProduct && !isValidDailyRange) {
+        pushToast(
+          `Please select exactly ${requiredDaysForPlan} day${
+            requiredDaysForPlan > 1 ? 's' : ''
+          } on the calendar.`,
+          'error',
+        );
+        return;
+      }
 
       if (items?.length) {
         const cartRentalMonths = items?.[0]?.rentalMonths;
@@ -664,6 +850,157 @@ const RentPrdctMain = ({ product, offer }) => {
               );
             })}
           </div>
+
+          {isDailyProduct ? (
+            <div className="mt-4 pt-3 border-t border-gray-100 space-y-3">
+              <p className="text-xs sm:text-sm font-medium text-gray-800">
+                Select service dates
+              </p>
+              <p className="text-[11px] sm:text-xs text-gray-500">
+                Tap the first day of your rental — we&apos;ll reserve exactly{' '}
+                <span className="font-semibold text-gray-700">
+                  {requiredDaysForPlan || '—'} consecutive day
+                  {requiredDaysForPlan !== 1 ? 's' : ''}
+                </span>{' '}
+                for this tenure.
+              </p>
+
+              <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                <div
+                  className="flex items-center justify-between px-3 py-2.5 sm:py-3 text-white"
+                  style={{ backgroundColor: ORANGE }}
+                >
+                  <button
+                    type="button"
+                    aria-label="Previous month"
+                    disabled={!canPrevCalendarMonth}
+                    onClick={() =>
+                      setCalendarMonth(
+                        (prev) =>
+                          new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+                      )
+                    }
+                    className="p-1 rounded-lg hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm sm:text-base font-semibold tracking-wide">
+                    {calendarMonth.toLocaleDateString('en-IN', {
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Next month"
+                    disabled={!canNextCalendarMonth}
+                    onClick={() =>
+                      setCalendarMonth(
+                        (prev) =>
+                          new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+                      )
+                    }
+                    className="p-1 rounded-lg hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="px-2 sm:px-3 pt-3 pb-2">
+                  <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] sm:text-xs font-medium text-gray-500 mb-1">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
+                      (w) => (
+                        <div key={w} className="py-1">
+                          {w}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  <div className="grid grid-cols-7 gap-y-1 text-center">
+                    {calendarCells.map((day, idx) => {
+                      if (!day) {
+                        return (
+                          <div
+                            key={`empty-${idx}`}
+                            className="h-9 sm:h-10"
+                            aria-hidden
+                          />
+                        );
+                      }
+                      const iso = toLocalIso(day);
+                      const disabled =
+                        startOfLocalDay(day).getTime() <
+                        startOfLocalDay(new Date()).getTime();
+                      const inRange = isDateInRangeInclusive(
+                        day,
+                        startDate,
+                        endDate,
+                      );
+                      const isTodayCell = iso === todayIso;
+                      return (
+                        <div
+                          key={iso}
+                          className="flex items-center justify-center p-0.5"
+                        >
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => handleCalendarDayClick(day)}
+                            className={[
+                              'w-8 h-8 sm:w-9 sm:h-9 rounded-full text-xs sm:text-sm font-medium transition-colors flex items-center justify-center',
+                              disabled
+                                ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                                : inRange
+                                  ? 'text-white shadow-sm'
+                                  : isTodayCell
+                                    ? 'ring-2 ring-orange-300 bg-orange-50 text-gray-900 hover:bg-orange-100'
+                                    : 'bg-gray-100 text-gray-800 hover:bg-orange-100',
+                            ].join(' ')}
+                            style={
+                              inRange && !disabled
+                                ? { backgroundColor: ORANGE }
+                                : undefined
+                            }
+                          >
+                            {day.getDate()}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {startDate && endDate ? (
+                  <div className="px-3 pb-2 text-center text-xs sm:text-sm text-gray-800">
+                    <span className="font-medium">{formatRangeLine(startDate)}</span>
+                    <span className="mx-2 font-semibold" style={{ color: ORANGE }}>
+                      to
+                    </span>
+                    <span className="font-medium">{formatRangeLine(endDate)}</span>
+                  </div>
+                ) : (
+                  <div className="px-3 pb-2 text-center text-[11px] text-gray-400">
+                    Pick a start date to see your rental window
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2 px-3 pb-3 text-[10px] sm:text-xs text-gray-500 border-t border-gray-100 pt-2">
+                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-gray-400" />
+                  <span>
+                    Delivery timings will be between 9 AM to 10 PM (subject to
+                    partner confirmation).
+                  </span>
+                </div>
+              </div>
+
+              {startDate && endDate && !isValidDailyRange ? (
+                <p className="text-[11px] sm:text-xs text-red-600">
+                  Please select exactly {requiredDaysForPlan} consecutive day
+                  {requiredDaysForPlan > 1 ? 's' : ''} for this tenure.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {/* ── Price Box ── */}
@@ -702,13 +1039,17 @@ const RentPrdctMain = ({ product, offer }) => {
                 Total Payable Now
               </span>
               <p className="text-[10px] sm:text-xs text-gray-500 font-normal">
-                (1st Month Rent + Deposit)
+                {plan?.periodUnit === 'day'
+                  ? '(First rental period + Deposit)'
+                  : '(1st Month Rent + Deposit)'}
               </p>
             </div>
             <span className="text-orange-500 font-medium text-sm sm:text-base shrink-0">
               ₹
               {(
-                effectivePlanPrice + Number(product?.refundableDeposit || 0)
+                (plan?.periodUnit === 'day'
+                  ? totalRentalForTenure
+                  : effectivePlanPrice) + Number(product?.refundableDeposit || 0)
               ).toLocaleString('en-IN')}
             </span>
           </div>
@@ -753,7 +1094,7 @@ const RentPrdctMain = ({ product, offer }) => {
         <button
           type="button"
           onClick={handleRentNow}
-          disabled={currentStock <= 0}
+          disabled={currentStock <= 0 || (isDailyProduct && !isValidDailyRange)}
           className="w-full bg-orange-500 text-white py-2.5 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium text-sm sm:text-base hover:bg-orange-600 transition-colors"
         >
           Rent Now
@@ -762,7 +1103,7 @@ const RentPrdctMain = ({ product, offer }) => {
         <button
           type="button"
           onClick={handleAddToCart}
-          disabled={currentStock <= 0}
+          disabled={currentStock <= 0 || (isDailyProduct && !isValidDailyRange)}
           className="w-full border border-orange-500 text-orange-500 py-2.5 sm:py-3 rounded-lg mt-3 sm:mt-4 font-medium text-sm sm:text-base hover:bg-orange-50 transition-colors"
         >
           Add to Cart
