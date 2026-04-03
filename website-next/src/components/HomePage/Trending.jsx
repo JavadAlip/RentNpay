@@ -9,6 +9,10 @@ import {
   apiGetMyWishlist,
   apiToggleWishlist,
 } from '@/lib/api';
+import {
+  getRentalListingAmount,
+  getRentalListingSuffix,
+} from '@/lib/rentalPriceDisplay';
 import { useSelector } from 'react-redux';
 
 import {
@@ -29,11 +33,6 @@ const Trending = () => {
   const [wishedIds, setWishedIds] = useState([]);
   const [togglingId, setTogglingId] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const parsePrice = (raw) => {
-    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
-    return Number.isFinite(n) ? n : 0;
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -206,7 +205,10 @@ const Trending = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProducts.map((item) => {
               const offer = offersByProduct[String(item._id)];
-              const base = parsePrice(item.price);
+              const base = getRentalListingAmount(item);
+              const priceSuffix =
+                getRentalListingSuffix(item) ||
+                (item.type === 'Rental' ? '/mo' : '');
               const discount = Number(offer?.discountPercent || 0);
               const finalPrice = Math.max(
                 0,
@@ -292,7 +294,9 @@ const Trending = () => {
                         <span className="font-semibold text-2xl leading-none">
                           ₹{hasOffer ? finalPrice : base}
                         </span>
-                        <span className="ml-1 text-sm font-medium text-gray-800">/mo</span>
+                        <span className="ml-1 text-sm font-medium text-gray-800">
+                          {priceSuffix}
+                        </span>
                         {hasOffer ? (
                           <span className="ml-2 text-gray-400 text-xs line-through">
                             ₹{base}

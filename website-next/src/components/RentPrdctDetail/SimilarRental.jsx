@@ -3,6 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
 import { apiGetStorefrontVendorProducts } from '@/lib/api';
+import {
+  getRentalListingAmount,
+  getRentalListingSuffix,
+} from '@/lib/rentalPriceDisplay';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -19,11 +23,6 @@ const SimilarRental = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
-  const parsePrice = (raw) => {
-    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
-    return Number.isFinite(n) ? n : 0;
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -108,7 +107,8 @@ const SimilarRental = () => {
             </p>
           ) : (
             visibleProducts.map((item) => {
-              const base = parsePrice(item?.price);
+              const base = getRentalListingAmount(item);
+              const priceSuffix = getRentalListingSuffix(item) || '/mo';
               const old = Math.round(base * 1.2);
               const inStock = Number(item?.stock || 0) > 0;
               const rating = (
@@ -164,7 +164,8 @@ const SimilarRental = () => {
 
                     <div className="flex items-center gap-2 mb-2 sm:mb-3">
                       <span className="font-semibold text-sm sm:text-base">
-                        ₹{base}/mo
+                        ₹{base}
+                        {priceSuffix}
                       </span>
                       <span className="text-gray-400 text-[10px] sm:text-xs line-through">
                         ₹{old}

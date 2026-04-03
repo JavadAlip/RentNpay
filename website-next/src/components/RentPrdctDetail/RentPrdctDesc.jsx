@@ -140,7 +140,12 @@ const RentPrdctDesc = ({ product }) => {
                 : months > 0
                   ? `${months} months`
                   : 'Tier';
-            const suffix = unit === 'day' ? '/day' : '/mo';
+            const suffix =
+              unit === 'day' && days > 0
+                ? `/${days}d`
+                : months > 0
+                  ? `/${months}month`
+                  : '/mo';
             return rent > 0 ? `${tenure}: ₹${rent}${suffix}` : null;
           })
           .filter(Boolean)

@@ -2,6 +2,10 @@
 
 import Link from 'next/link';
 import { Heart, Bell, ShoppingCart, Star, Truck, MapPin } from 'lucide-react';
+import {
+  getRentalListingAmount,
+  getRentalListingSuffix,
+} from '@/lib/rentalPriceDisplay';
 
 const parsePrice = (raw) => {
   const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
@@ -11,7 +15,12 @@ const parsePrice = (raw) => {
 const ProductCard = ({ product, offer }) => {
   const { _id, productName, image, price, type, category, subCategory, stock } =
     product;
-  const base = parsePrice(price);
+  const base =
+    type === 'Rental'
+      ? getRentalListingAmount(product)
+      : parsePrice(price);
+  const rentalSuffix =
+    type === 'Rental' ? getRentalListingSuffix(product) : '';
   const discount = Number(offer?.discountPercent || 0);
   const hasOffer = discount > 0;
   const finalPrice = hasOffer
@@ -73,7 +82,7 @@ const ProductCard = ({ product, offer }) => {
           <div>
             <p className="text-3xl leading-none font-semibold text-gray-900">
               ₹{finalPrice}
-              <span className="text-xl">{type === 'Rental' ? '/mo' : ''}</span>
+              <span className="text-xl">{rentalSuffix}</span>
             </p>
             {hasOffer ? (
               <p className="text-xs text-gray-400 line-through mt-0.5">

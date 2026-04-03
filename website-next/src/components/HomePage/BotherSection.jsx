@@ -7,6 +7,7 @@ import {
   IMG_TOOLS as tools,
 } from '@/lib/assetPlaceholders';
 import { apiGetStorefrontVendorProducts, apiGetCategories } from '@/lib/api';
+import { getRentalListingAmount } from '@/lib/rentalPriceDisplay';
 import { useRouter } from 'next/navigation';
 
 const BotherSection = () => {
@@ -14,11 +15,6 @@ const BotherSection = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lowestRentPrice, setLowestRentPrice] = useState(null);
-
-  const parsePrice = (raw) => {
-    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
-    return Number.isFinite(n) ? n : null;
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,8 +32,8 @@ const BotherSection = () => {
         const products = prodRes.data?.products || [];
         const rentalPrices = products
           .filter((p) => String(p.type || '').toLowerCase() === 'rental')
-          .map((p) => parsePrice(p.price))
-          .filter((p) => p != null);
+          .map((p) => getRentalListingAmount(p))
+          .filter((p) => p > 0);
         if (rentalPrices.length > 0) {
           setLowestRentPrice(Math.min(...rentalPrices));
         } else {
@@ -73,7 +69,7 @@ const BotherSection = () => {
               <p className="text-xs bg-orange-100 text-orange-600 px-3 py-1 rounded-full inline-block mb-4">
                 Starts @{' '}
                 {lowestRentPrice != null
-                  ? `₹${lowestRentPrice.toLocaleString('en-IN')}/mo`
+                  ? `From ₹${lowestRentPrice.toLocaleString('en-IN')}`
                   : 'Best Price'}
               </p>
               <h3 className="text-xl font-semibold mb-2">Renting →</h3>

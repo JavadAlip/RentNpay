@@ -9,6 +9,7 @@ import {
   apiGetPublicActiveOffers,
   apiGetCategories,
 } from '../lib/api';
+import { getProductListPriceValue } from '@/lib/rentalPriceDisplay';
 
 const Products = () => {
   const searchParams = useSearchParams();
@@ -30,11 +31,6 @@ const Products = () => {
   const [sortBy, setSortBy] = useState('relevance');
   const [viewMode, setViewMode] = useState('grid');
   const perPage = 6;
-
-  const parsePrice = (raw) => {
-    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
-    return Number.isFinite(n) ? n : 0;
-  };
 
   const search = searchParams.get('search') || '';
   const categoryUrl = searchParams.get('category') || '';
@@ -118,7 +114,7 @@ const Products = () => {
     const max = Number(filters.maxPrice || 0);
 
     return allProducts.filter((p) => {
-      const price = parsePrice(p.price);
+      const price = getProductListPriceValue(p);
       const productText = `${p.productName || ''} ${p.category || ''} ${p.subCategory || ''}`.toLowerCase();
       const matchesSearch = term ? productText.includes(term) : true;
       const matchesCategory = filters.category
@@ -160,9 +156,13 @@ const Products = () => {
   const sortedProducts = useMemo(() => {
     const arr = [...filteredProducts];
     if (sortBy === 'price-low-high') {
-      arr.sort((a, b) => parsePrice(a.price) - parsePrice(b.price));
+      arr.sort(
+        (a, b) => getProductListPriceValue(a) - getProductListPriceValue(b),
+      );
     } else if (sortBy === 'price-high-low') {
-      arr.sort((a, b) => parsePrice(b.price) - parsePrice(a.price));
+      arr.sort(
+        (a, b) => getProductListPriceValue(b) - getProductListPriceValue(a),
+      );
     } else if (sortBy === 'newest') {
       arr.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     }

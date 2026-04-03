@@ -185,7 +185,7 @@ const STATIC_PLANS = [
     periodUnit: 'month',
     price: 799,
     label: '',
-    priceSuffix: '/mo',
+    priceSuffix: '/3month',
   },
   {
     id: 'm-6',
@@ -195,7 +195,7 @@ const STATIC_PLANS = [
     periodUnit: 'month',
     price: 699,
     label: '',
-    priceSuffix: '/mo',
+    priceSuffix: '/6month',
   },
   {
     id: 'm-12',
@@ -205,7 +205,7 @@ const STATIC_PLANS = [
     periodUnit: 'month',
     price: 499,
     label: '',
-    priceSuffix: '/mo',
+    priceSuffix: '/12month',
   },
 ];
 
@@ -235,7 +235,7 @@ function buildPlans(basePrice) {
       periodUnit: 'month',
       price: Math.round(basePrice * 1.15),
       label: '',
-      priceSuffix: '/mo',
+      priceSuffix: '/3month',
     },
     {
       id: 'm-6',
@@ -245,7 +245,7 @@ function buildPlans(basePrice) {
       periodUnit: 'month',
       price: basePrice,
       label: '',
-      priceSuffix: '/mo',
+      priceSuffix: '/6month',
     },
     {
       id: 'm-12',
@@ -255,7 +255,7 @@ function buildPlans(basePrice) {
       periodUnit: 'month',
       price: Math.round(basePrice * 0.75),
       label: '',
-      priceSuffix: '/mo',
+      priceSuffix: '/12month',
     },
   ];
 }
@@ -295,7 +295,12 @@ function normalizeRentalPlansFromProduct(product) {
       periodUnit,
       price,
       label: String(cfg?.label || '').trim(),
-      priceSuffix: periodUnit === 'day' ? '/day' : '/mo',
+      priceSuffix:
+        periodUnit === 'day' && days > 0
+          ? `/${days}d`
+          : months > 0
+            ? `/${months}month`
+            : '/mo',
     });
   });
   return out;
