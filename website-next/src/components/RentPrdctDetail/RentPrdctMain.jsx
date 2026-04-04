@@ -655,6 +655,7 @@ const RentPrdctMain = ({ product, offer }) => {
           pricePerDay: effectivePlanPrice,
           title: productName,
           image: images?.[0] || '',
+          tenureUnit: plan?.periodUnit === 'day' ? 'day' : 'month',
         }),
       );
 
@@ -719,6 +720,7 @@ const RentPrdctMain = ({ product, offer }) => {
           pricePerDay: effectivePlanPrice,
           title: productName,
           image: images?.[0] || '',
+          tenureUnit: plan?.periodUnit === 'day' ? 'day' : 'month',
         }),
       );
 

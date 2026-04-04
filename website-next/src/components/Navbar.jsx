@@ -21,6 +21,7 @@ import {
   User,
   LogOut,
   ChevronDown,
+  Sofa,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -206,6 +207,20 @@ const Navbar = () => {
                       My Orders
                     </Link>
 
+                    {/* <div className="px-4 pt-2 pb-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                        Rental products
+                      </p>
+                    </div> */}
+                    <Link
+                      href="/my-rentals"
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Sofa size={15} className="text-blue-600 shrink-0" />
+                      Rental products
+                    </Link>
+
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -292,6 +307,19 @@ const Navbar = () => {
                 >
                   <Truck size={15} className="text-orange-500" />
                   My Orders
+                </Link>
+                {/* <div className="px-4 pt-2 pb-0 border-t border-gray-100 bg-gray-50/80">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                    Rental products
+                  </p>
+                </div> */}
+                <Link
+                  href="/my-rentals"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  <Sofa size={15} className="text-blue-600 shrink-0" />
+                  Rental Products
                 </Link>
                 <button
                   type="button"

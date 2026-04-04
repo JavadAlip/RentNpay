@@ -27,11 +27,16 @@ const loadCart = () => {
     // - `rentalMonths` = tenure selected on product page
     const normalizeItem = (it) => {
       if (!it) return it;
+      let next = it;
       if (it.rentalMonths == null && it.quantity != null) {
         const rentalMonths = it.quantity;
-        return { ...it, rentalMonths: rentalMonths || 1, quantity: 1 };
+        next = { ...it, rentalMonths: rentalMonths || 1, quantity: 1 };
       }
-      return it;
+      const tu = next.tenureUnit;
+      if (tu !== 'day' && tu !== 'month') {
+        next = { ...next, tenureUnit: 'month' };
+      }
+      return next;
     };
 
     const normalizeList = (list) =>
@@ -90,7 +95,9 @@ const cartSlice = createSlice({
         pricePerDay,
         title,
         image,
+        tenureUnit = 'month',
       } = payload;
+      const tu = tenureUnit === 'day' ? 'day' : 'month';
       const existing = state.items.find((i) => i.productId === productId);
       if (existing) existing.quantity += quantity;
       else
@@ -101,9 +108,13 @@ const cartSlice = createSlice({
           pricePerDay,
           title,
           image,
+          tenureUnit: tu,
         });
 
-      if (existing) existing.rentalMonths = rentalMonths;
+      if (existing) {
+        existing.rentalMonths = rentalMonths;
+        existing.tenureUnit = tu;
+      }
       saveCart(state.items);
     },
     removeFromCart: (state, { payload }) => {

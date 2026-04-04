@@ -80,6 +80,7 @@ export default function Payment() {
     setLoading(true);
     try {
       const rentalDuration = Number(items?.[0]?.rentalMonths || 1);
+      const tenureUnit = items?.[0]?.tenureUnit === 'day' ? 'day' : 'month';
       const orderRes = await apiCreateOrder({
         products: items.map((i) => ({
           product: i.productId,
@@ -87,6 +88,7 @@ export default function Payment() {
           pricePerDay: Number(i.pricePerDay),
         })),
         rentalDuration: rentalDuration,
+        tenureUnit,
         address: addressLine,
         phone: selectedAddress.phone,
         name: selectedAddress.fullName,

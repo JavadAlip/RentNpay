@@ -30,6 +30,8 @@ const ProductDetails = () => {
       addToCart({
         productId: product._id,
         quantity,
+        rentalMonths: 1,
+        tenureUnit: 'month',
         pricePerDay: product.pricePerDay,
         title: product.title,
         image: product.images?.[0],
@@ -44,6 +46,8 @@ const ProductDetails = () => {
       addToCart({
         productId: product._id,
         quantity: 1,
+        rentalMonths: 1,
+        tenureUnit: 'month',
         pricePerDay: product.pricePerDay,
         title: product.title,
         image: product.images?.[0],

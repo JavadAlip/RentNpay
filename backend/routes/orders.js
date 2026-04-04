@@ -8,18 +8,30 @@ const router = express.Router();
 
 router.post('/', userAuth, async (req, res) => {
   try {
-    const { products, rentalDuration, address, phone, name } = req.body;
+    const { products, rentalDuration, tenureUnit, address, phone, name } =
+      req.body;
     if (!products?.length || !rentalDuration || !address || !phone || !name) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
-    // Reduce live inventory based on ordered quantity, and update stock status.
+    const unit =
+      tenureUnit === 'day' || tenureUnit === 'month' ? tenureUnit : 'month';
+
+    const normalizedLines = [];
     for (const line of products) {
       const productId = line?.product;
-      const qty = Math.max(0, Number(line?.quantity || 0));
-      if (!productId || qty <= 0) continue;
+      const qty = Math.max(1, Number(line?.quantity || 1));
+      if (!productId) continue;
 
       const product = await Product.findById(productId);
       if (!product) continue;
+
+      const depUnit = Number(product.refundableDeposit || 0);
+      normalizedLines.push({
+        product: productId,
+        quantity: qty,
+        pricePerDay: Number(line.pricePerDay),
+        refundableDeposit: Number.isFinite(depUnit) ? depUnit * qty : 0,
+      });
 
       const nextStock = Math.max(0, Number(product.stock || 0) - qty);
       product.stock = nextStock;
@@ -32,10 +44,15 @@ router.post('/', userAuth, async (req, res) => {
       await product.save();
     }
 
+    if (!normalizedLines.length) {
+      return res.status(400).json({ message: 'No valid products in order' });
+    }
+
     const order = await Order.create({
       user: req.user._id,
-      products,
+      products: normalizedLines,
       rentalDuration: Number(rentalDuration),
+      tenureUnit: unit,
       address,
       phone,
       name,
@@ -54,7 +71,10 @@ router.get('/my', userAuth, async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
       .populate('user', 'fullName emailAddress')
-      .populate('products.product', 'productName image')
+      .populate({
+        path: 'products.product',
+        populate: { path: 'vendorId', select: 'fullName emailAddress' },
+      })
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
