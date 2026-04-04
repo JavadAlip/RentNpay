@@ -130,3 +130,43 @@ export function primaryProduct(order) {
 export function primaryLine(order) {
   return order.products?.[0] || null;
 }
+
+/**
+ * Rental line items currently in possession (delivered) with lease still running.
+ * Used by My Payments “Active rentals”.
+ */
+export function flattenActiveLeaseRows(orders) {
+  const rows = [];
+  const today = startOfDay(new Date());
+  for (const order of orders) {
+    if (normalizeStatus(order.status) !== 'delivered') continue;
+    const start = order.createdAt ? new Date(order.createdAt) : new Date();
+    const duration = order.rentalDuration;
+    for (const line of order.products || []) {
+      const p = line.product;
+      if (!p || typeof p === 'string') continue;
+      const unit = resolveTenureUnit(order, p, duration);
+      const end = computeLeaseEnd(start, duration, unit);
+      const daysLeft = Math.ceil(
+        (startOfDay(end).getTime() - today.getTime()) / 86400000,
+      );
+      if (daysLeft <= 0) continue;
+      rows.push({
+        key: `${order._id}-${String(p._id || line.product)}-${rows.length}`,
+        order,
+        line,
+        product: p,
+        start,
+        end,
+        tenureUnit: unit,
+        daysLeft,
+      });
+    }
+  }
+  return rows;
+}
+
+/** Per-period rent for one line (monthly or daily rate × qty). */
+export function lineUnitRent(line) {
+  return Number(line?.pricePerDay || 0) * Number(line?.quantity || 1);
+}

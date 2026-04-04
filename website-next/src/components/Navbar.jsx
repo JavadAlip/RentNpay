@@ -22,6 +22,7 @@ import {
   LogOut,
   ChevronDown,
   Sofa,
+  Wallet,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -221,6 +222,15 @@ const Navbar = () => {
                       Rental products
                     </Link>
 
+                    <Link
+                      href="/my-payments"
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Wallet size={15} className="text-[#FF6F00] shrink-0" />
+                      My Payments
+                    </Link>
+
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -320,6 +330,14 @@ const Navbar = () => {
                 >
                   <Sofa size={15} className="text-blue-600 shrink-0" />
                   Rental Products
+                </Link>
+                <Link
+                  href="/my-payments"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  <Wallet size={15} className="text-[#FF6F00] shrink-0" />
+                  My Payments
                 </Link>
                 <button
                   type="button"
