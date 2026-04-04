@@ -12,102 +12,15 @@ import {
   Wrench,
 } from 'lucide-react';
 import { apiGetMyOrders } from '@/lib/api';
-
-function formatMoney(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '0';
-  return n.toLocaleString('en-IN');
-}
-
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function ordinalDay(d) {
-  const n = d.getDate();
-  const j = n % 10;
-  const k = n % 100;
-  if (k > 10 && k < 14) return `${n}th`;
-  if (j === 1) return `${n}st`;
-  if (j === 2) return `${n}nd`;
-  if (j === 3) return `${n}rd`;
-  return `${n}th`;
-}
-
-function computeNextPaymentLabel(startDate, leaseEnd) {
-  const start = new Date(startDate);
-  const end = new Date(leaseEnd);
-  const now = new Date();
-  if (now >= end) {
-    return `${ordinalDay(end)} ${end.toLocaleString('en-IN', { month: 'long' })}`;
-  }
-  const billDay = Math.min(start.getDate(), 28);
-  let c = new Date(now.getFullYear(), now.getMonth(), billDay);
-  if (c <= now) c = new Date(now.getFullYear(), now.getMonth() + 1, billDay);
-  if (c > end) {
-    return `${ordinalDay(end)} ${end.toLocaleString('en-IN', { month: 'long' })}`;
-  }
-  return `${ordinalDay(c)} ${c.toLocaleString('en-IN', { month: 'long' })}`;
-}
-
-function productImageUrl(path) {
-  if (!path) return '';
-  if (/^https?:\/\//i.test(path)) return path;
-  const base = (
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-  ).replace(/\/api\/?$/, '');
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-}
-
-function normalizeStatus(status) {
-  return String(status || '').toLowerCase();
-}
-
-/**
- * Legacy inference when `order.tenureUnit` is missing: day tenure only if a day tier
- * matches `rentalDuration` and there is no separate month tier with the same duration
- * (avoids 3 days vs 3 months ambiguity when the order stores `3`).
- */
-function tenureIsDays(product, rentalDuration) {
-  const rd = Number(rentalDuration);
-  if (!Number.isFinite(rd) || rd < 1) return false;
-  const cfgs = Array.isArray(product?.rentalConfigurations)
-    ? product.rentalConfigurations
-    : [];
-  if (!cfgs.length) return false;
-
-  const matchDay = cfgs.some(
-    (c) =>
-      String(c?.periodUnit || '').toLowerCase() === 'day' &&
-      Number(c?.days || 0) === rd,
-  );
-  if (!matchDay) return false;
-
-  const hasMonthTierSameDuration = cfgs.some((c) => {
-    const months = Number(c?.months || 0);
-    if (months !== rd || months <= 0) return false;
-    return String(c?.periodUnit || '').toLowerCase() !== 'day';
-  });
-  if (hasMonthTierSameDuration) return false;
-
-  return true;
-}
-
-function resolveTenureUnit(order, product, rentalDuration) {
-  if (order.tenureUnit === 'day') return 'day';
-  if (order.tenureUnit === 'month') return 'month';
-  return tenureIsDays(product, rentalDuration) ? 'day' : 'month';
-}
-
-function computeLeaseEnd(start, durationRaw, unit) {
-  const n = Math.max(1, Number(durationRaw || 1));
-  const d = new Date(start.getTime());
-  if (unit === 'day') d.setDate(d.getDate() + n);
-  else d.setMonth(d.getMonth() + n);
-  return d;
-}
+import {
+  formatMoney,
+  startOfDay,
+  computeNextPaymentLabel,
+  productImageUrl,
+  normalizeStatus,
+  resolveTenureUnit,
+  computeLeaseEnd,
+} from '@/lib/orderRentalUtils';
 
 function flattenRentals(orders) {
   const rows = [];
