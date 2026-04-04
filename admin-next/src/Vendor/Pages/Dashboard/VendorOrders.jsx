@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import { apiGetVendorOrders, apiUpdateVendorOrderStatus } from '@/service/api';
@@ -78,7 +78,7 @@ export default function VendorOrdersPage() {
 
   const vendorIdStr = String(user?.id || user?._id || '');
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const authToken =
       token ||
       (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
@@ -99,11 +99,18 @@ export default function VendorOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    const onOrdersChanged = () => fetchOrders();
+    window.addEventListener('vendor-orders-changed', onOrdersChanged);
+    return () =>
+      window.removeEventListener('vendor-orders-changed', onOrdersChanged);
+  }, [fetchOrders]);
 
   const updateStatus = async (orderId, status) => {
     const authToken =
@@ -171,6 +178,24 @@ export default function VendorOrdersPage() {
     [filteredOrders],
   );
 
+  const tabCounts = useMemo(() => {
+    const list = normalizedOrders;
+    const shipped = list.filter((x) => String(x.status) === 'shipped').length;
+    return {
+      Processing: list.filter((x) =>
+        ['pending', 'confirmed'].includes(String(x.status)),
+      ).length,
+      Dispatched: shipped,
+      'In Transit': shipped,
+      Cancelled: list.filter((x) => String(x.status) === 'cancelled').length,
+      Delivered: list.filter((x) => String(x.status) === 'delivered').length,
+      Completed: list.filter((x) => String(x.status) === 'completed').length,
+    };
+  }, [normalizedOrders]);
+
+  const showPackaging = (status) =>
+    ['pending', 'confirmed'].includes(String(status));
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <VendorSidebar />
@@ -230,13 +255,22 @@ export default function VendorOrdersPage() {
                         key={tab}
                         type="button"
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-xl text-sm border ${
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm border ${
                           activeTab === tab
                             ? 'bg-white border-gray-300 shadow-sm text-gray-900'
                             : 'border-transparent text-gray-500 hover:bg-gray-50'
                         }`}
                       >
-                        {tab}
+                        <span>{tab}</span>
+                        <span
+                          className={`min-w-[1.5rem] h-6 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+                            activeTab === tab
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {tabCounts[tab] ?? 0}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -253,7 +287,7 @@ export default function VendorOrdersPage() {
 
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-[980px] w-full text-sm">
+                    <table className="min-w-[1060px] w-full text-sm">
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr className="text-gray-500">
                           <th className="px-4 py-3 text-left font-medium">Order ID</th>
@@ -262,6 +296,7 @@ export default function VendorOrdersPage() {
                           <th className="px-4 py-3 text-left font-medium">Order Date</th>
                           <th className="px-4 py-3 text-left font-medium">Status</th>
                           <th className="px-4 py-3 text-left font-medium">Your amount</th>
+                          <th className="px-4 py-3 text-left font-medium">Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -309,13 +344,28 @@ export default function VendorOrdersPage() {
                             <td className="px-4 py-3 font-semibold text-gray-900">
                               {money(order.amount)}
                             </td>
+                            <td className="px-4 py-3">
+                              {showPackaging(order.status) ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toast.info('Packaging flow coming soon.')
+                                  }
+                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100"
+                                >
+                                  Packaging
+                                </button>
+                              ) : (
+                                <span className="text-gray-300 text-xs">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
 
                         {filteredOrders.length === 0 && (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="px-4 py-10 text-center text-gray-500"
                             >
                               No orders found.
@@ -325,7 +375,7 @@ export default function VendorOrdersPage() {
                       </tbody>
                       <tfoot>
                         <tr className="bg-[#F97316] text-white">
-                          <td colSpan={5} className="px-4 py-3 font-semibold">
+                          <td colSpan={6} className="px-4 py-3 font-semibold">
                             Total (your lines)
                           </td>
                           <td className="px-4 py-3 font-semibold">

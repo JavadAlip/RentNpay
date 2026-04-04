@@ -76,6 +76,8 @@ export async function getVendorNotifications(req, res) {
       items.push({
         id: `order-${o._id}`,
         type: 'order',
+        orderId: String(o._id),
+        orderStatus: o.status || 'pending',
         title: 'New order received',
         detail: `Order #${ref} — status: ${o.status || 'pending'}.`,
         at: o.createdAt,
@@ -99,6 +101,9 @@ export async function getVendorNotifications(req, res) {
       title: n.title,
       detail: n.detail,
       at: n.at instanceof Date ? n.at.toISOString() : n.at,
+      ...(n.type === 'order' && n.orderId
+        ? { orderId: n.orderId, orderStatus: n.orderStatus }
+        : {}),
     }));
 
     res.json({

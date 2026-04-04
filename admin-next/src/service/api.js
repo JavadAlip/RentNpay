@@ -91,6 +91,13 @@ export const apiGetVendorOrders = (token) =>
     },
   });
 
+export const apiGetVendorOrder = (id, token) =>
+  API.get(`/vendor/orders/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiUpdateVendorOrderStatus = (id, status, token) =>
   API.put(
     `/vendor/orders/${id}/status`,

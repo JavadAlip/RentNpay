@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { useSelector } from 'react-redux';
 import { apiGetVendorNotifications } from '../../../service/api';
+import VendorNewOrderModal from '../Modals/VendorNewOrderModal';
 
 function clearedStorageKey(vendorId) {
   const id = vendorId || 'session';
@@ -26,7 +27,7 @@ function formatRelativeTime(date) {
 }
 
 const VendorTopBar = () => {
-  const { user } = useSelector((state) => state.vendor);
+  const { user, token: reduxToken } = useSelector((state) => state.vendor);
   const [mounted, setMounted] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [, bumpRelativeLabels] = useState(0);
@@ -38,6 +39,7 @@ const VendorTopBar = () => {
   const [notificationsError, setNotificationsError] = useState(null);
   /** Bumps when user opens the panel so badge recalculates after “mark seen” */
   const [lastClearedVersion, setLastClearedVersion] = useState(0);
+  const [orderModalId, setOrderModalId] = useState(null);
 
   const vendorId = user?._id || user?.id || '';
 
@@ -147,6 +149,22 @@ const VendorTopBar = () => {
   const badgeText =
     visibleBadgeCount > 99 ? '99+' : String(visibleBadgeCount || '');
 
+  const getVendorToken = useCallback(() => {
+    if (reduxToken) return reduxToken;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vendorToken');
+    }
+    return null;
+  }, [reduxToken]);
+
+  const orderIdFromNotification = (n) => {
+    if (n?.orderId) return n.orderId;
+    if (typeof n?.id === 'string' && n.id.startsWith('order-')) {
+      return n.id.slice('order-'.length);
+    }
+    return null;
+  };
+
   const handleBellClick = () => {
     if (notificationsOpen) {
       setNotificationsOpen(false);
@@ -251,23 +269,36 @@ const VendorTopBar = () => {
                     {notifications.map((n) => {
                       const at =
                         n.at != null ? new Date(n.at) : new Date(NaN);
+                      const oid = orderIdFromNotification(n);
+                      const showView = n.type === 'order' && oid;
                       return (
-                        <li key={n.id}>
-                          <button
-                            type="button"
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-                            onClick={() => setNotificationsOpen(false)}
-                          >
-                            <p className="text-sm font-medium text-gray-900">
-                              {n.title}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                              {n.detail}
-                            </p>
-                            <p className="text-[11px] text-gray-400 mt-1">
-                              {formatRelativeTime(at)}
-                            </p>
-                          </button>
+                        <li key={n.id} className="px-4 py-3 hover:bg-gray-50">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900">
+                                {n.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                {n.detail}
+                              </p>
+                              <p className="text-[11px] text-gray-400 mt-1">
+                                {formatRelativeTime(at)}
+                              </p>
+                            </div>
+                            {showView ? (
+                              <button
+                                type="button"
+                                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-[#F97316] border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100"
+                                onClick={() => {
+                                  setOrderModalId(oid);
+                                  setNotificationsOpen(false);
+                                  loadNotifications();
+                                }}
+                              >
+                                View
+                              </button>
+                            ) : null}
+                          </div>
                         </li>
                       );
                     })}
@@ -275,6 +306,17 @@ const VendorTopBar = () => {
                 )}
             </div>
           )}
+
+          <VendorNewOrderModal
+            open={Boolean(orderModalId)}
+            orderId={orderModalId}
+            vendorIdStr={String(user?.id || user?._id || '')}
+            getToken={getVendorToken}
+            onClose={() => {
+              setOrderModalId(null);
+              loadNotifications();
+            }}
+          />
 
           <div className="hidden lg:flex items-center gap-2">
             <div className="text-right">

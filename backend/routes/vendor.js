@@ -24,6 +24,7 @@ import { getMyKyc, submitMyKyc } from '../controller/vendor/kycController.js';
 import { getVendorNotifications } from '../controller/vendor/notificationController.js';
 import {
   getVendorOrders,
+  getVendorOrderById,
   updateVendorOrderStatus,
 } from '../controller/vendor/orderController.js';
 import {
@@ -83,6 +84,7 @@ router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
 router.get('/orders', vendorAuth, getVendorOrders);
+router.get('/orders/:id', vendorAuth, getVendorOrderById);
 router.put('/orders/:id/status', vendorAuth, updateVendorOrderStatus);
 router.get('/kyc', vendorAuth, getMyKyc);
 router.get('/notifications', vendorAuth, getVendorNotifications);
