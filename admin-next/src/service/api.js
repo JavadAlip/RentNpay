@@ -98,6 +98,20 @@ export const apiGetVendorOrder = (id, token) =>
     },
   });
 
+export const apiGetVendorOrderPack = (id, token) =>
+  API.get(`/vendor/orders/${id}/pack`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiVendorMarkOrderShipped = (id, body, token) =>
+  API.put(`/vendor/orders/${id}/mark-shipped`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiUpdateVendorOrderStatus = (id, status, token) =>
   API.put(
     `/vendor/orders/${id}/status`,

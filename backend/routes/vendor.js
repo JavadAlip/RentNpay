@@ -25,6 +25,8 @@ import { getVendorNotifications } from '../controller/vendor/notificationControl
 import {
   getVendorOrders,
   getVendorOrderById,
+  getVendorOrderPackDetail,
+  vendorMarkOrderShipped,
   updateVendorOrderStatus,
 } from '../controller/vendor/orderController.js';
 import {
@@ -84,6 +86,8 @@ router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
 router.get('/orders', vendorAuth, getVendorOrders);
+router.get('/orders/:id/pack', vendorAuth, getVendorOrderPackDetail);
+router.put('/orders/:id/mark-shipped', vendorAuth, vendorMarkOrderShipped);
 router.get('/orders/:id', vendorAuth, getVendorOrderById);
 router.put('/orders/:id/status', vendorAuth, updateVendorOrderStatus);
 router.get('/kyc', vendorAuth, getMyKyc);

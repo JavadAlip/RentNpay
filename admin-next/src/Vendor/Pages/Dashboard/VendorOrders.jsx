@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import { apiGetVendorOrders, apiUpdateVendorOrderStatus } from '@/service/api';
@@ -346,15 +347,12 @@ export default function VendorOrdersPage() {
                             </td>
                             <td className="px-4 py-3">
                               {showPackaging(order.status) ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    toast.info('Packaging flow coming soon.')
-                                  }
-                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100"
+                                <Link
+                                  href={`/vendor/orders/${order._id}/pack`}
+                                  className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100"
                                 >
                                   Packaging
-                                </button>
+                                </Link>
                               ) : (
                                 <span className="text-gray-300 text-xs">—</span>
                               )}

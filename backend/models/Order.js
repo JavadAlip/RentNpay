@@ -8,6 +8,30 @@ const orderItemSchema = new mongoose.Schema({
   refundableDeposit: { type: Number, default: 0 },
 });
 
+/** Vendor packing + delivery handoff (saved when order is marked shipped). */
+const vendorFulfillmentSchema = new mongoose.Schema(
+  {
+    packingChecklist: {
+      verifyQuality: { type: Boolean, default: false },
+      packSecurely: { type: Boolean, default: false },
+      labelPasted: { type: Boolean, default: false },
+    },
+    markedPackedAt: { type: Date },
+    delivery: {
+      method: {
+        type: String,
+        enum: ['self', 'third_party'],
+        default: 'self',
+      },
+      driverName: { type: String, default: '' },
+      driverPhone: { type: String, default: '' },
+      vehicleNumber: { type: String, default: '' },
+      markedShippedAt: { type: Date },
+    },
+  },
+  { _id: false },
+);
+
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [orderItemSchema],
@@ -25,6 +49,7 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'shipped', 'delivered', 'completed', 'cancelled'],
     default: 'pending',
   },
+  vendorFulfillment: { type: vendorFulfillmentSchema },
 }, { timestamps: true });
 
 export default mongoose.model('Order', orderSchema);
