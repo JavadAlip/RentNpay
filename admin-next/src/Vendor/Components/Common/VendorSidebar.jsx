@@ -11,6 +11,7 @@ const navItems = [
   { to: '/vendor-kyc-status', label: 'KYC & Verification' },
   { to: '/vendor/stores', label: 'Stores' },
   { to: '/vendor-products', label: 'Products' },
+  { to: '/vendor/orders', label: 'Orders' },
   { to: '/vendor/customers', label: 'Customers' },
   { to: '/vendor/offers', label: 'Offers' },
 ];

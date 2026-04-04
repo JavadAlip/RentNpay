@@ -23,6 +23,10 @@ import {
 import { getMyKyc, submitMyKyc } from '../controller/vendor/kycController.js';
 import { getVendorNotifications } from '../controller/vendor/notificationController.js';
 import {
+  getVendorOrders,
+  updateVendorOrderStatus,
+} from '../controller/vendor/orderController.js';
+import {
   signupVendor,
   verifyOTP,
   loginVendor,
@@ -78,6 +82,8 @@ router.put(
 router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
+router.get('/orders', vendorAuth, getVendorOrders);
+router.put('/orders/:id/status', vendorAuth, updateVendorOrderStatus);
 router.get('/kyc', vendorAuth, getMyKyc);
 router.get('/notifications', vendorAuth, getVendorNotifications);
 router.post(
