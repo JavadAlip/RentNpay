@@ -27,6 +27,8 @@ function flattenRentals(orders) {
   for (const order of orders) {
     const st = normalizeStatus(order.status);
     if (st === 'cancelled' || st === 'completed') continue;
+    // Only items the customer physically has (admin marked Delivered).
+    if (st !== 'delivered') continue;
     const start = order.createdAt ? new Date(order.createdAt) : new Date();
     const duration = order.rentalDuration;
     for (const line of order.products || []) {
@@ -140,8 +142,8 @@ export default function RentalCommandCenter() {
                   No active rentals yet
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  When you rent products, they will show up here with tenure and
-                  payment details.
+                  After your order is marked delivered, your rentals appear here
+                  with tenure and payment details.
                 </p>
                 <Link
                   href="/rent"

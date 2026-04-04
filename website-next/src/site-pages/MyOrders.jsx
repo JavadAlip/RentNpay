@@ -175,15 +175,9 @@ export default function MyOrders() {
         const id = String(o._id || '').toLowerCase();
         const shortId = orderDisplayId(o).toLowerCase();
         const title = String(
-          primaryProduct(o)?.productName ||
-            primaryProduct(o)?.title ||
-            '',
+          primaryProduct(o)?.productName || primaryProduct(o)?.title || '',
         ).toLowerCase();
-        return (
-          id.includes(q) ||
-          shortId.includes(q) ||
-          title.includes(q)
-        );
+        return id.includes(q) || shortId.includes(q) || title.includes(q);
       });
     }
     return list;
@@ -206,7 +200,11 @@ export default function MyOrders() {
 
   const tabs = [
     { id: 'all', label: 'All', count: counts.all },
-    { id: 'active_rentals', label: 'Active Rentals', count: counts.active_rentals },
+    {
+      id: 'active_rentals',
+      label: 'Active Rentals',
+      count: counts.active_rentals,
+    },
     { id: 'delivered', label: 'Completed', count: counts.delivered },
     { id: 'services', label: 'Services', count: counts.services },
     { id: 'cancelled', label: 'Cancelled', count: counts.cancelled },
@@ -256,7 +254,9 @@ export default function MyOrders() {
                 {t.label}
                 <span
                   className={`min-w-[1.5rem] h-6 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-semibold ${
-                    active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                    active
+                      ? 'bg-white/20 text-white'
+                      : 'bg-gray-100 text-gray-600'
                   }`}
                 >
                   {t.count}
@@ -344,9 +344,7 @@ export default function MyOrders() {
                 <button
                   type="button"
                   disabled={safePage >= totalPages}
-                  onClick={() =>
-                    setPage((p) => Math.min(totalPages, p + 1))
-                  }
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Next
@@ -364,8 +362,7 @@ function OrderCard({ order }) {
   const meta = classifyOrder(order);
   const product = meta.product;
   const img = productImageUrl(product?.image || '');
-  const title =
-    product?.productName || product?.title || 'Rental item';
+  const title = product?.productName || product?.title || 'Rental item';
   const total = orderLineTotal(order);
   const placed = formatOrderDate(order.createdAt);
   const oid = orderDisplayId(order);
@@ -396,13 +393,13 @@ function OrderCard({ order }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-gray-900">{title}</p>
-            <p className={`text-sm mt-2 flex items-center gap-1.5 text-emerald-600`}>
+            <p
+              className={`text-sm mt-2 flex items-center gap-1.5 text-emerald-600`}
+            >
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               Refund processed: ₹{formatMoney(total)} to source
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Cancelled on {placed}
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Cancelled on {placed}</p>
           </div>
         </div>
         <div className="px-4 pb-4 flex justify-end">
@@ -424,7 +421,10 @@ function OrderCard({ order }) {
         <li className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <p className="font-bold text-gray-900">Order #{oid}</p>
           <p className="text-sm text-gray-500 mt-1">Rental completed</p>
-          <Link href="/my-rentals" className={`text-sm font-medium mt-2 inline-block ${ORANGE_TEXT}`}>
+          <Link
+            href="/my-rentals"
+            className={`text-sm font-medium mt-2 inline-block ${ORANGE_TEXT}`}
+          >
             View details
           </Link>
         </li>
@@ -436,7 +436,8 @@ function OrderCard({ order }) {
           <div>
             <p className="font-bold text-gray-900">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">
-              Completed on: {formatOrderDate(order.updatedAt || order.createdAt)}
+              Completed on:{' '}
+              {formatOrderDate(order.updatedAt || order.createdAt)}
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -458,7 +459,8 @@ function OrderCard({ order }) {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-gray-900">{title}</p>
             <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
-              ₹{formatMoney(
+              ₹
+              {formatMoney(
                 Number(order.products?.[0]?.pricePerDay || 0) *
                   Number(order.products?.[0]?.quantity || 1),
               )}
@@ -562,7 +564,7 @@ function OrderCard({ order }) {
             href="/my-rentals"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
           >
-            Rental hub
+            Request Pickup / Close Rental
           </Link>
         </div>
       </li>
