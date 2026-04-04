@@ -25,7 +25,8 @@ import {
 function flattenRentals(orders) {
   const rows = [];
   for (const order of orders) {
-    if (normalizeStatus(order.status) === 'cancelled') continue;
+    const st = normalizeStatus(order.status);
+    if (st === 'cancelled' || st === 'completed') continue;
     const start = order.createdAt ? new Date(order.createdAt) : new Date();
     const duration = order.rentalDuration;
     for (const line of order.products || []) {

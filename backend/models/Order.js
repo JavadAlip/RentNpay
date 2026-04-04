@@ -20,7 +20,11 @@ const orderSchema = new mongoose.Schema({
   address: { type: String, required: true },
   phone: { type: String, required: true },
   name: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'], default: 'pending' }
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'shipped', 'delivered', 'completed', 'cancelled'],
+    default: 'pending',
+  },
 }, { timestamps: true });
 
 export default mongoose.model('Order', orderSchema);

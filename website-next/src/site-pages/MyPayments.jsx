@@ -188,11 +188,12 @@ export default function MyPayments() {
               {activeRows.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center">
                   <p className="text-gray-600 font-medium">
-                    No active rentals due for payment
+                    No scheduled payments right now
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    When a rental is delivered and your lease is running, it
-                    will show here.
+                    Orders that are confirmed or in transit may appear here.
+                    Once an order is marked Delivered, it moves to your order
+                    history instead.
                   </p>
                 </div>
               ) : (

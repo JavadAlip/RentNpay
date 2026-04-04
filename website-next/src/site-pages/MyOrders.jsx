@@ -6,24 +6,23 @@ import {
   Search,
   Truck,
   MapPin,
-  Calendar,
-  Clock,
-  Wallet,
   CheckCircle2,
   XCircle,
   ExternalLink,
   Package,
   Star,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { apiGetMyOrders } from '@/lib/api';
 import {
   formatMoney,
   startOfDay,
-  computeNextPaymentLabel,
   productImageUrl,
   normalizeStatus,
   resolveTenureUnit,
   computeLeaseEnd,
+  computeNextPaymentLabel,
   daysUntilNextRent,
   orderLineTotal,
   primaryProduct,
@@ -73,18 +72,27 @@ function classifyOrder(order) {
       product,
     };
   }
-  if (st === 'delivered' && daysLeft > 0) {
+  if (st === 'completed') {
     return {
-      kind: 'active_rental',
+      kind: 'completed_done',
       leaseEnd,
       daysLeft,
       unit,
       product,
     };
   }
-  if (st === 'delivered' && daysLeft <= 0) {
+  if (st === 'delivered') {
+    if (daysLeft > 0) {
+      return {
+        kind: 'active_rental',
+        leaseEnd,
+        daysLeft,
+        unit,
+        product,
+      };
+    }
     return {
-      kind: 'delivered_done',
+      kind: 'tenure_ended',
       leaseEnd,
       daysLeft,
       unit,
@@ -108,7 +116,7 @@ function tabCounts(orders) {
   for (const o of orders) {
     const { kind } = classifyOrder(o);
     if (kind === 'cancelled') c.cancelled += 1;
-    else if (kind === 'delivered_done') c.delivered += 1;
+    else if (kind === 'completed_done') c.delivered += 1;
     else c.active_rentals += 1;
   }
   return c;
@@ -118,14 +126,16 @@ function orderMatchesTab(order, tab) {
   const { kind } = classifyOrder(order);
   if (tab === 'all') return true;
   if (tab === 'cancelled') return kind === 'cancelled';
-  if (tab === 'delivered') return kind === 'delivered_done';
+  if (tab === 'delivered') return kind === 'completed_done';
   if (tab === 'services') return false;
-  if (tab === 'active_rentals')
+  if (tab === 'active_rentals') {
     return (
-      kind === 'active_rental' ||
       kind === 'shipped' ||
-      kind === 'processing'
+      kind === 'processing' ||
+      kind === 'active_rental' ||
+      kind === 'tenure_ended'
     );
+  }
   return true;
 }
 
@@ -133,18 +143,6 @@ function expectedDeliveryDate(order) {
   const d = order.createdAt ? new Date(order.createdAt) : new Date();
   d.setDate(d.getDate() + 7);
   return formatOrderDate(d);
-}
-
-function rentPriceLabel(order, product) {
-  const line = order.products?.[0];
-  const qty = Number(line?.quantity || 1);
-  const rate = Number(line?.pricePerDay || 0);
-  const unit = product
-    ? resolveTenureUnit(order, product, order.rentalDuration)
-    : 'month';
-  const u = rate * qty;
-  if (unit === 'day') return `₹${formatMoney(u)}/day`;
-  return `₹${formatMoney(u)}/month`;
 }
 
 export default function MyOrders() {
@@ -209,7 +207,7 @@ export default function MyOrders() {
   const tabs = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'active_rentals', label: 'Active Rentals', count: counts.active_rentals },
-    { id: 'delivered', label: 'Delivered', count: counts.delivered },
+    { id: 'delivered', label: 'Completed', count: counts.delivered },
     { id: 'services', label: 'Services', count: counts.services },
     { id: 'cancelled', label: 'Cancelled', count: counts.cancelled },
   ];
@@ -420,101 +418,7 @@ function OrderCard({ order }) {
     );
   }
 
-  if (meta.kind === 'active_rental') {
-    if (!product) {
-      return (
-        <li className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 shadow-sm overflow-hidden p-4">
-          <div className="flex justify-between items-start gap-3">
-            <div>
-              <p className="font-bold text-gray-900">Order #{oid}</p>
-              <p className="text-sm text-gray-600 mt-0.5">Rent started: {placed}</p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Active Rental
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mt-3">
-            Product details are loading or unavailable. Open{' '}
-            <Link href="/my-rentals" className={`font-medium ${ORANGE_TEXT}`}>
-              Rental Command Center
-            </Link>{' '}
-            for more.
-          </p>
-        </li>
-      );
-    }
-    const start = order.createdAt ? new Date(order.createdAt) : new Date();
-    const nextDue = computeNextPaymentLabel(start, meta.leaseEnd);
-    const dueIn = daysUntilNextRent(order, product);
-    return (
-      <li className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-emerald-100/80">
-          <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
-            <p className="text-sm text-gray-600 mt-0.5">
-              Rent started: {placed}
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Active Rental
-          </span>
-        </div>
-        <div className="p-4 flex flex-col sm:flex-row gap-4">
-          <div className="w-full sm:w-24 h-24 rounded-lg overflow-hidden bg-white shrink-0 mx-auto sm:mx-0">
-            {img ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                <Package className="w-10 h-10" />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="font-semibold text-gray-900 text-lg">{title}</p>
-            <p className={`text-lg font-bold ${ORANGE_TEXT} mt-1`}>
-              {rentPriceLabel(order, product)}
-            </p>
-            <p className="text-sm text-gray-600 mt-2 flex items-center justify-center sm:justify-start gap-2">
-              <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
-              Next rent due: {nextDue}
-            </p>
-            {dueIn != null && dueIn <= 14 ? (
-              <p className="text-xs font-medium text-amber-700 mt-2 inline-flex items-center gap-1.5 justify-center sm:justify-start">
-                <Clock className="w-3.5 h-3.5" />
-                Payment due in {dueIn} day{dueIn === 1 ? '' : 's'}
-              </p>
-            ) : null}
-            {meta.unit === 'day' ? (
-              <p className="text-xs text-gray-500 mt-2">
-                Lease ends {formatOrderDate(meta.leaseEnd)} ·{' '}
-                {meta.daysLeft} day{meta.daysLeft === 1 ? '' : 's'} left
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <Link
-            href="/payment-lists"
-            className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:min-w-[200px] px-4 py-3 rounded-lg border-2 ${ORANGE_BORDER} bg-white ${ORANGE_TEXT} text-sm font-semibold hover:bg-orange-50`}
-          >
-            <Wallet className="w-4 h-4" />
-            Pay rent
-          </Link>
-          <Link
-            href="/my-rentals"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
-          >
-            Request pickup / Close rental
-          </Link>
-        </div>
-      </li>
-    );
-  }
-
-  if (meta.kind === 'delivered_done') {
+  if (meta.kind === 'completed_done') {
     if (!product) {
       return (
         <li className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
@@ -532,12 +436,12 @@ function OrderCard({ order }) {
           <div>
             <p className="font-bold text-gray-900">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">
-              Delivered on: {formatOrderDate(order.updatedAt || order.createdAt)}
+              Completed on: {formatOrderDate(order.updatedAt || order.createdAt)}
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Delivered
+            Completed
           </span>
         </div>
         <div className="p-4 flex gap-4">
@@ -564,7 +468,7 @@ function OrderCard({ order }) {
             </p>
             <p className="text-sm text-emerald-600 mt-2 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              Rental period completed
+              Thank you — rental closed
             </p>
           </div>
         </div>
@@ -579,6 +483,135 @@ function OrderCard({ order }) {
           <span className="text-sm text-gray-600 text-center sm:text-right cursor-pointer hover:underline">
             Return or exchange
           </span>
+        </div>
+      </li>
+    );
+  }
+
+  if (meta.kind === 'active_rental') {
+    const nextRentDays = product ? daysUntilNextRent(order, product) : null;
+    const nextDueLabel = computeNextPaymentLabel(
+      order.createdAt,
+      meta.leaseEnd,
+    );
+    return (
+      <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
+          <div>
+            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Active rental
+          </span>
+        </div>
+        <div className="p-4 flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+            {img ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Package className="w-8 h-8" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-900">{title}</p>
+            <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
+              ₹{formatMoney(total)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2 flex items-start gap-2">
+              <Calendar className="w-4 h-4 shrink-0 mt-0.5 text-gray-500" />
+              <span>
+                Tenure ends {formatOrderDate(meta.leaseEnd)} ·{' '}
+                <span className="font-medium text-gray-800">
+                  {meta.daysLeft} day{meta.daysLeft === 1 ? '' : 's'} left
+                </span>
+              </span>
+            </p>
+            {nextRentDays != null ? (
+              <p className="text-sm text-gray-600 mt-1.5 flex items-start gap-2">
+                <Clock className="w-4 h-4 shrink-0 mt-0.5 text-gray-500" />
+                <span>
+                  Next rent in {nextRentDays} day{nextRentDays === 1 ? '' : 's'}{' '}
+                  ({nextDueLabel})
+                </span>
+              </p>
+            ) : meta.unit === 'month' ? (
+              <p className="text-sm text-gray-500 mt-1.5 flex items-start gap-2">
+                <Clock className="w-4 h-4 shrink-0 mt-0.5 text-gray-500" />
+                <span>Next cycle aligns with lease end ({nextDueLabel}).</span>
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 mt-1.5">
+                Day-based tenure — schedule is the dates above.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <Link
+            href="/my-payments"
+            className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 rounded-lg text-white text-sm font-semibold ${ORANGE}`}
+          >
+            Pay rent
+          </Link>
+          <Link
+            href="/my-rentals"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
+          >
+            Rental hub
+          </Link>
+        </div>
+      </li>
+    );
+  }
+
+  if (meta.kind === 'tenure_ended') {
+    return (
+      <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
+          <div>
+            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+            <Package className="w-3.5 h-3.5" />
+            Tenure ended
+          </span>
+        </div>
+        <div className="p-4 flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+            {img ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Package className="w-8 h-8" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="text-sm text-gray-600 mt-2">
+              Your rental period has ended. Please arrange return of the item;
+              we&apos;ll mark this order complete once it&apos;s received.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Lease ended {formatOrderDate(meta.leaseEnd)}
+            </p>
+          </div>
+        </div>
+        <div className="px-4 pb-4">
+          <Link
+            href="/my-rentals"
+            className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 rounded-lg text-white text-sm font-semibold ${ORANGE}`}
+          >
+            <MapPin className="w-4 h-4" />
+            Open rental hub
+          </Link>
         </div>
       </li>
     );

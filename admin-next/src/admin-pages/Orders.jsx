@@ -4,8 +4,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiGetAllOrders, apiUpdateOrderStatus } from '@/service/api';
 import { toast } from 'react-toastify';
 
-const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-const tabs = ['Processing', 'Dispatched', 'In Transit', 'Cancelled', 'Delivered', 'Pickup'];
+const statuses = [
+  'pending',
+  'confirmed',
+  'shipped',
+  'delivered',
+  'completed',
+  'cancelled',
+];
+const tabs = [
+  'Processing',
+  'Dispatched',
+  'In Transit',
+  'Cancelled',
+  'Delivered',
+  'Completed',
+];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -15,7 +29,7 @@ const mapTabToStatuses = (tab) => {
   if (tab === 'In Transit') return ['shipped'];
   if (tab === 'Cancelled') return ['cancelled'];
   if (tab === 'Delivered') return ['delivered'];
-  if (tab === 'Pickup') return [];
+  if (tab === 'Completed') return ['completed'];
   return [];
 };
 
@@ -122,7 +136,7 @@ const Orders = () => {
       ? Math.round(totalRevenue / normalizedOrders.length)
       : 0;
     const urgentActions = normalizedOrders.filter((o) => {
-      const isOpen = !['delivered', 'cancelled'].includes(String(o.status));
+      const isOpen = !['completed', 'cancelled'].includes(String(o.status));
       if (!isOpen) return false;
       const ageMs = Date.now() - new Date(o.createdAt || 0).getTime();
       return ageMs > 24 * 60 * 60 * 1000;
