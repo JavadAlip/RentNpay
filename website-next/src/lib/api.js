@@ -60,6 +60,9 @@ export const apiGetMyOrders = () => api.get('/orders/my');
 export const apiGetMyOrderById = (id) => api.get(`/orders/my/${id}`);
 export const apiCancelMyOrder = (id) => api.put(`/orders/my/${id}/cancel`);
 
+// ── USER NOTIFICATIONS ───────────────────────
+export const apiGetUserNotifications = () => api.get('/users/notifications');
+
 // ── WISHLIST ────────────────────────────────
 export const apiGetMyWishlist = () => api.get('/users/wishlist');
 export const apiToggleWishlist = (productId) =>

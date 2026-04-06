@@ -18,6 +18,7 @@ import {
   toggleWishlist,
 } from '../controller/user/wishlistController.js';
 import { getMyUserKyc, submitMyUserKyc } from '../controller/user/kycController.js';
+import { getUserNotifications } from '../controller/user/notificationController.js';
 
 const router = express.Router();
 
@@ -36,6 +37,9 @@ router.delete('/addresses/:id', userAuth, deleteAddress);
 // wishlist
 router.get('/wishlist', userAuth, getMyWishlist);
 router.post('/wishlist/toggle', userAuth, toggleWishlist);
+
+// notifications (activity feed)
+router.get('/notifications', userAuth, getUserNotifications);
 
 // user kyc
 router.get('/kyc', userAuth, getMyUserKyc);

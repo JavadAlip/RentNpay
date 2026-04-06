@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
@@ -8,6 +8,7 @@ import { useAuthModal } from '@/contexts/AuthModalContext';
 import { logout as logoutAction } from '@/store/slices/authSlice';
 import { clearCart, syncCart } from '@/store/slices/cartSlice';
 import { api } from '@/lib/axios';
+import { apiGetUserNotifications } from '@/lib/api';
 import { USER_AUTH } from '@/lib/userAuthApi';
 import {
   MapPin,
@@ -23,7 +24,55 @@ import {
   ChevronDown,
   Sofa,
   Wallet,
+  Bell,
 } from 'lucide-react';
+
+function formatNotifTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ago`;
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function seenNotifStorageKey(userId) {
+  return userId ? `rn_seen_notif_ids_${userId}` : 'rn_seen_notif_ids';
+}
+
+function getUnreadNotifCount(apiList, userId) {
+  const ids = (apiList || []).map((n) => n.id);
+  if (!ids.length) return 0;
+  let seen = [];
+  try {
+    seen = JSON.parse(
+      typeof window !== 'undefined'
+        ? localStorage.getItem(seenNotifStorageKey(userId)) || '[]'
+        : '[]',
+    );
+  } catch {
+    seen = [];
+  }
+  const seenSet = new Set(seen);
+  return Math.min(ids.filter((id) => !seenSet.has(id)).length, 9);
+}
+
+function persistSeenNotifIds(list, userId) {
+  if (typeof window === 'undefined' || !list?.length) return;
+  localStorage.setItem(
+    seenNotifStorageKey(userId),
+    JSON.stringify(list.map((n) => n.id)),
+  );
+}
 
 const Navbar = () => {
   const [search, setSearch] = useState('');
@@ -31,8 +80,14 @@ const Navbar = () => {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifList, setNotifList] = useState([]);
+  const [notifBadge, setNotifBadge] = useState(0);
 
   const dropdownRef = useRef(null);
+  const notifPanelRef = useRef(null);
+  const notifListRef = useRef([]);
   const router = useRouter();
   const dispatch = useDispatch();
   const { openAuth } = useAuthModal();
@@ -51,16 +106,119 @@ const Navbar = () => {
     dispatch(syncCart());
   }, [dispatch, isAuthenticated, user?.id, user?._id, user?.email]);
 
-  // ✅ Close dropdown when clicking outside
+  useEffect(() => {
+    notifListRef.current = notifList;
+  }, [notifList]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifBadge(0);
+      setNotifList([]);
+      return;
+    }
+    const uid = user?.id || user?._id;
+    apiGetUserNotifications()
+      .then((res) => {
+        const list = res.data?.notifications || [];
+        setNotifBadge(getUnreadNotifCount(list, uid));
+      })
+      .catch(() => setNotifBadge(0));
+  }, [isAuthenticated, user?.id, user?._id]);
+
+  const loadNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const extra = [];
+      if (
+        typeof window !== 'undefined' &&
+        sessionStorage.getItem('rn_login_welcome')
+      ) {
+        sessionStorage.removeItem('rn_login_welcome');
+        extra.push({
+          id: 'login-welcome',
+          type: 'welcome',
+          title: 'Welcome back!',
+          detail: `Hi ${firstName || 'there'}, you're signed in. Check your latest updates below.`,
+          href: '/',
+          at: new Date().toISOString(),
+        });
+      }
+      const res = await apiGetUserNotifications();
+      const apiList = res.data?.notifications || [];
+      const merged = [...extra, ...apiList].sort(
+        (a, b) => new Date(b.at) - new Date(a.at),
+      );
+      const seen = new Set();
+      const deduped = [];
+      for (const row of merged) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        deduped.push(row);
+      }
+      const slice = deduped.slice(0, 7);
+      setNotifList(slice);
+    } catch {
+      setNotifList([]);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const refreshNotifBadge = useCallback(() => {
+    const uid = user?.id || user?._id;
+    return apiGetUserNotifications()
+      .then((res) => {
+        const list = res.data?.notifications || [];
+        setNotifBadge(getUnreadNotifCount(list, uid));
+      })
+      .catch(() => setNotifBadge(0));
+  }, [user?.id, user?._id]);
+
+  const closeNotifPanel = useCallback(() => {
+    const uid = user?.id || user?._id;
+    persistSeenNotifIds(notifListRef.current, uid);
+    setShowNotifPanel(false);
+    refreshNotifBadge();
+  }, [user?.id, user?._id, refreshNotifBadge]);
+
+  const toggleNotifPanel = () => {
+    if (showNotifPanel) {
+      closeNotifPanel();
+    } else {
+      setNotifBadge(0);
+      setShowNotifPanel(true);
+      loadNotifications();
+    }
+    setShowProfileDropdown(false);
+  };
+
+  // ✅ Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowProfileDropdown(false);
       }
+      if (
+        !showNotifPanel ||
+        !notifPanelRef.current ||
+        notifPanelRef.current.contains(e.target)
+      ) {
+        return;
+      }
+      closeNotifPanel();
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showNotifPanel, closeNotifPanel]);
+
+  useEffect(() => {
+    if (!showNotifPanel) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeNotifPanel();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showNotifPanel, closeNotifPanel]);
 
   // ✅ Logout handler
   const handleLogout = async () => {
@@ -71,9 +229,18 @@ const Navbar = () => {
       // Even if API fails, clear local state
       console.error('Logout API error:', err);
     } finally {
+      const uid = user?.id || user?._id;
+      if (uid) {
+        try {
+          localStorage.removeItem(seenNotifStorageKey(uid));
+        } catch {
+          /* ignore */
+        }
+      }
       dispatch(logoutAction());
       dispatch(clearCart());
       setShowProfileDropdown(false);
+      setShowNotifPanel(false);
       setLoggingOut(false);
       router.push('/');
     }
@@ -133,7 +300,7 @@ const Navbar = () => {
               className="relative flex items-center gap-1 hover:text-black p-1"
             >
               <ShoppingCart size={18} className="w-5 h-5" />
-              <span className="hidden md:inline text-sm">Cart</span>
+              {/* <span className="hidden md:inline text-sm">Cart</span> */}
               {cartCount > 0 && (
                 <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
                   {cartCount}
@@ -145,9 +312,100 @@ const Navbar = () => {
               href="/wishlist"
               className="flex items-center gap-1 hover:text-black p-1"
             >
-              <Heart size={18} className="w-5 h-5 text-red-500" />
-              <span className="hidden md:inline text-sm">Wishlist</span>
+              <Heart size={18} className="w-5 h-5 " />
+              {/* <span className="hidden md:inline text-sm">Wishlist</span> */}
             </Link>
+
+            {isAuthenticated && user ? (
+              <>
+                {showNotifPanel ? (
+                  <button
+                    type="button"
+                    aria-label="Close notifications"
+                    className="fixed inset-0 z-[55] bg-black/20 md:bg-transparent"
+                    onClick={closeNotifPanel}
+                  />
+                ) : null}
+                <div className="relative" ref={notifPanelRef}>
+                  <button
+                    type="button"
+                    onClick={toggleNotifPanel}
+                    aria-expanded={showNotifPanel}
+                    aria-haspopup="dialog"
+                    className="relative w-9 h-9 flex items-center justify-center    text-gray-600 hover:text-black "
+                  >
+                    <span className="sr-only">Notifications</span>
+                    <Bell className="w-5 h-5" strokeWidth={1.8} />
+                    {notifBadge > 0 ? (
+                      <span className="absolute -top-1 -right-1 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
+                        {notifBadge > 9 ? '9+' : notifBadge}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {showNotifPanel ? (
+                    <div
+                      role="dialog"
+                      aria-label="Notifications"
+                      className="fixed z-[60] top-[calc(3.75rem+env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+                    >
+                      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <p className="text-sm font-semibold text-gray-900">
+                          Notifications
+                        </p>
+                        <span className="text-[11px] text-gray-400">
+                          Last 7 updates
+                        </span>
+                      </div>
+                      {notifLoading ? (
+                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                          Loading…
+                        </p>
+                      ) : notifList.length === 0 ? (
+                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                          No recent activity yet.
+                        </p>
+                      ) : (
+                        <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50">
+                          {notifList.map((n) => (
+                            <li
+                              key={n.id}
+                              className="px-4 py-3 hover:bg-gray-50"
+                            >
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {n.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                    {n.detail}
+                                  </p>
+                                  <p className="text-[11px] text-gray-400 mt-1">
+                                    {formatNotifTime(n.at)}
+                                  </p>
+                                </div>
+                                {/* {n.href ? (
+                                  <button
+                                    type="button"
+                                    className="shrink-0 px-3 py-1.5 text-xs font-semibold text-[#F97316] border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100"
+                                    onClick={() => {
+                                      router.push(n.href || '/');
+                                      setShowNotifPanel(false);
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                ) : null} */}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {/* ✅ Profile with dropdown — only when logged in */}
             {isAuthenticated && user ? (
@@ -218,7 +476,7 @@ const Navbar = () => {
                       onClick={() => setShowProfileDropdown(false)}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      <Sofa size={15} className="text-blue-600 shrink-0" />
+                      <Sofa size={15} className="text-orange-500 shrink-0" />
                       Rental products
                     </Link>
 
@@ -328,7 +586,7 @@ const Navbar = () => {
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
                 >
-                  <Sofa size={15} className="text-blue-600 shrink-0" />
+                  <Sofa size={15} className="text-orange-500 shrink-0" />
                   Rental Products
                 </Link>
                 <Link

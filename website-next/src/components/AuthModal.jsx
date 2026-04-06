@@ -144,6 +144,9 @@ export default function AuthModal() {
       });
       const user = normalizeUserFromApi(data.user);
       dispatch(setCredentials({ user, token: data.token }));
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('rn_login_welcome', '1');
+      }
 
       closeAuth();
       const redirect =
@@ -172,6 +175,7 @@ export default function AuthModal() {
       });
       const user = normalizeUserFromApi(data.user);
       dispatch(setCredentials({ user, token: data.token }));
+      sessionStorage.setItem('rn_login_welcome', '1');
       closeAuth();
       const redirect =
         sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';

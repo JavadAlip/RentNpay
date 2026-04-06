@@ -29,6 +29,9 @@ export default function Login() {
       if (token && user) {
         const normalized = normalizeUserFromApi(user);
         dispatch(setCredentials({ token, user: normalized }));
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('rn_login_welcome', '1');
+        }
         router.push('/');
       } else {
         setError('Unexpected login response.');
