@@ -24,6 +24,9 @@ const PaymentMain = () => {
     aadhaarFront: '',
     aadhaarBack: '',
     panCard: '',
+    dateOfBirth: '',
+    permanentAddress: '',
+    contactNumber: '',
   });
   const [loadingKyc, setLoadingKyc] = useState(false);
   const [submittingKyc, setSubmittingKyc] = useState(false);
@@ -61,11 +64,21 @@ const PaymentMain = () => {
     apiGetMyUserKyc()
       .then((res) => {
         const kyc = res.data?.kyc || {};
+        let dob = '';
+        if (kyc.dateOfBirth != null && kyc.dateOfBirth !== '') {
+          const d = new Date(kyc.dateOfBirth);
+          if (!Number.isNaN(d.getTime())) {
+            dob = d.toISOString().slice(0, 10);
+          }
+        }
         setKycState({
           status: String(kyc.status || 'not_submitted'),
           aadhaarFront: kyc.aadhaarFront || '',
           aadhaarBack: kyc.aadhaarBack || '',
           panCard: kyc.panCard || '',
+          dateOfBirth: dob,
+          permanentAddress: kyc.permanentAddress || '',
+          contactNumber: kyc.contactNumber || '',
         });
       })
       .catch(() => {
@@ -74,15 +87,26 @@ const PaymentMain = () => {
           aadhaarFront: '',
           aadhaarBack: '',
           panCard: '',
+          dateOfBirth: '',
+          permanentAddress: '',
+          contactNumber: '',
         });
       })
       .finally(() => setLoadingKyc(false));
   }, []);
 
-  const readyToSubmit =
+  const docsReady =
     Boolean(aadhaarFrontFile || kycState.aadhaarFront) &&
     Boolean(aadhaarBackFile || kycState.aadhaarBack) &&
     Boolean(panCardFile || kycState.panCard);
+
+  const contactDigits = String(kycState.contactNumber || '').replace(/\D/g, '');
+  const personalOk =
+    Boolean(kycState.dateOfBirth?.trim()) &&
+    kycState.permanentAddress.trim().length >= 5 &&
+    contactDigits.length >= 10;
+
+  const readyToSubmit = personalOk && docsReady;
 
   const dispatchEnabled = ['pending', 'approved'].includes(
     String(kycState.status || '').toLowerCase(),
@@ -90,12 +114,21 @@ const PaymentMain = () => {
 
   const submitKyc = async () => {
     setKycError('');
-    if (!readyToSubmit) {
+    if (!personalOk) {
+      setKycError(
+        'Please enter date of birth, permanent address and a valid contact number (10+ digits).',
+      );
+      return;
+    }
+    if (!docsReady) {
       setKycError('Please upload Aadhaar Front, Aadhaar Back and PAN Card.');
       return;
     }
 
     const formData = new FormData();
+    formData.append('dateOfBirth', kycState.dateOfBirth);
+    formData.append('permanentAddress', kycState.permanentAddress.trim());
+    formData.append('contactNumber', kycState.contactNumber.trim());
     if (aadhaarFrontFile) formData.append('aadhaarFront', aadhaarFrontFile);
     if (aadhaarBackFile) formData.append('aadhaarBack', aadhaarBackFile);
     if (panCardFile) formData.append('panCard', panCardFile);
@@ -104,11 +137,21 @@ const PaymentMain = () => {
     try {
       const res = await apiSubmitMyUserKyc(formData);
       const kyc = res.data?.kyc || {};
+      let dob = '';
+      if (kyc.dateOfBirth != null && kyc.dateOfBirth !== '') {
+        const d = new Date(kyc.dateOfBirth);
+        if (!Number.isNaN(d.getTime())) {
+          dob = d.toISOString().slice(0, 10);
+        }
+      }
       setKycState({
         status: String(kyc.status || 'pending'),
         aadhaarFront: kyc.aadhaarFront || '',
         aadhaarBack: kyc.aadhaarBack || '',
         panCard: kyc.panCard || '',
+        dateOfBirth: dob || kycState.dateOfBirth,
+        permanentAddress: kyc.permanentAddress || kycState.permanentAddress,
+        contactNumber: kyc.contactNumber || kycState.contactNumber,
       });
       setAadhaarFrontFile(null);
       setAadhaarBackFile(null);
@@ -202,8 +245,8 @@ const PaymentMain = () => {
       </div>
 
       {showKycModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
             <div className="p-5 border-b bg-gradient-to-r from-green-50 to-gray-50">
               <div className="flex items-start justify-between">
                 <div className="flex gap-3">
@@ -232,10 +275,70 @@ const PaymentMain = () => {
             </div>
 
             <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs">
+                    1
+                  </span>
+                  <p className="text-sm font-medium text-gray-800">
+                    Your details
+                  </p>
+                </div>
+                <p className="text-[11px] text-gray-500 -mt-1 mb-2">
+                  Required before you can submit documents.
+                </p>
+                <label className="block text-xs font-medium text-gray-700">
+                  Date of birth
+                  <input
+                    type="date"
+                    value={kycState.dateOfBirth}
+                    onChange={(e) =>
+                      setKycState((s) => ({
+                        ...s,
+                        dateOfBirth: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-700">
+                  Permanent address
+                  <textarea
+                    value={kycState.permanentAddress}
+                    onChange={(e) =>
+                      setKycState((s) => ({
+                        ...s,
+                        permanentAddress: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="House no., street, city, state, PIN"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 resize-y min-h-[72px]"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-700">
+                  Contact number
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={kycState.contactNumber}
+                    onChange={(e) =>
+                      setKycState((s) => ({
+                        ...s,
+                        contactNumber: e.target.value,
+                      }))
+                    }
+                    placeholder="10-digit mobile number"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                  />
+                </label>
+              </div>
+
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs">
-                    1
+                    2
                   </span>
                   <p className="text-sm font-medium text-gray-800">
                     Upload Aadhaar & PAN
@@ -326,7 +429,10 @@ const PaymentMain = () => {
                   return submitKyc();
                 }}
                 disabled={
-                  submittingKyc || loadingKyc || dispatchStage !== 'idle'
+                  submittingKyc ||
+                  loadingKyc ||
+                  dispatchStage !== 'idle' ||
+                  (!dispatchEnabled && !readyToSubmit)
                 }
                 className={`w-full py-3 rounded-xl text-sm font-medium ${
                   dispatchStage === 'redirecting'

@@ -130,13 +130,14 @@ export default function KycCustomerQueue() {
 
         <div className="p-4 sm:p-6">
           <div className="overflow-x-auto">
-            <table className="min-w-[920px] w-full text-sm">
+            <table className="min-w-[1000px] w-full text-sm">
               <thead className="bg-gray-50">
                 <tr className="text-gray-500">
                   <th className="px-4 py-3 text-left font-medium">DATE</th>
                   <th className="px-4 py-3 text-left font-medium">CUSTOMER</th>
                   <th className="px-4 py-3 text-left font-medium">ID TYPE</th>
                   <th className="px-4 py-3 text-left font-medium">STATUS</th>
+                  <th className="px-4 py-3 text-left font-medium">CUSTOMER ID</th>
                   <th className="px-4 py-3 text-left font-medium">ACTION</th>
                 </tr>
               </thead>
@@ -154,24 +155,31 @@ export default function KycCustomerQueue() {
                     <td className="px-4 py-3 text-gray-600 capitalize">
                       {item.status}
                     </td>
+                    <td className="px-4 py-3 text-gray-700 font-mono text-xs">
+                      {item.customerId || '—'}
+                    </td>
                     <td className="px-4 py-3">
-                      {item.status !== 'approved' ? (
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/kyc/customer/${item.userId}`)}
-                          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
-                        >
-                          Review Now
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(`/kyc/customer/${item.userId}`)
+                        }
+                        className={`px-3 py-2 rounded-lg text-white text-xs font-medium ${
+                          item.status === 'approved'
+                            ? 'bg-slate-600 hover:bg-slate-700'
+                            : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                      >
+                        {item.status === 'approved'
+                          ? 'View details'
+                          : 'Review now'}
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {!items.length ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
                       No customer KYC records.
                     </td>
                   </tr>

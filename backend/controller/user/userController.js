@@ -1,4 +1,5 @@
 import User from '../../models/userAuthModel.js';
+import Counter from '../../models/Counter.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { sendOTPEmail } from '../../utils/sendMail.js';
@@ -26,6 +27,13 @@ export const signupUser = async (req, res) => {
     });
 
     await user.save();
+
+    const c = await Counter.findByIdAndUpdate(
+      'userCustomerSeq',
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true },
+    );
+    await User.updateOne({ _id: user._id }, { $set: { customerNumber: c.seq } });
 
     await sendOTPEmail(emailAddress, otp);
 

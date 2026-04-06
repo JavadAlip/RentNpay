@@ -24,6 +24,9 @@ export const getMyUserKyc = async (req, res) => {
           aadhaarFront: '',
           aadhaarBack: '',
           panCard: '',
+          dateOfBirth: null,
+          permanentAddress: '',
+          contactNumber: '',
           submittedAt: null,
           reviewedAt: null,
           rejectionReason: '',
@@ -55,6 +58,22 @@ export const submitMyUserKyc = async (req, res) => {
       existing?.panCard ||
       '';
 
+    const permanentAddress = String(req.body?.permanentAddress || '').trim();
+    const contactNumber = String(req.body?.contactNumber || '').trim();
+    const dobRaw = String(req.body?.dateOfBirth || '').trim();
+
+    if (!permanentAddress || !contactNumber || !dobRaw) {
+      return res.status(400).json({
+        message:
+          'Please enter date of birth, permanent address and contact number.',
+      });
+    }
+
+    const dateOfBirth = new Date(dobRaw);
+    if (Number.isNaN(dateOfBirth.getTime())) {
+      return res.status(400).json({ message: 'Invalid date of birth.' });
+    }
+
     if (!aadhaarFront || !aadhaarBack || !panCard) {
       return res.status(400).json({
         message: 'Please upload Aadhaar Front, Aadhaar Back and PAN Card.',
@@ -66,6 +85,9 @@ export const submitMyUserKyc = async (req, res) => {
       aadhaarFront,
       aadhaarBack,
       panCard,
+      dateOfBirth,
+      permanentAddress,
+      contactNumber,
       status: 'pending',
       rejectionReason: '',
       submittedAt: new Date(),

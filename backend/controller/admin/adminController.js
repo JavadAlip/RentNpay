@@ -286,7 +286,7 @@ export const getVendorDetails = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({})
-      .select('fullName emailAddress createdAt')
+      .select('fullName emailAddress createdAt customerNumber')
       .sort({ createdAt: -1 });
 
     const userIds = users.map((u) => u._id);
@@ -324,6 +324,7 @@ export const getAllUsers = async (req, res) => {
         fullName: u.fullName,
         emailAddress: u.emailAddress,
         createdAt: u.createdAt,
+        customerNumber: u.customerNumber,
         ordersCount: stat.ordersCount,
         itemsCount: stat.itemsCount,
       };

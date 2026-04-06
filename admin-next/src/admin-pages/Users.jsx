@@ -193,14 +193,18 @@ const Users = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((u, index) => {
+              {filteredUsers.map((u) => {
                 const orders = Number(u.ordersCount || 0);
                 const items = Number(u.itemsCount || 0);
                 const avg = orders ? (items / orders).toFixed(1) : '0.0';
+                const custId =
+                  u.customerNumber != null && u.customerNumber > 0
+                    ? `CUST-${String(u.customerNumber).padStart(3, '0')}`
+                    : '—';
                 return (
                   <tr key={u._id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-700">
-                      CUST-{String(index + 1).padStart(3, '0')}
+                    <td className="px-4 py-3 font-medium text-gray-700 font-mono text-sm">
+                      {custId}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-900">{u.fullName || '-'}</p>

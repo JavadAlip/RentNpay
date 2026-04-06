@@ -365,25 +365,29 @@ export const requestVendorKycDocumentReupload = async (req, res) => {
 // Customer (User) KYC approvals
 // ────────────────────────────────────────────────────────────────
 
-const getCustomerIdType = (kyc) => {
-  if (kyc?.aadhaarFront && kyc?.aadhaarBack) return 'Aadhaar';
-  if (kyc?.panCard) return 'PAN';
-  return 'Document';
-};
-
 export const getCustomerKycQueue = async (req, res) => {
   try {
     const [pending, approved, rejected] = await Promise.all([
       UserKyc.find({ status: 'pending' })
-        .populate('userId', 'fullName emailAddress')
+        .populate('userId', 'fullName emailAddress customerNumber')
         .sort({ submittedAt: -1 }),
       UserKyc.find({ status: 'approved' })
-        .populate('userId', 'fullName emailAddress')
+        .populate('userId', 'fullName emailAddress customerNumber')
         .sort({ submittedAt: -1 }),
       UserKyc.find({ status: 'rejected' })
-        .populate('userId', 'fullName emailAddress')
+        .populate('userId', 'fullName emailAddress customerNumber')
         .sort({ submittedAt: -1 }),
     ]);
+
+    const formatCustomerId = (u) => {
+      const num = u?.customerNumber;
+      if (num != null && num > 0) {
+        return `CUST-${String(num).padStart(3, '0')}`;
+      }
+      return `CUST-${String(u?._id || '')
+        .slice(-6)
+        .toUpperCase()}`;
+    };
 
     const mapList = (list) =>
       list.map((k) => ({
@@ -391,7 +395,8 @@ export const getCustomerKycQueue = async (req, res) => {
         _id: k._id,
         customerName: k.userId?.fullName || '',
         customerEmail: k.userId?.emailAddress || '',
-        idType: getCustomerIdType(k),
+        customerId: formatCustomerId(k.userId),
+        idType: 'Aadhaar',
         submittedAt: k.submittedAt,
         status: k.status,
         rejectionReason: k.rejectionReason || '',
@@ -427,7 +432,7 @@ export const getCustomerKycReview = async (req, res) => {
     const { userId } = req.params;
     const kyc = await UserKyc.findOne({ userId }).populate(
       'userId',
-      'fullName emailAddress',
+      'fullName emailAddress customerNumber',
     );
 
     if (!kyc) return res.status(404).json({ message: 'KYC not found' });
@@ -436,23 +441,22 @@ export const getCustomerKycReview = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const permanentAddress = addressDoc
-      ? `${addressDoc.addressLine || ''}${addressDoc.area ? `, ${addressDoc.area}` : ''}${
-          addressDoc.city ? `, ${addressDoc.city}` : ''
-        }${addressDoc.pincode ? ` - ${addressDoc.pincode}` : ''}`.trim()
-      : kyc.permanentAddress || '';
+    const kycAddr = String(kyc.permanentAddress || '').trim();
+    const permanentAddress = kycAddr
+      ? kycAddr
+      : addressDoc
+        ? `${addressDoc.addressLine || ''}${addressDoc.area ? `, ${addressDoc.area}` : ''}${
+            addressDoc.city ? `, ${addressDoc.city}` : ''
+          }${addressDoc.pincode ? ` - ${addressDoc.pincode}` : ''}`.trim()
+        : '';
 
-    const contactNumber = addressDoc?.phone || kyc.contactNumber || '';
+    const contactNumber =
+      String(kyc.contactNumber || '').trim() || addressDoc?.phone || '';
     const dateOfBirth = kyc.dateOfBirth || '';
     const aadhaarNumber = kyc.aadhaarNumber || '';
     const panNumber = kyc.panNumber || '';
 
-    const idType =
-      kyc.aadhaarFront && kyc.aadhaarBack
-        ? 'Aadhaar'
-        : kyc.panCard
-          ? 'PAN'
-          : 'Document';
+    const idType = 'Aadhaar';
     const idNumber = idType === 'Aadhaar' ? aadhaarNumber : panNumber;
 
     const documents = [
@@ -482,11 +486,12 @@ export const getCustomerKycReview = async (req, res) => {
         userId: kyc.userId?._id,
         customerName: kyc.userId?.fullName || '',
         customerEmail: kyc.userId?.emailAddress || '',
-        customerId: `CUST-${
-          String(kyc.userId?._id || kyc.userId || '')
-            .slice(-6)
-            .toUpperCase() || '—'
-        }`,
+        customerId:
+          kyc.userId?.customerNumber != null && kyc.userId.customerNumber > 0
+            ? `CUST-${String(kyc.userId.customerNumber).padStart(3, '0')}`
+            : `CUST-${String(kyc.userId?._id || '')
+                .slice(-6)
+                .toUpperCase()}`,
         dateOfBirth,
         permanentAddress,
         contactNumber,

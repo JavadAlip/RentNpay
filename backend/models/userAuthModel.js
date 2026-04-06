@@ -65,6 +65,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    /** Stable platform customer id for admin Users table (CUST-001). */
+    customerNumber: {
+      type: Number,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

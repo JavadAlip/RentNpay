@@ -12,6 +12,9 @@ const userKycSchema = new mongoose.Schema(
     aadhaarFront: { type: String, default: '' },
     aadhaarBack: { type: String, default: '' },
     panCard: { type: String, default: '' },
+    dateOfBirth: { type: Date, default: null },
+    permanentAddress: { type: String, default: '' },
+    contactNumber: { type: String, default: '' },
     status: {
       type: String,
       enum: ['not_submitted', 'pending', 'approved', 'rejected'],
@@ -21,6 +24,7 @@ const userKycSchema = new mongoose.Schema(
     rejectionReason: { type: String, default: '' },
     submittedAt: { type: Date, default: null },
     reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: String, default: '' },
   },
   { timestamps: true },
 );
