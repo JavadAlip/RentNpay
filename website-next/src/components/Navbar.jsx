@@ -257,64 +257,120 @@ const Navbar = () => {
   return (
     <>
       <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
-              R
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
+          {!isAuthenticated ? (
+            <div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:gap-x-3 md:gap-x-4">
+              <Link
+                href="/"
+                className="flex shrink-0 items-center justify-self-start"
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                  R
+                </div>
+              </Link>
+
+              <div className="flex min-w-0 w-full flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-center md:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLocationModal(true)}
+                  className="hidden md:inline-flex shrink-0 items-center gap-2 self-center bg-gray-100 px-3 py-1.5 rounded-full text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+                >
+                  <MapPin size={14} className="text-orange-500" />
+                  <span>Delivering to: Pune, 411057</span>
+                </button>
+                <form
+                  onSubmit={handleSearch}
+                  className="relative min-w-0 w-full flex-1 md:max-w-none"
+                >
+                  <Search
+                    size={16}
+                    className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search products, rentals..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </form>
+              </div>
+
+              <div className="flex shrink-0 items-center justify-end justify-self-end gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => openAuth('login')}
+                  className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600"
+                  aria-label="Toggle menu"
+                >
+                  {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+              </div>
             </div>
-          </Link>
+          ) : (
+            <div className="flex items-center gap-3 sm:gap-5">
+              <Link href="/" className="flex items-center shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                  R
+                </div>
+              </Link>
 
-          {/* Location */}
-          <button
-            type="button"
-            onClick={() => setShowLocationModal(true)}
-            className="hidden md:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm text-gray-600 shrink-0 hover:bg-gray-200 transition-colors"
-          >
-            <MapPin size={14} className="text-orange-500" />
-            <span>Delivering to: Pune, 411057</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setShowLocationModal(true)}
+                className="hidden md:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm text-gray-600 shrink-0 hover:bg-gray-200 transition-colors"
+              >
+                <MapPin size={14} className="text-orange-500" />
+                <span>Delivering to: Pune, 411057</span>
+              </button>
 
-          {/* Search */}
-          <form
-            onSubmit={handleSearch}
-            className="flex-1 min-w-0 max-w-xl relative"
-          >
-            <Search
-              size={16}
-              className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Search products, rentals..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            />
-          </form>
+              <form
+                onSubmit={handleSearch}
+                className="flex-1 min-w-0 max-w-xl relative"
+              >
+                <Search
+                  size={16}
+                  className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Search products, rentals..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                />
+              </form>
 
-          {/* Right Icons */}
-          <div className="flex items-center gap-3 sm:gap-6 text-gray-600 shrink-0">
-            <Link
-              href="/cart"
-              className="relative flex items-center gap-1 hover:text-black p-1"
-            >
-              <ShoppingCart size={18} className="w-5 h-5" />
-              {/* <span className="hidden md:inline text-sm">Cart</span> */}
-              {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+              <div className="flex items-center gap-3 sm:gap-6 text-gray-600 shrink-0">
+                {isAuthenticated && user ? (
+              <>
+                <Link
+                  href="/cart"
+                  className="relative flex items-center gap-1 hover:text-black p-1"
+                >
+                  <ShoppingCart size={18} className="w-5 h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
 
-            <Link
-              href="/wishlist"
-              className="flex items-center gap-1 hover:text-black p-1"
-            >
-              <Heart size={18} className="w-5 h-5 " />
-              {/* <span className="hidden md:inline text-sm">Wishlist</span> */}
-            </Link>
+                <Link
+                  href="/wishlist"
+                  className="flex items-center gap-1 hover:text-black p-1"
+                >
+                  <Heart size={18} className="w-5 h-5 " />
+                </Link>
+              </>
+            ) : null}
 
             {isAuthenticated && user ? (
               <>
@@ -512,7 +568,9 @@ const Navbar = () => {
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile menu */}
@@ -542,6 +600,19 @@ const Navbar = () => {
                 Search
               </button>
             </form>
+
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  openAuth('login');
+                  setMenuOpen(false);
+                }}
+                className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+              >
+                Login
+              </button>
+            )}
 
             {/* ✅ Mobile — profile + logout */}
             {isAuthenticated && user && (
