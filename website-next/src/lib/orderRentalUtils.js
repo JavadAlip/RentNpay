@@ -1,5 +1,20 @@
 /** Shared helpers for rental orders (My Orders, Rental Command Center). */
 
+export function formatOrderDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+export function orderDisplayId(order) {
+  const id = String(order._id || '');
+  return id.slice(-6).toUpperCase() || id.slice(-8) || '—';
+}
+
 export function formatMoney(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '0';
@@ -118,6 +133,16 @@ export function orderLineTotal(order) {
       Number(it.pricePerDay || 0) * Number(it.quantity || 0) * dur,
     0,
   );
+}
+
+/** Rent for full tenure plus refundable deposits (checkout-style total). */
+export function orderGrandTotal(order) {
+  const rent = orderLineTotal(order);
+  const dep = (order.products || []).reduce(
+    (s, l) => s + Number(l.refundableDeposit || 0),
+    0,
+  );
+  return rent + dep;
 }
 
 export function primaryProduct(order) {

@@ -82,6 +82,69 @@ router.get('/my', userAuth, async (req, res) => {
   }
 });
 
+router.get('/my/:id', userAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    })
+      .populate('user', 'fullName emailAddress')
+      .populate({
+        path: 'products.product',
+        populate: { path: 'vendorId', select: 'fullName emailAddress' },
+      });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.put('/my/:id/cancel', userAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const st = String(order.status || '');
+    if (!['pending', 'confirmed', 'shipped'].includes(st)) {
+      return res
+        .status(400)
+        .json({ message: 'This order cannot be cancelled online.' });
+    }
+    if (st === 'pending' || st === 'confirmed') {
+      for (const line of order.products || []) {
+        const pid = line.product;
+        const product = await Product.findById(pid);
+        if (product) {
+          const q = Math.max(1, Number(line.quantity || 1));
+          const next = Number(product.stock || 0) + q;
+          product.stock = next;
+          product.status =
+            next <= 0
+              ? 'Out of Stock'
+              : next <= 5
+                ? 'Low Stock'
+                : 'Active';
+          await product.save();
+        }
+      }
+    }
+    order.status = 'cancelled';
+    await order.save();
+    const populated = await Order.findById(order._id)
+      .populate('user', 'fullName emailAddress')
+      .populate({
+        path: 'products.product',
+        populate: { path: 'vendorId', select: 'fullName emailAddress' },
+      });
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/', adminAuth, async (req, res) => {
   try {
     const orders = await Order.find({})

@@ -17,6 +17,8 @@ import {
 import { apiGetMyOrders } from '@/lib/api';
 import {
   formatMoney,
+  formatOrderDate,
+  orderDisplayId,
   startOfDay,
   productImageUrl,
   normalizeStatus,
@@ -33,21 +35,6 @@ const PAGE_SIZE = 5;
 const ORANGE = 'bg-[#FF6F00] hover:bg-[#e56400]';
 const ORANGE_TEXT = 'text-[#FF6F00]';
 const ORANGE_BORDER = 'border-[#FF6F00]';
-
-function formatOrderDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function orderDisplayId(order) {
-  const id = String(order._id || '');
-  return id.slice(-6).toUpperCase() || id.slice(-8) || '—';
-}
 
 /** Card visual + tab membership for one order. */
 function classifyOrder(order) {
@@ -656,7 +643,7 @@ function OrderCard({ order }) {
         </div>
         <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Link
-            href="/my-rentals"
+            href={`/orders/${String(order._id)}/track`}
             className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 rounded-lg text-white text-sm font-semibold ${ORANGE}`}
           >
             <MapPin className="w-4 h-4" />
