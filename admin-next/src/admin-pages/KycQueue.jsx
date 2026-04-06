@@ -226,13 +226,23 @@ export default function KycQueue() {
                         {item.status === 'pending' ? (
                           <button
                             type="button"
-                            onClick={() => router.push(`/kyc/vendor/${item.vendorId}`)}
+                            onClick={() =>
+                              router.push(`/kyc/vendor/${item.vendorId}`)
+                            }
                             className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                           >
-                            Review Now
+                            Review now
                           </button>
                         ) : (
-                          <span className="text-xs text-gray-500">—</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(`/kyc/vendor/${item.vendorId}`)
+                            }
+                            className="px-3 py-2 rounded-lg bg-slate-600 text-white text-xs font-medium hover:bg-slate-700"
+                          >
+                            View details
+                          </button>
                         )}
                       </td>
                     </tr>
