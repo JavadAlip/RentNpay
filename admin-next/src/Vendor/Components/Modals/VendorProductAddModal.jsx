@@ -18,7 +18,7 @@ import {
   getSubCategories,
 } from '../../../redux/slices/categorySlice';
 import {
-  apiGetVendorListingTemplate,
+  apiGetVendorListingTemplateByType,
   apiGetVendorListingTemplates,
 } from '@/service/api';
 
@@ -329,6 +329,9 @@ export default function VendorProductAddModal({
   const [allowVendorPriceEdit, setAllowVendorPriceEdit] = useState(false);
   const [rentalTiers, setRentalTiers] = useState(defaultMonthTiers());
   const [refundableDeposit, setRefundableDeposit] = useState('');
+  const [sellPrice, setSellPrice] = useState('');
+  const [mrpPrice, setMrpPrice] = useState('');
+  const [allowVendorSalePriceEdit, setAllowVendorSalePriceEdit] = useState(true);
 
   const [logistics, setLogistics] = useState({
     deliveryTimelineValue: '',
@@ -398,6 +401,9 @@ export default function VendorProductAddModal({
     setAllowVendorPriceEdit(false);
     setRentalTiers(defaultMonthTiers());
     setRefundableDeposit('');
+    setSellPrice('');
+    setMrpPrice('');
+    setAllowVendorSalePriceEdit(true);
     setLogistics({
       deliveryTimelineValue: '',
       deliveryTimelineUnit: 'Days',
@@ -413,7 +419,7 @@ export default function VendorProductAddModal({
     setCustomListing(false);
     setFullTemplate(null);
     setSelectedTemplateId(null);
-    setListingType('rent');
+    setListingType(String(p.type || 'Rental') === 'Sell' ? 'sell' : 'rent');
     setProductName(p.productName || '');
     setBrand(p.brand || '');
     setCondition(p.condition || 'Good');
@@ -477,6 +483,19 @@ export default function VendorProductAddModal({
     setRefundableDeposit(
       p.refundableDeposit != null ? String(p.refundableDeposit) : '',
     );
+    setSellPrice(
+      p.salesConfiguration?.salePrice != null
+        ? String(p.salesConfiguration.salePrice)
+        : '',
+    );
+    setMrpPrice(
+      p.salesConfiguration?.mrpPrice != null
+        ? String(p.salesConfiguration.mrpPrice)
+        : '',
+    );
+    setAllowVendorSalePriceEdit(
+      p.salesConfiguration?.allowVendorEditSalePrice !== false,
+    );
     const lv = p.logisticsVerification || {};
     setLogistics({
       deliveryTimelineValue:
@@ -498,11 +517,13 @@ export default function VendorProductAddModal({
   useEffect(() => {
     if (!isOpen || !token) return;
     setLoadingList(true);
-    apiGetVendorListingTemplates(token)
+    apiGetVendorListingTemplates(token, {
+      type: listingType === 'sell' ? 'sell' : 'rental',
+    })
       .then((res) => setTemplates(res.data?.listingTemplates || []))
       .catch(() => setTemplates([]))
       .finally(() => setLoadingList(false));
-  }, [isOpen, token]);
+  }, [isOpen, token, listingType]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -555,7 +576,11 @@ export default function VendorProductAddModal({
     if (!token) return;
     setApplyLoadingId(row._id);
     try {
-      const res = await apiGetVendorListingTemplate(row._id, token);
+      const res = await apiGetVendorListingTemplateByType(
+        row._id,
+        token,
+        listingType === 'sell' ? 'sell' : 'rental',
+      );
       const t = res.data?.listingTemplate;
       if (!t) {
         toast.error('Template not found.');
@@ -578,17 +603,32 @@ export default function VendorProductAddModal({
       const vModel =
         t.variants?.[0]?.rentalPricingModel === 'day' ? 'day' : 'month';
       setRentalPricingModel(vModel);
-      // Determine if admin template allows vendor to edit rental prices.
-      const variantsArr = Array.isArray(t.variants) ? t.variants : [];
-      const canEditFromVariants = variantsArr.some(
-        (v) => v && v.allowVendorEditRentalPrices !== false,
-      );
-      const canEditFromRoot =
-        t.allowVendorEditRentalPrices !== undefined
-          ? t.allowVendorEditRentalPrices !== false
-          : false;
-      setAllowVendorPriceEdit(canEditFromVariants || canEditFromRoot);
-      setRefundableDeposit(getTemplateRefundableDeposit(t, 0));
+      if (listingType === 'sell') {
+        setSellPrice(
+          t.salesConfiguration?.salePrice != null
+            ? String(t.salesConfiguration.salePrice)
+            : '',
+        );
+        setMrpPrice(
+          t.salesConfiguration?.mrpPrice != null
+            ? String(t.salesConfiguration.mrpPrice)
+            : '',
+        );
+        setAllowVendorSalePriceEdit(
+          t.salesConfiguration?.allowVendorEditSalePrice !== false,
+        );
+      } else {
+        const variantsArr = Array.isArray(t.variants) ? t.variants : [];
+        const canEditFromVariants = variantsArr.some(
+          (v) => v && v.allowVendorEditRentalPrices !== false,
+        );
+        const canEditFromRoot =
+          t.allowVendorEditRentalPrices !== undefined
+            ? t.allowVendorEditRentalPrices !== false
+            : false;
+        setAllowVendorPriceEdit(canEditFromVariants || canEditFromRoot);
+        setRefundableDeposit(getTemplateRefundableDeposit(t, 0));
+      }
       const lv = t.logisticsVerification || {};
       setLogistics((prev) => ({
         ...prev,
@@ -605,11 +645,9 @@ export default function VendorProductAddModal({
   };
 
   const onCustomListing = () => {
-    if (typeof onOpenManualProduct === 'function') {
-      onOpenManualProduct();
-      return;
-    }
+    const nextType = listingType;
     resetCreateState();
+    setListingType(nextType);
     setCustomListing(true);
     setFullTemplate(null);
     setSelectedTemplateId(null);
@@ -888,22 +926,28 @@ export default function VendorProductAddModal({
   const submit = (submissionStatus) => {
     if (!validate(submissionStatus)) return;
     const imgs = [...existingImages];
-    const priceLabel =
+    const rentalPriceLabel =
       rentalTiers[0]?.monthlyRent != null &&
       String(rentalTiers[0].monthlyRent).trim() !== ''
         ? `₹${rentalTiers[0].monthlyRent}/mo`
         : fullTemplate?.price || '0';
+    const sellPriceLabel =
+      String(sellPrice || '').trim() !== ''
+        ? String(sellPrice).trim()
+        : fullTemplate?.price || '0';
 
     const createdVia =
       mode === 'create'
-        ? 'template'
+        ? fullTemplate
+          ? 'template'
+          : 'manual'
         : initialData?.createdVia === 'template'
           ? 'template'
           : 'manual';
 
     onSubmit({
       productName: String(productName).trim(),
-      type: 'Rental',
+      type: listingType === 'sell' ? 'Sell' : 'Rental',
       category: categoryName,
       subCategory: subCategoryName,
       brand: String(brand || '').trim(),
@@ -912,8 +956,17 @@ export default function VendorProductAddModal({
       description: String(description || '').trim(),
       specifications: specs,
       variants: buildVariantsPayload(),
-      rentalConfigurations: buildRentalPayload(),
-      refundableDeposit: toNum(refundableDeposit, 0),
+      rentalConfigurations:
+        listingType === 'sell' ? [] : buildRentalPayload(),
+      refundableDeposit: listingType === 'sell' ? 0 : toNum(refundableDeposit, 0),
+      salesConfiguration:
+        listingType === 'sell'
+          ? {
+              allowVendorEditSalePrice: allowVendorSalePriceEdit,
+              salePrice: toNum(sellPrice, toNum(fullTemplate?.price, 0)),
+              mrpPrice: toNum(mrpPrice, 0),
+            }
+          : {},
       logisticsVerification: {
         inventoryOwnerName: String(logistics.inventoryOwnerName || '').trim(),
         city: String(logistics.city || '').trim(),
@@ -922,7 +975,7 @@ export default function VendorProductAddModal({
       },
       existingImages: imgs.filter(Boolean).slice(0, 5),
       images: newImages,
-      price: priceLabel,
+      price: listingType === 'sell' ? sellPriceLabel : rentalPriceLabel,
       stock: toNum(stock, 0),
       status: 'Active',
       submissionStatus,
@@ -990,6 +1043,12 @@ export default function VendorProductAddModal({
   const rentalFieldsLocked =
     (mode === 'create' && !!fullTemplate && !allowVendorPriceEdit) ||
     (mode === 'edit' && isTemplateBased && !allowVendorPriceEdit);
+  const saleFieldsLocked =
+    (mode === 'create' && !!fullTemplate && !allowVendorSalePriceEdit) ||
+    (mode === 'edit' &&
+      isTemplateBased &&
+      !allowVendorSalePriceEdit &&
+      listingType === 'sell');
 
   const displayVariants =
     fullTemplate && Array.isArray(fullTemplate.variants)
@@ -1035,13 +1094,28 @@ export default function VendorProductAddModal({
               <button
                 key={opt.id}
                 type="button"
-                disabled={opt.id !== 'rent'}
-                onClick={() => opt.id === 'rent' && setListingType(opt.id)}
+                disabled={opt.id === 'service'}
+                onClick={() =>
+                  opt.id !== 'service' &&
+                  (() => {
+                    setListingType(opt.id);
+                    setCustomListing(false);
+                    setFullTemplate(null);
+                    setSelectedTemplateId(null);
+                    setSearchQuery('');
+                    setProductName('');
+                    setBrand('');
+                    setDescription('');
+                    setSpecs({});
+                    setExistingImages([]);
+                    setNewImages([]);
+                  })()
+                }
                 className={`rounded-xl border-2 px-3 py-3 text-left transition ${
                   listingType === opt.id
                     ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
                     : 'border-gray-200 bg-white opacity-60'
-                } ${opt.id === 'rent' ? 'cursor-pointer opacity-100' : 'cursor-not-allowed'}`}
+                } ${opt.id === 'service' ? 'cursor-not-allowed' : 'cursor-pointer opacity-100'}`}
               >
                 <p className="text-sm font-semibold text-gray-900">
                   {opt.label}
@@ -1052,7 +1126,9 @@ export default function VendorProductAddModal({
           </div>
 
           {/* Category / subcategory (from template or manual) */}
-          <SectionCard title="What are you renting?">
+          <SectionCard
+            title={listingType === 'sell' ? 'What are you listing?' : 'What are you renting?'}
+          >
             <div className="flex flex-wrap items-center gap-2">
               {fullTemplate ? (
                 <>
@@ -1513,22 +1589,23 @@ export default function VendorProductAddModal({
                 </SectionCard>
               ) : null}
 
-              <SectionCard
-                title="Rental Configuration"
-                icon={DollarSign}
-                showLock={rentalFieldsLocked}
-                headerRight={
-                  rentalFieldsLocked ? null : (
-                    <button
-                      type="button"
-                      onClick={addRentalTier}
-                      className="text-xs font-medium text-orange-600 hover:text-orange-700"
-                    >
-                      + Add More Term
-                    </button>
-                  )
-                }
-              >
+              {listingType !== 'sell' ? (
+                <SectionCard
+                  title="Rental Configuration"
+                  icon={DollarSign}
+                  showLock={rentalFieldsLocked}
+                  headerRight={
+                    rentalFieldsLocked ? null : (
+                      <button
+                        type="button"
+                        onClick={addRentalTier}
+                        className="text-xs font-medium text-orange-600 hover:text-orange-700"
+                      >
+                        + Add More Term
+                      </button>
+                    )
+                  }
+                >
                 <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-100 mb-4 w-fit">
                   <button
                     type="button"
@@ -1621,9 +1698,84 @@ export default function VendorProductAddModal({
                     </div>
                   ))}
                 </div>
-              </SectionCard>
+                </SectionCard>
+              ) : (
+                <SectionCard
+                  title="Sales Configuration"
+                  icon={DollarSign}
+                  showLock={saleFieldsLocked}
+                >
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-600">Selling Price *</label>
+                      <input
+                        value={sellPrice}
+                        onChange={(e) => setSellPrice(e.target.value)}
+                        disabled={saleFieldsLocked}
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="Enter your price"
+                      />
+                    </div>
 
-              <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-gray-800">
+                          Market Insights
+                        </p>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                          LIVE DATA
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="rounded-lg border bg-white p-2.5">
+                          <p className="text-[10px] text-gray-500">MRP / Market Price</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            ₹
+                            {Number.isFinite(Number(mrpPrice)) && Number(mrpPrice) > 0
+                              ? Number(mrpPrice).toLocaleString('en-IN')
+                              : '0'}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-white p-2.5">
+                          <p className="text-[10px] text-gray-500">Lowest Price Online</p>
+                          <p className="text-sm font-semibold text-emerald-700">
+                            ₹
+                            {Number.isFinite(Number(sellPrice)) && Number(sellPrice) > 0
+                              ? Number(sellPrice).toLocaleString('en-IN')
+                              : '0'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={saleFieldsLocked}
+                        onClick={() => {
+                          if (Number(mrpPrice) > 0 && !Number(sellPrice)) {
+                            setSellPrice(String(mrpPrice));
+                          }
+                        }}
+                        className="mt-2 w-full rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Match Lowest Price
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-600">MRP (optional)</label>
+                      <input
+                        value={mrpPrice}
+                        onChange={(e) => setMrpPrice(e.target.value)}
+                        disabled={saleFieldsLocked}
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="MRP"
+                      />
+                    </div>
+                  </div>
+                </SectionCard>
+              )}
+
+              {listingType !== 'sell' ? (
+                <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
                 <h3 className="text-sm font-semibold text-gray-900">
                   Refundable Deposit
                 </h3>
@@ -1640,7 +1792,8 @@ export default function VendorProductAddModal({
                     className="w-full py-2.5 pr-3 text-sm outline-none rounded-xl"
                   />
                 </div>
-              </div>
+                </div>
+              ) : null}
 
               <SectionCard title="Logistics & Verification" icon={Truck}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
