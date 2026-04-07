@@ -8,7 +8,10 @@ import { useAuthModal } from '@/contexts/AuthModalContext';
 import { logout as logoutAction } from '@/store/slices/authSlice';
 import { clearCart, syncCart } from '@/store/slices/cartSlice';
 import { api } from '@/lib/axios';
-import { apiGetUserNotifications } from '@/lib/api';
+import {
+  apiGetUserNotifications,
+  apiGetStorefrontVendorProducts,
+} from '@/lib/api';
 import { USER_AUTH } from '@/lib/userAuthApi';
 import {
   MapPin,
@@ -25,6 +28,7 @@ import {
   Sofa,
   Wallet,
   Bell,
+  History,
 } from 'lucide-react';
 
 function formatNotifTime(iso) {
@@ -71,6 +75,314 @@ function persistSeenNotifIds(list, userId) {
   localStorage.setItem(
     seenNotifStorageKey(userId),
     JSON.stringify(list.map((n) => n.id)),
+  );
+}
+
+const SEARCH_DEBOUNCE_MS = 220;
+const SEARCH_MIN_CHARS = 1;
+const SEARCH_SUGGEST_LIMIT = 10;
+const SEARCH_RECENT_KEY = 'rn_product_search_recent';
+const SEARCH_RECENT_MAX = 8;
+const SEARCH_RECENT_TOP_MATCH = 4;
+
+function readSearchRecent() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(SEARCH_RECENT_KEY);
+    const arr = JSON.parse(raw || '[]');
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((x) => typeof x === 'string' && x.trim())
+      .slice(0, SEARCH_RECENT_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function writeSearchRecent(term) {
+  if (typeof window === 'undefined') return;
+  const t = String(term || '').trim();
+  if (!t) return;
+  const prev = readSearchRecent();
+  const next = [
+    t,
+    ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase()),
+  ].slice(0, SEARCH_RECENT_MAX);
+  localStorage.setItem(SEARCH_RECENT_KEY, JSON.stringify(next));
+}
+
+function clearSearchRecentStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(SEARCH_RECENT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function categoryHintLine(p) {
+  const sub = String(p.subCategory || '').trim();
+  const cat = String(p.category || '').trim();
+  if (sub && cat) return `in ${sub} · ${cat}`;
+  if (sub) return `in ${sub}`;
+  if (cat) return `in ${cat}`;
+  return '';
+}
+
+function SearchInputWithSuggestions({
+  search,
+  setSearch,
+  onSearchNavigate,
+  wrapperClassName = '',
+  inputClassName = '',
+  iconLeftClass = 'left-2.5 sm:left-3',
+  placeholder = 'Search products, rentals...',
+}) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const wrapRef = useRef(null);
+
+  const q = search.trim();
+  const matchingRecent =
+    q.length >= 1
+      ? readSearchRecent().filter((r) =>
+          r.toLowerCase().includes(q.toLowerCase()),
+        )
+      : [];
+  const recentToShow =
+    q.length >= 1
+      ? matchingRecent.slice(0, SEARCH_RECENT_TOP_MATCH)
+      : recentSearches;
+
+  const showRecentsOnly = open && q.length === 0 && recentToShow.length > 0;
+  const showProductPanel = open && q.length >= SEARCH_MIN_CHARS;
+  const showPanel = showRecentsOnly || showProductPanel;
+
+  useEffect(() => {
+    if (open && q.length === 0 && typeof window !== 'undefined') {
+      setRecentSearches(readSearchRecent());
+    }
+  }, [open, q.length, search]);
+
+  useEffect(() => {
+    if (q.length < SEARCH_MIN_CHARS) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+    setSuggestions([]);
+    const t = setTimeout(() => {
+      setLoading(true);
+      const queryForRequest = q;
+      apiGetStorefrontVendorProducts(
+        `search=${encodeURIComponent(queryForRequest)}&limit=${SEARCH_SUGGEST_LIMIT}`,
+      )
+        .then((res) => {
+          setSuggestions(res.data?.products || []);
+          setOpen(true);
+        })
+        .catch(() => setSuggestions([]))
+        .finally(() => setLoading(false));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search, q]);
+
+  useEffect(() => {
+    const fn = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, []);
+
+  const go = (explicitTerm) => {
+    const term = String(explicitTerm ?? search).trim();
+    if (!term) return;
+    writeSearchRecent(term);
+    onSearchNavigate(term);
+    setOpen(false);
+  };
+
+  const clearAllRecent = () => {
+    clearSearchRecentStorage();
+    setRecentSearches([]);
+  };
+
+  const renderRecentRow = (term) => (
+    <li key={`recent-${term}`} role="option">
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => go(term)}
+      >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+          <History className="h-5 w-5" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-gray-900">{term}</p>
+        </div>
+      </button>
+    </li>
+  );
+
+  return (
+    <div ref={wrapRef} className={`relative ${wrapperClassName}`}>
+      <Search
+        size={16}
+        className={`absolute ${iconLeftClass} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-[1]`}
+      />
+      <input
+        type="text"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-autocomplete="list"
+        aria-expanded={showPanel}
+        placeholder={placeholder}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onFocus={() => {
+          if (typeof window !== 'undefined') {
+            setRecentSearches(readSearchRecent());
+          }
+          setOpen(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false);
+        }}
+        className={`${inputClassName} ${search.length > 0 ? '!pr-9 sm:!pr-10' : ''}`}
+      />
+      {search.length > 0 ? (
+        <button
+          type="button"
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 z-[2] -translate-y-1/2 rounded p-0.5 text-orange-500 hover:text-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setSearch('')}
+        >
+          <X className="h-4 w-4" strokeWidth={2.25} />
+        </button>
+      ) : null}
+      {showPanel ? (
+        <div
+          role="listbox"
+          aria-label="Product suggestions"
+          className="absolute left-0 right-0 top-full z-[60] mt-1.5 max-h-[min(75vh,22rem)] overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-xl"
+        >
+          {showRecentsOnly ? (
+            <>
+              <ul className="divide-y divide-gray-100">
+                {recentToShow.map(renderRecentRow)}
+              </ul>
+              <div className="flex justify-end border-t border-gray-100 px-3 py-2">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={clearAllRecent}
+                >
+                  Clear all
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {showProductPanel && q.length >= SEARCH_MIN_CHARS ? (
+            <>
+              {recentToShow.length > 0 ? (
+                <>
+                  <ul className="divide-y divide-gray-100">
+                    {recentToShow.map(renderRecentRow)}
+                  </ul>
+                  <div className="flex justify-end border-t border-gray-100 px-3 py-2">
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={clearAllRecent}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  {(loading || suggestions.length > 0) && (
+                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      Products
+                    </div>
+                  )}
+                </>
+              ) : null}
+
+              {loading ? (
+                <p className="px-3 py-3 text-sm text-gray-500">Searching…</p>
+              ) : suggestions.length === 0 ? (
+                <button
+                  type="button"
+                  className="w-full px-3 py-3 text-left text-sm text-gray-600 hover:bg-gray-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => go()}
+                >
+                  No products found — search “{q}” on the products page
+                </button>
+              ) : (
+                <>
+                  <ul className="divide-y divide-gray-100">
+                    {suggestions.map((p) => {
+                      const hint = categoryHintLine(p);
+                      return (
+                        <li key={p._id} role="option">
+                          <button
+                            type="button"
+                            className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-gray-50"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => go(p.productName)}
+                          >
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                              <img
+                                src={
+                                  p.image ||
+                                  'https://placehold.co/88x88/e5e7eb/6b7280?text=IMG'
+                                }
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1 pt-0.5">
+                              <p className="truncate text-sm font-normal text-gray-900">
+                                {p.productName}
+                              </p>
+                              {hint ? (
+                                <p className="mt-0.5 truncate text-xs text-orange-600">
+                                  {hint}
+                                </p>
+                              ) : null}
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="border-t border-gray-100 px-2 py-1.5">
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-2 py-2 text-center text-xs font-semibold text-orange-600 hover:bg-orange-50"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => go()}
+                    >
+                      See all results for “{q}”
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -192,7 +504,7 @@ const Navbar = () => {
     setShowProfileDropdown(false);
   };
 
-  // ✅ Close dropdowns when clicking outside
+  //  Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -246,12 +558,16 @@ const Navbar = () => {
     }
   };
 
+  const runProductSearch = (term) => {
+    const t = String(term || '').trim();
+    if (!t) return;
+    router.push(`/products?search=${encodeURIComponent(t)}`);
+    setMenuOpen(false);
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
-    if (search.trim()) {
-      router.push(`/products?search=${encodeURIComponent(search.trim())}`);
-      setMenuOpen(false);
-    }
+    runProductSearch(search);
   };
 
   return (
@@ -282,16 +598,12 @@ const Navbar = () => {
                   onSubmit={handleSearch}
                   className="relative min-w-0 w-full flex-1 md:max-w-none"
                 >
-                  <Search
-                    size={16}
-                    className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search products, rentals..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  <SearchInputWithSuggestions
+                    search={search}
+                    setSearch={setSearch}
+                    onSearchNavigate={runProductSearch}
+                    wrapperClassName="w-full"
+                    inputClassName="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
                   />
                 </form>
               </div>
@@ -333,114 +645,110 @@ const Navbar = () => {
 
               <form
                 onSubmit={handleSearch}
-                className="flex-1 min-w-0 max-w-xl relative"
+                className="relative flex-1 min-w-0 max-w-xl"
               >
-                <Search
-                  size={16}
-                  className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Search products, rentals..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                <SearchInputWithSuggestions
+                  search={search}
+                  setSearch={setSearch}
+                  onSearchNavigate={runProductSearch}
+                  wrapperClassName="w-full"
+                  inputClassName="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm sm:text-base border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
                 />
               </form>
 
               <div className="flex items-center gap-3 sm:gap-6 text-gray-600 shrink-0">
                 {isAuthenticated && user ? (
-              <>
-                <Link
-                  href="/cart"
-                  className="relative flex items-center gap-1 hover:text-black p-1"
-                >
-                  <ShoppingCart size={18} className="w-5 h-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-
-                <Link
-                  href="/wishlist"
-                  className="flex items-center gap-1 hover:text-black p-1"
-                >
-                  <Heart size={18} className="w-5 h-5 " />
-                </Link>
-              </>
-            ) : null}
-
-            {isAuthenticated && user ? (
-              <>
-                {showNotifPanel ? (
-                  <button
-                    type="button"
-                    aria-label="Close notifications"
-                    className="fixed inset-0 z-[55] bg-black/20 md:bg-transparent"
-                    onClick={closeNotifPanel}
-                  />
-                ) : null}
-                <div className="relative" ref={notifPanelRef}>
-                  <button
-                    type="button"
-                    onClick={toggleNotifPanel}
-                    aria-expanded={showNotifPanel}
-                    aria-haspopup="dialog"
-                    className="relative w-9 h-9 flex items-center justify-center    text-gray-600 hover:text-black "
-                  >
-                    <span className="sr-only">Notifications</span>
-                    <Bell className="w-5 h-5" strokeWidth={1.8} />
-                    {notifBadge > 0 ? (
-                      <span className="absolute -top-1 -right-1 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
-                        {notifBadge > 9 ? '9+' : notifBadge}
-                      </span>
-                    ) : null}
-                  </button>
-
-                  {showNotifPanel ? (
-                    <div
-                      role="dialog"
-                      aria-label="Notifications"
-                      className="fixed z-[60] top-[calc(3.75rem+env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+                  <>
+                    <Link
+                      href="/cart"
+                      className="relative flex items-center gap-1 hover:text-black p-1"
                     >
-                      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-gray-900">
-                          Notifications
-                        </p>
-                        <span className="text-[11px] text-gray-400">
-                          Last 7 updates
+                      <ShoppingCart size={18} className="w-5 h-5" />
+                      {cartCount > 0 && (
+                        <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
+                          {cartCount}
                         </span>
-                      </div>
-                      {notifLoading ? (
-                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
-                          Loading…
-                        </p>
-                      ) : notifList.length === 0 ? (
-                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
-                          No recent activity yet.
-                        </p>
-                      ) : (
-                        <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50">
-                          {notifList.map((n) => (
-                            <li
-                              key={n.id}
-                              className="px-4 py-3 hover:bg-gray-50"
-                            >
-                              <div className="flex items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {n.title}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                                    {n.detail}
-                                  </p>
-                                  <p className="text-[11px] text-gray-400 mt-1">
-                                    {formatNotifTime(n.at)}
-                                  </p>
-                                </div>
-                                {/* {n.href ? (
+                      )}
+                    </Link>
+
+                    <Link
+                      href="/wishlist"
+                      className="flex items-center gap-1 hover:text-black p-1"
+                    >
+                      <Heart size={18} className="w-5 h-5 " />
+                    </Link>
+                  </>
+                ) : null}
+
+                {isAuthenticated && user ? (
+                  <>
+                    {showNotifPanel ? (
+                      <button
+                        type="button"
+                        aria-label="Close notifications"
+                        className="fixed inset-0 z-[55] bg-black/20 md:bg-transparent"
+                        onClick={closeNotifPanel}
+                      />
+                    ) : null}
+                    <div className="relative" ref={notifPanelRef}>
+                      <button
+                        type="button"
+                        onClick={toggleNotifPanel}
+                        aria-expanded={showNotifPanel}
+                        aria-haspopup="dialog"
+                        className="relative w-9 h-9 flex items-center justify-center    text-gray-600 hover:text-black "
+                      >
+                        <span className="sr-only">Notifications</span>
+                        <Bell className="w-5 h-5" strokeWidth={1.8} />
+                        {notifBadge > 0 ? (
+                          <span className="absolute -top-1 -right-1 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
+                            {notifBadge > 9 ? '9+' : notifBadge}
+                          </span>
+                        ) : null}
+                      </button>
+
+                      {showNotifPanel ? (
+                        <div
+                          role="dialog"
+                          aria-label="Notifications"
+                          className="fixed z-[60] top-[calc(3.75rem+env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+                        >
+                          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <p className="text-sm font-semibold text-gray-900">
+                              Notifications
+                            </p>
+                            <span className="text-[11px] text-gray-400">
+                              Last 7 updates
+                            </span>
+                          </div>
+                          {notifLoading ? (
+                            <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                              Loading…
+                            </p>
+                          ) : notifList.length === 0 ? (
+                            <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                              No recent activity yet.
+                            </p>
+                          ) : (
+                            <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50">
+                              {notifList.map((n) => (
+                                <li
+                                  key={n.id}
+                                  className="px-4 py-3 hover:bg-gray-50"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {n.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                        {n.detail}
+                                      </p>
+                                      <p className="text-[11px] text-gray-400 mt-1">
+                                        {formatNotifTime(n.at)}
+                                      </p>
+                                    </div>
+                                    {/* {n.href ? (
                                   <button
                                     type="button"
                                     className="shrink-0 px-3 py-1.5 text-xs font-semibold text-[#F97316] border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100"
@@ -452,122 +760,128 @@ const Navbar = () => {
                                     View
                                   </button>
                                 ) : null} */}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
+                  </>
+                ) : null}
 
-            {/* ✅ Profile with dropdown — only when logged in */}
-            {isAuthenticated && user ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowProfileDropdown((prev) => !prev)}
-                  className="flex items-center gap-2 hover:text-black p-1"
-                >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
-                    {firstLetter}
-                  </div>
-                  <span className="hidden md:inline text-sm font-medium">
-                    {firstName}
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    className="hidden md:block text-gray-400"
-                  />
-                </button>
-
-                {/* ✅ Dropdown */}
-                {showProfileDropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-                    {/* User info */}
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
-                          {firstLetter}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {user.fullName}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {user.email}
-                          </p>
-                        </div>
+                {/* ✅ Profile with dropdown — only when logged in */}
+                {isAuthenticated && user ? (
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileDropdown((prev) => !prev)}
+                      className="flex items-center gap-2 hover:text-black p-1"
+                    >
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                        {firstLetter}
                       </div>
-                    </div>
+                      <span className="hidden md:inline text-sm font-medium">
+                        {firstName}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className="hidden md:block text-gray-400"
+                      />
+                    </button>
 
-                    {/* Menu items */}
-                    <Link
-                      href="/profile"
-                      onClick={() => setShowProfileDropdown(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <User size={15} />
-                      My Profile
-                    </Link>
+                    {/* ✅ Dropdown */}
+                    {showProfileDropdown && (
+                      <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                        {/* User info */}
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                              {firstLetter}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {user.fullName}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {user.email}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-                    <Link
-                      href="/orders"
-                      onClick={() => setShowProfileDropdown(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Truck size={15} className="text-orange-500" />
-                      My Orders
-                    </Link>
+                        {/* Menu items */}
+                        <Link
+                          href="/profile"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <User size={15} />
+                          My Profile
+                        </Link>
 
-                    {/* <div className="px-4 pt-2 pb-1">
+                        <Link
+                          href="/orders"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Truck size={15} className="text-orange-500" />
+                          My Orders
+                        </Link>
+
+                        {/* <div className="px-4 pt-2 pb-1">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                         Rental products
                       </p>
                     </div> */}
-                    <Link
-                      href="/my-rentals"
-                      onClick={() => setShowProfileDropdown(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Sofa size={15} className="text-orange-500 shrink-0" />
-                      Rental products
-                    </Link>
+                        <Link
+                          href="/my-rentals"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Sofa
+                            size={15}
+                            className="text-orange-500 shrink-0"
+                          />
+                          Rental products
+                        </Link>
 
-                    <Link
-                      href="/my-payments"
-                      onClick={() => setShowProfileDropdown(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Wallet size={15} className="text-[#FF6F00] shrink-0" />
-                      My Payments
-                    </Link>
+                        <Link
+                          href="/my-payments"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Wallet
+                            size={15}
+                            className="text-[#FF6F00] shrink-0"
+                          />
+                          My Payments
+                        </Link>
 
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      <LogOut size={15} />
-                      {loggingOut ? 'Logging out…' : 'Logout'}
-                    </button>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          disabled={loggingOut}
+                          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <LogOut size={15} />
+                          {loggingOut ? 'Logging out…' : 'Logout'}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : null}
+                ) : null}
 
-            {/* Mobile menu button */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600"
-              aria-label="Toggle menu"
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+                {/* Mobile menu button */}
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600"
+                  aria-label="Toggle menu"
+                >
+                  {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
               </div>
             </div>
           )}
@@ -586,12 +900,14 @@ const Navbar = () => {
             </button>
 
             <form onSubmit={handleSearch} className="flex gap-2">
-              <input
-                type="text"
+              <SearchInputWithSuggestions
+                search={search}
+                setSearch={setSearch}
+                onSearchNavigate={runProductSearch}
+                wrapperClassName="flex-1 min-w-0"
+                iconLeftClass="left-3"
                 placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 min-w-0 pl-3 pr-3 py-2 text-sm border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                inputClassName="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
               <button
                 type="submit"
