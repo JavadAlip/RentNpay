@@ -275,6 +275,46 @@ export const apiPatchListingTemplateActive = (id, isActive, token) =>
     },
   );
 
+export const apiGetSellListingTemplates = (token) =>
+  API.get('/admin/sell-listing-templates', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiCreateSellListingTemplate = (data, token) =>
+  API.post('/admin/sell-listing-templates', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpdateSellListingTemplate = (id, data, token) =>
+  API.put(`/admin/sell-listing-templates/${id}`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiDeleteSellListingTemplate = (id, token) =>
+  API.delete(`/admin/sell-listing-templates/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiPatchSellListingTemplateActive = (id, isActive, token) =>
+  API.patch(
+    `/admin/sell-listing-templates/${id}/active`,
+    { isActive },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
 // ── ADMIN VENDOR APIs ─────────────────────────
 
 // Get All Vendors

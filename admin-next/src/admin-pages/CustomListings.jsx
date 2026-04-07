@@ -34,6 +34,7 @@ function buildListingFormData(form) {
     variants
       .map((v) => String(v?.price ?? '').trim())
       .find((p) => p.length > 0) ||
+    String(form.salesConfiguration?.salePrice ?? '').trim() ||
     String(form.price ?? '').trim() ||
     '0';
   const autoStatus =
@@ -89,6 +90,10 @@ function buildListingFormData(form) {
 
   payload.append('rentalConfigurations', JSON.stringify([]));
   payload.append('refundableDeposit', '0');
+  payload.append(
+    'salesConfiguration',
+    JSON.stringify(form.salesConfiguration || {}),
+  );
 
   payload.append('price', summaryPrice);
   payload.append('stock', String(sumStock));
@@ -634,7 +639,11 @@ const CustomListings = () => {
     if (!editing?._id) return;
     const fd = buildListingFormData(form);
     const res = await dispatch(
-      updateListingTemplate({ id: editing._id, formData: fd }),
+      updateListingTemplate({
+        id: editing._id,
+        formData: fd,
+        listingKind: editing.listingKind,
+      }),
     );
     if (updateListingTemplate.fulfilled.match(res)) {
       toast.success('Listing template updated');
@@ -645,7 +654,11 @@ const CustomListings = () => {
 
   const handleToggle = async (row, next) => {
     const res = await dispatch(
-      toggleListingTemplateActive({ id: row._id, isActive: next }),
+      toggleListingTemplateActive({
+        id: row._id,
+        isActive: next,
+        listingKind: row.listingKind,
+      }),
     );
     if (!toggleListingTemplateActive.fulfilled.match(res)) {
       dispatch(fetchListingTemplates());
@@ -654,7 +667,12 @@ const CustomListings = () => {
 
   const confirmDelete = async () => {
     if (!deleteTarget?._id) return;
-    const res = await dispatch(deleteListingTemplate(deleteTarget._id));
+    const res = await dispatch(
+      deleteListingTemplate({
+        id: deleteTarget._id,
+        listingKind: deleteTarget.listingKind,
+      }),
+    );
     if (deleteListingTemplate.fulfilled.match(res)) {
       toast.success('Listing removed');
     }

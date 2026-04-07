@@ -37,6 +37,13 @@ import {
   deleteListingTemplate,
   patchListingTemplateActive,
 } from '../controller/admin/listingTemplateController.js';
+import {
+  listSellListingTemplates,
+  createSellListingTemplate,
+  updateSellListingTemplate,
+  deleteSellListingTemplate,
+  patchSellListingTemplateActive,
+} from '../controller/admin/sellListingTemplateController.js';
 import { getWishlistAnalytics } from '../controller/admin/wishlistController.js';
 import { adminAuth } from '../middleware/auth.js';
 const router = express.Router();
@@ -90,6 +97,25 @@ router.patch(
   '/listing-templates/:id/active',
   adminAuth,
   patchListingTemplateActive,
+);
+router.get('/sell-listing-templates', adminAuth, listSellListingTemplates);
+router.post(
+  '/sell-listing-templates',
+  adminAuth,
+  upload.any(),
+  createSellListingTemplate,
+);
+router.put(
+  '/sell-listing-templates/:id',
+  adminAuth,
+  upload.any(),
+  updateSellListingTemplate,
+);
+router.delete('/sell-listing-templates/:id', adminAuth, deleteSellListingTemplate);
+router.patch(
+  '/sell-listing-templates/:id/active',
+  adminAuth,
+  patchSellListingTemplateActive,
 );
 
 router.get('/get-vendors', adminAuth, getAllVendors);

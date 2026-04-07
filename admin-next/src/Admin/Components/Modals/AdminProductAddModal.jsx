@@ -368,6 +368,11 @@ const defaultForm = {
   isActive: true,
   images: [],
   existingImages: [],
+  salesConfiguration: {
+    allowVendorEditSalePrice: true,
+    salePrice: '',
+    mrpPrice: '',
+  },
 };
 
 /** Map admin ListingTemplate → vendor legacy form (non–flexible listing). */
@@ -595,6 +600,20 @@ const AdminProductAddModal = ({
             : initialData.image
               ? [initialData.image]
               : [],
+          salesConfiguration: {
+            allowVendorEditSalePrice:
+              initialData.salesConfiguration?.allowVendorEditSalePrice !== false,
+            salePrice:
+              initialData.salesConfiguration?.salePrice === undefined ||
+              initialData.salesConfiguration?.salePrice === null
+                ? ''
+                : String(initialData.salesConfiguration.salePrice),
+            mrpPrice:
+              initialData.salesConfiguration?.mrpPrice === undefined ||
+              initialData.salesConfiguration?.mrpPrice === null
+                ? ''
+                : String(initialData.salesConfiguration.mrpPrice),
+          },
         });
       } else {
         setForm({
@@ -660,6 +679,20 @@ const AdminProductAddModal = ({
             : initialData.image
               ? [initialData.image]
               : [],
+          salesConfiguration: {
+            allowVendorEditSalePrice:
+              initialData.salesConfiguration?.allowVendorEditSalePrice !== false,
+            salePrice:
+              initialData.salesConfiguration?.salePrice === undefined ||
+              initialData.salesConfiguration?.salePrice === null
+                ? ''
+                : String(initialData.salesConfiguration.salePrice),
+            mrpPrice:
+              initialData.salesConfiguration?.mrpPrice === undefined ||
+              initialData.salesConfiguration?.mrpPrice === null
+                ? ''
+                : String(initialData.salesConfiguration.mrpPrice),
+          },
         });
       }
     } else if (flexibleListingForm) {
@@ -1231,22 +1264,42 @@ const AdminProductAddModal = ({
           ) : null}
           <div className="md:col-span-2 grid grid-cols-2 gap-2">
             {allowListingTypeSwitch ? (
-              <>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">
-                    Listing type
-                  </label>
-                  <select
-                    name="type"
-                    value={form.type}
-                    onChange={handleChange}
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="Rental">Rental</option>
-                    {/* <option value="Sell">Sell</option> */}
-                  </select>
-                </div>
-              </>
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, type: 'Sell' }))}
+                  className={`rounded-xl border px-4 py-3 text-left ${
+                    form.type === 'Sell'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">Sell Product</p>
+                  <p className="text-xs text-gray-500">One-time purchase</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, type: 'Rental' }))
+                  }
+                  className={`rounded-xl border px-4 py-3 text-left ${
+                    form.type !== 'Sell'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">Rent Out</p>
+                  <p className="text-xs text-gray-500">Monthly rental</p>
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left opacity-60"
+                >
+                  <p className="text-sm font-semibold">Offer Service</p>
+                  <p className="text-xs text-gray-500">Coming soon</p>
+                </button>
+              </div>
             ) : (
               <>
                 <div className="rounded-xl border border-orange-300 text-orange-600 bg-orange-50 text-center py-2 text-sm font-medium">
@@ -1706,7 +1759,8 @@ const AdminProductAddModal = ({
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
+                      {form.type !== 'Sell' ? (
+                        <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -1935,9 +1989,11 @@ const AdminProductAddModal = ({
                             );
                           },
                         )}
-                      </div>
+                        </div>
+                      ) : null}
 
-                      <div>
+                      {form.type !== 'Sell' ? (
+                        <div>
                         <p className="text-sm font-medium text-gray-900 mb-1">
                           Refundable deposit
                         </p>
@@ -1954,7 +2010,8 @@ const AdminProductAddModal = ({
                           placeholder="Amount"
                           className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
                         />
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -2081,7 +2138,8 @@ const AdminProductAddModal = ({
                 </div>
               </div>
 
-              <div className="md:col-span-2 border-t pt-4">
+              {form.type !== 'Sell' ? (
+                <div className="md:col-span-2 border-t pt-4">
                 <p className="text-sm font-semibold text-gray-900 mb-2">
                   {form.type === 'Sell'
                     ? 'Rental configuration (optional)'
@@ -2117,9 +2175,11 @@ const AdminProductAddModal = ({
                     </div>
                   ))}
                 </div>
-              </div>
+                </div>
+              ) : null}
 
-              <div className="md:col-span-2 border-t pt-4">
+              {form.type !== 'Sell' ? (
+                <div className="md:col-span-2 border-t pt-4">
                 <p className="text-sm font-semibold text-gray-900 mb-2">
                   Refundable Deposit
                 </p>
@@ -2135,9 +2195,80 @@ const AdminProductAddModal = ({
                   placeholder="Enter refundable deposit amount"
                   className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
                 />
-              </div>
+                </div>
+              ) : null}
             </>
           )}
+
+          {form.type === 'Sell' ? (
+            <div className="md:col-span-2 border-t pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-900">
+                  Sales Configuration
+                </p>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.salesConfiguration?.allowVendorEditSalePrice !== false}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      salesConfiguration: {
+                        ...(prev.salesConfiguration || {}),
+                        allowVendorEditSalePrice:
+                          prev.salesConfiguration?.allowVendorEditSalePrice === false,
+                      },
+                    }))
+                  }
+                  className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    form.salesConfiguration?.allowVendorEditSalePrice !== false
+                      ? 'bg-emerald-500'
+                      : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                      form.salesConfiguration?.allowVendorEditSalePrice !== false
+                        ? 'translate-x-5'
+                        : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  value={form.salesConfiguration?.salePrice || ''}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      salesConfiguration: {
+                        ...(prev.salesConfiguration || {}),
+                        salePrice: e.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Sell Price (Pay now)"
+                  className="border rounded-lg px-3 py-2"
+                />
+                <input
+                  type="number"
+                  value={form.salesConfiguration?.mrpPrice || ''}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      salesConfiguration: {
+                        ...(prev.salesConfiguration || {}),
+                        mrpPrice: e.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="MRP (Optional)"
+                  className="border rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+          ) : null}
 
           {/* <div className="md:col-span-2 border-t pt-4">
             <p className="text-sm font-semibold text-gray-900 mb-2">

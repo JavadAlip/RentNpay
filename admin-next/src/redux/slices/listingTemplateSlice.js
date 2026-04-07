@@ -5,6 +5,11 @@ import {
   apiUpdateListingTemplate,
   apiDeleteListingTemplate,
   apiPatchListingTemplateActive,
+  apiGetSellListingTemplates,
+  apiCreateSellListingTemplate,
+  apiUpdateSellListingTemplate,
+  apiDeleteSellListingTemplate,
+  apiPatchSellListingTemplateActive,
 } from '../../service/api';
 
 const authToken = (getState) =>
@@ -17,8 +22,21 @@ export const fetchListingTemplates = createAsyncThunk(
     try {
       const token = authToken(getState);
       if (!token) return rejectWithValue('Please login again to continue.');
-      const res = await apiGetListingTemplates(token);
-      return res.data.listingTemplates || [];
+      const [rentalRes, sellRes] = await Promise.all([
+        apiGetListingTemplates(token),
+        apiGetSellListingTemplates(token),
+      ]);
+      const rental = (rentalRes.data.listingTemplates || []).map((x) => ({
+        ...x,
+        listingKind: 'rental',
+      }));
+      const sell = (sellRes.data.sellListingTemplates || []).map((x) => ({
+        ...x,
+        listingKind: 'sell',
+      }));
+      return [...rental, ...sell].sort(
+        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
+      );
     } catch (e) {
       return rejectWithValue(
         e.response?.data?.message || 'Failed to load listing templates',
@@ -33,8 +51,13 @@ export const createListingTemplate = createAsyncThunk(
     try {
       const token = authToken(getState);
       if (!token) return rejectWithValue('Please login again to continue.');
+      const listingType = formData?.get?.('type') === 'Sell' ? 'sell' : 'rental';
+      if (listingType === 'sell') {
+        const res = await apiCreateSellListingTemplate(formData, token);
+        return { ...res.data.sellListingTemplate, listingKind: 'sell' };
+      }
       const res = await apiCreateListingTemplate(formData, token);
-      return res.data.listingTemplate;
+      return { ...res.data.listingTemplate, listingKind: 'rental' };
     } catch (e) {
       return rejectWithValue(
         e.response?.data?.message || 'Failed to create listing template',
@@ -45,12 +68,16 @@ export const createListingTemplate = createAsyncThunk(
 
 export const updateListingTemplate = createAsyncThunk(
   'listingTemplate/update',
-  async ({ id, formData }, { getState, rejectWithValue }) => {
+  async ({ id, formData, listingKind }, { getState, rejectWithValue }) => {
     try {
       const token = authToken(getState);
       if (!token) return rejectWithValue('Please login again to continue.');
+      if (listingKind === 'sell') {
+        const res = await apiUpdateSellListingTemplate(id, formData, token);
+        return { ...res.data.sellListingTemplate, listingKind: 'sell' };
+      }
       const res = await apiUpdateListingTemplate(id, formData, token);
-      return res.data.listingTemplate;
+      return { ...res.data.listingTemplate, listingKind: 'rental' };
     } catch (e) {
       return rejectWithValue(
         e.response?.data?.message || 'Failed to update listing template',
@@ -61,11 +88,15 @@ export const updateListingTemplate = createAsyncThunk(
 
 export const deleteListingTemplate = createAsyncThunk(
   'listingTemplate/delete',
-  async (id, { getState, rejectWithValue }) => {
+  async ({ id, listingKind }, { getState, rejectWithValue }) => {
     try {
       const token = authToken(getState);
       if (!token) return rejectWithValue('Please login again to continue.');
-      await apiDeleteListingTemplate(id, token);
+      if (listingKind === 'sell') {
+        await apiDeleteSellListingTemplate(id, token);
+      } else {
+        await apiDeleteListingTemplate(id, token);
+      }
       return id;
     } catch (e) {
       return rejectWithValue(
@@ -77,12 +108,16 @@ export const deleteListingTemplate = createAsyncThunk(
 
 export const toggleListingTemplateActive = createAsyncThunk(
   'listingTemplate/toggleActive',
-  async ({ id, isActive }, { getState, rejectWithValue }) => {
+  async ({ id, isActive, listingKind }, { getState, rejectWithValue }) => {
     try {
       const token = authToken(getState);
       if (!token) return rejectWithValue('Please login again to continue.');
+      if (listingKind === 'sell') {
+        const res = await apiPatchSellListingTemplateActive(id, isActive, token);
+        return { ...res.data.sellListingTemplate, listingKind: 'sell' };
+      }
       const res = await apiPatchListingTemplateActive(id, isActive, token);
-      return res.data.listingTemplate;
+      return { ...res.data.listingTemplate, listingKind: 'rental' };
     } catch (e) {
       return rejectWithValue(
         e.response?.data?.message || 'Failed to update status',
