@@ -65,12 +65,25 @@ const normalizeLogisticsVerification = (raw) => {
 
 const normalizeProductPayload = (body) => {
   const data = { ...body };
-  data.type = 'Rental';
+  data.type = body.type === 'Sell' ? 'Sell' : 'Rental';
   data.specifications = parseJsonField(body.specifications, {});
   data.variants = normalizeVariants(parseJsonField(body.variants, []));
   data.rentalConfigurations = normalizeRentalConfigurations(
     parseJsonField(body.rentalConfigurations, []),
   );
+  const salesConfigurationRaw = parseJsonField(body.salesConfiguration, {});
+  data.salesConfiguration = {
+    allowVendorEditSalePrice:
+      salesConfigurationRaw?.allowVendorEditSalePrice === false ||
+      salesConfigurationRaw?.allowVendorEditSalePrice === 'false'
+        ? false
+        : true,
+    salePrice: toNumber(
+      salesConfigurationRaw?.salePrice,
+      toNumber(body.price, 0),
+    ),
+    mrpPrice: toNumber(salesConfigurationRaw?.mrpPrice, 0),
+  };
   data.refundableDeposit = toNumber(body.refundableDeposit, 0);
   data.logisticsVerification = normalizeLogisticsVerification(
     parseJsonField(body.logisticsVerification, {}),

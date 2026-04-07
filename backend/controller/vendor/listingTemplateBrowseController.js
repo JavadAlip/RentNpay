@@ -1,10 +1,13 @@
 import ListingTemplate from '../../models/ListingTemplate.js';
+import SellListingTemplate from '../../models/SellListingTemplate.js';
 
 /** Vendors can browse active admin listing templates to clone into their own products. */
 export const listListingTemplatesForVendor = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim().toLowerCase();
-    const listingTemplates = await ListingTemplate.find({ isActive: true })
+    const requestedType = String(req.query.type || '').trim().toLowerCase();
+    const Model = requestedType === 'sell' ? SellListingTemplate : ListingTemplate;
+    const listingTemplates = await Model.find({ isActive: true })
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();
@@ -33,10 +36,30 @@ export const listListingTemplatesForVendor = async (req, res) => {
 
 export const getListingTemplateForVendor = async (req, res) => {
   try {
-    const doc = await ListingTemplate.findOne({
-      _id: req.params.id,
-      isActive: true,
-    }).lean();
+    const requestedType = String(req.query.type || '').trim().toLowerCase();
+    let doc = null;
+    if (requestedType === 'sell') {
+      doc = await SellListingTemplate.findOne({
+        _id: req.params.id,
+        isActive: true,
+      }).lean();
+    } else if (requestedType === 'rental') {
+      doc = await ListingTemplate.findOne({
+        _id: req.params.id,
+        isActive: true,
+      }).lean();
+    } else {
+      doc = await ListingTemplate.findOne({
+        _id: req.params.id,
+        isActive: true,
+      }).lean();
+      if (!doc) {
+        doc = await SellListingTemplate.findOne({
+          _id: req.params.id,
+          isActive: true,
+        }).lean();
+      }
+    }
 
     if (!doc) {
       return res.status(404).json({ message: 'Listing template not found' });

@@ -173,6 +173,15 @@ export const apiGetVendorListingTemplates = (token, params = {}) =>
 
 export const apiGetVendorListingTemplate = (id, token) =>
   API.get(`/vendor/listing-templates/${id}`, {
+    params: {},
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiGetVendorListingTemplateByType = (id, token, type = 'rental') =>
+  API.get(`/vendor/listing-templates/${id}`, {
+    params: { type },
     headers: {
       Authorization: `Bearer ${token}`,
     },

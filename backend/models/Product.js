@@ -121,6 +121,14 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    salesConfiguration: {
+      type: {
+        allowVendorEditSalePrice: { type: Boolean, default: true },
+        salePrice: { type: Number, default: 0 },
+        mrpPrice: { type: Number, default: 0 },
+      },
+      default: {},
+    },
     logisticsVerification: {
       type: {
         inventoryOwnerName: { type: String, default: '' },

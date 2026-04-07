@@ -188,6 +188,10 @@ const Products = () => {
       'rentalConfigurations',
       JSON.stringify(next.rentalConfigurations || []),
     );
+    payload.append(
+      'salesConfiguration',
+      JSON.stringify(next.salesConfiguration || {}),
+    );
     payload.append('refundableDeposit', String(next.refundableDeposit || 0));
     payload.append(
       'logisticsVerification',
@@ -227,6 +231,10 @@ const Products = () => {
     payload.append(
       'rentalConfigurations',
       JSON.stringify(form.rentalConfigurations || []),
+    );
+    payload.append(
+      'salesConfiguration',
+      JSON.stringify(form.salesConfiguration || {}),
     );
     payload.append('refundableDeposit', String(form.refundableDeposit || 0));
     payload.append(
@@ -296,6 +304,10 @@ const Products = () => {
     payload.append(
       'rentalConfigurations',
       JSON.stringify(form.rentalConfigurations || []),
+    );
+    payload.append(
+      'salesConfiguration',
+      JSON.stringify(form.salesConfiguration || {}),
     );
     payload.append('refundableDeposit', String(form.refundableDeposit || 0));
     payload.append(
