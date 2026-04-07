@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { vendorLogout } from '../../../redux/slices/vendorSlice';
+import { apiGetMyProducts, apiGetVendorOrders } from '@/service/api';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 
@@ -10,69 +12,92 @@ const VendorDashboardPage = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { user } = useSelector((state) => state.vendor);
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([apiGetMyProducts(token), apiGetVendorOrders(token)])
+      .then(([pRes, oRes]) => {
+        if (cancelled) return;
+        setProducts(Array.isArray(pRes?.data?.products) ? pRes.data.products : []);
+        setOrders(Array.isArray(oRes?.data) ? oRes.data : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProducts([]);
+        setOrders([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await dispatch(vendorLogout());
     router.replace('/vendor-main');
   };
 
-  const stats = {
-    grossRevenue: 420000,
-    platformCommission: 48000,
-    otherDeductions: 12000,
-    netPayout: 360000,
-  };
+  const computed = useMemo(() => {
+    const getOrderGross = (order) => {
+      const duration = Number(order?.rentalDuration) || 0;
+      const lines = Array.isArray(order?.products) ? order.products : [];
+      return lines.reduce((sum, line) => {
+        const unit = Number(line?.pricePerDay) || 0;
+        const qty = Number(line?.quantity) || 0;
+        return sum + unit * qty * duration;
+      }, 0);
+    };
+    const grossRevenue = orders.reduce((s, o) => s + getOrderGross(o), 0);
+    const platformCommission = Math.round(grossRevenue * 0.1);
+    const otherDeductions = Math.round(grossRevenue * 0.02);
+    const netPayout = Math.max(
+      0,
+      grossRevenue - platformCommission - otherDeductions,
+    );
+    const rentalCount = products.filter((p) => p?.type === 'Rental').length;
+    const sellCount = products.filter((p) => p?.type === 'Sell').length;
+    const totalCount = Math.max(1, rentalCount + sellCount);
+    const rentalPct = Math.round((rentalCount / totalCount) * 100);
+    const sellPct = Math.round((sellCount / totalCount) * 100);
+    const servicePct = Math.max(0, 100 - rentalPct - sellPct);
+    const transactions = orders.slice(0, 6).map((o) => {
+      const gross = getOrderGross(o);
+      const commission = Math.round(gross * 0.1);
+      const settled = Math.max(0, gross - commission);
+      return {
+        date: o?.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—',
+        id: o?._id ? `ORD-${String(o._id).slice(-6).toUpperCase()}` : 'ORD-—',
+        gross: `₹${gross.toLocaleString('en-IN')}`,
+        commission: '10%',
+        settled: `₹${settled.toLocaleString('en-IN')}`,
+      };
+    });
+    return {
+      stats: { grossRevenue, platformCommission, otherDeductions, netPayout },
+      revenueDistribution: [
+        { label: 'Rentals', value: `${rentalPct}%` },
+        { label: 'Direct Sales', value: `${sellPct}%` },
+        { label: 'Services', value: `${servicePct}%` },
+      ],
+      transactions,
+    };
+  }, [orders, products]);
 
-  const revenueDistribution = [
-    { label: 'Rentals', value: '55%' },
-    { label: 'Services', value: '25%' },
-    { label: 'Direct Sales', value: '20%' },
-  ];
-
-  const transactions = [
-    {
-      date: '15 Feb 2026',
-      id: 'ORD-2891',
-      gross: '₹45,000',
-      commission: '12%',
-      settled: '₹39,600',
-    },
-    {
-      date: '14 Feb 2026',
-      id: 'ORD-2890',
-      gross: '₹32,000',
-      commission: '10%',
-      settled: '₹28,800',
-    },
-    {
-      date: '13 Feb 2026',
-      id: 'ORD-2889',
-      gross: '₹58,000',
-      commission: '12%',
-      settled: '₹51,040',
-    },
-    {
-      date: '12 Feb 2026',
-      id: 'ORD-2888',
-      gross: '₹28,000',
-      commission: '10%',
-      settled: '₹25,200',
-    },
-    {
-      date: '11 Feb 2026',
-      id: 'ORD-2887',
-      gross: '₹65,000',
-      commission: '12%',
-      settled: '₹57,200',
-    },
-    {
-      date: '10 Feb 2026',
-      id: 'ORD-2886',
-      gross: '₹42,000',
-      commission: '10%',
-      settled: '₹37,800',
-    },
-  ];
+  const { stats, revenueDistribution, transactions } = computed;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -97,7 +122,7 @@ const VendorDashboardPage = () => {
                   ₹{stats.grossRevenue.toLocaleString('en-IN')}
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Total sales before deductions
+                  {loading ? 'Loading...' : 'Total sales before deductions'}
                 </p>
               </div>
               <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
@@ -108,7 +133,7 @@ const VendorDashboardPage = () => {
                   ₹{stats.platformCommission.toLocaleString('en-IN')}
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Fees paid to Rent&apos;n Pay
+                  {loading ? 'Loading...' : 'Fees paid to Rent\'n Pay'}
                 </p>
               </div>
               <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
@@ -119,7 +144,7 @@ const VendorDashboardPage = () => {
                   ₹{stats.otherDeductions.toLocaleString('en-IN')}
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Loan EMIs &amp; refund adjustments
+                  {loading ? 'Loading...' : 'Loan EMIs & refund adjustments'}
                 </p>
               </div>
               <div className="bg-white rounded-2xl border border-emerald-200 p-5 flex flex-col gap-2">
@@ -128,7 +153,7 @@ const VendorDashboardPage = () => {
                   ₹{stats.netPayout.toLocaleString('en-IN')}
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Final income received
+                  {loading ? 'Loading...' : 'Final income received'}
                 </p>
                 <button className="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium">
                   Download PDF Report
@@ -246,6 +271,13 @@ const VendorDashboardPage = () => {
                         </td>
                       </tr>
                     ))}
+                    {!loading && transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-center text-gray-500">
+                          No transactions yet.
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               </div>
