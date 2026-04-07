@@ -100,7 +100,11 @@ const BotherSection = () => {
           {/* RIGHT SIDE */}
           <div className="grid grid-rows-2 gap-6">
             {/* BUY NEW CARD */}
-            <div className="border-2 border-orange-400 rounded-xl p-6 flex justify-between items-center relative overflow-hidden min-h-[180px] sm:min-h-0">
+            <button
+              type="button"
+              onClick={() => router.push('/buy')}
+              className="text-left w-full border-2 border-orange-400 rounded-xl p-6 flex justify-between items-center relative overflow-hidden min-h-[180px] sm:min-h-0 hover:shadow-md transition-shadow"
+            >
               <div className="relative z-10 pr-32 sm:pr-0 min-w-0">
                 <p className="text-xs bg-orange-100 text-orange-600 px-3 py-1 rounded-full inline-block mb-3">
                   Verified Local Shops
@@ -119,7 +123,7 @@ const BotherSection = () => {
                 alt="washing"
                 className="absolute right-0 bottom-0 w-36 sm:top-0 sm:bottom-auto sm:right-0 sm:w-44 md:-right-6 md:w-80 object-contain"
               />
-            </div>
+            </button>
 
             {/* BOOK SERVICES */}
             <div className="border-2 border-orange-400 rounded-xl p-6 flex justify-between items-center relative overflow-hidden">

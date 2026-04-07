@@ -1,33 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
-import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiGetCategories } from '@/lib/api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const categories = [
-  { name: 'Living Room', image: mainimg },
-  { name: 'Bedroom', image: mainimg },
-  { name: 'WFH Setup', image: mainimg },
-  { name: 'Appliances', image: mainimg },
-  { name: 'Fitness', image: mainimg },
-  { name: 'Fashion', image: mainimg },
-  { name: 'Vehicles', image: mainimg },
-  { name: 'Hardware', image: mainimg },
-  { name: 'Gaming', image: mainimg },
-  { name: 'Kitchen', image: mainimg },
-  { name: 'Office', image: mainimg },
-  { name: 'Outdoor', image: mainimg },
-  { name: 'Decor', image: mainimg },
-  { name: 'Lighting', image: mainimg },
-];
+const fallbackImageByIndex = (i) =>
+  `https://images.unsplash.com/photo-${[
+    '1555041469-a586c61ea9bc',
+    '1505693416388-ac5ce068fe85',
+    '1493666438817-866a91353ca9',
+    '1581578731548-c64695cc6952',
+    '1571902943202-507ec2618e8f',
+    '1542291026-7eec264c27ff',
+  ][i % 6]}?auto=format&fit=crop&w=500&q=80`;
 
 const ITEMS_PER_PAGE = 12;
 
 const BuyCategories = () => {
   const [page, setPage] = useState(0);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    apiGetCategories()
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.categories)
+            ? res.data.categories
+            : [];
+        setCategories(list);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setCategories([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const start = page * ITEMS_PER_PAGE;
-  const visibleItems = categories.slice(start, start + ITEMS_PER_PAGE);
+  const visibleItems = useMemo(
+    () => categories.slice(start, start + ITEMS_PER_PAGE),
+    [categories, start],
+  );
 
   const next = () => {
     if (start + ITEMS_PER_PAGE < categories.length) {
@@ -62,14 +80,14 @@ const BuyCategories = () => {
         </div>
 
         {/* Categories Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
           {visibleItems.map((item, index) => (
             <div key={index} className="text-center">
               <div className="bg-white border rounded-xl p-6 hover:shadow-md transition">
                 <img
-                  src={item.image}
+                  src={item.image || fallbackImageByIndex(index)}
                   alt={item.name}
-                  className="w-full h-20 object-contain"
+                  className="w-full h-20 object-cover rounded"
                 />
               </div>
 
@@ -78,6 +96,11 @@ const BuyCategories = () => {
               </p>
             </div>
           ))}
+          {visibleItems.length === 0 ? (
+            <p className="col-span-full text-center text-sm text-gray-500 py-8">
+              Categories not available right now.
+            </p>
+          ) : null}
         </div>
 
         {/* Arrows */}

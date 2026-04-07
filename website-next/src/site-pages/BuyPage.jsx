@@ -3,7 +3,8 @@ import RentpayAdvantage from '../components/BuyPage/RentpayAdvantage';
 import LovedByLocals from '../components/BuyPage/LovedByLocals';
 import BuyBannerSection from '../components/BuyPage/BuyMain';
 import BuyCategories from '../components/BuyPage/BuyCategories';
-import SimilarRental from '../components/RentPrdctDetail/SimilarRental';
+import BuySimilarProducts from '../components/BuyPage/BuySimilarProducts';
+import BuyOfferBanner from '../components/BuyPage/BuyOfferBanner';
 import WorkFlow from '../components/RentPage/WorkFlow';
 
 const BuyPage = () => {
@@ -11,7 +12,8 @@ const BuyPage = () => {
     <>
       <BuyBannerSection />
       <BuyCategories />
-      <SimilarRental />
+      <BuySimilarProducts />
+      <BuyOfferBanner />
       <WorkFlow />
       <RentpayAdvantage />
       <LovedByLocals />
