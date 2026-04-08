@@ -40,6 +40,10 @@ export const apiGetStorefrontVendorProducts = (queryString = '') =>
     `/admin/products?storefront=1${queryString ? `&${queryString}` : ''}`,
   );
 
+/** Buy page hero: total sell listings + Brand New / Refurbished counts (full catalog, not paginated). */
+export const apiGetStorefrontSellStats = () =>
+  api.get('/admin/products?storefront=1&sellStats=1');
+
 export const apiGetProductById = (id) => api.get(`/vendor/product/${id}`);
 export const apiGetPublicActiveOffers = () => api.get('/vendor/offers/public-active');
 

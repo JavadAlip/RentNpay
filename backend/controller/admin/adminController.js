@@ -456,7 +456,55 @@ export const getUserDetails = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 12, search, category, storefront } = req.query;
+    const {
+      page = 1,
+      limit = 12,
+      search,
+      category,
+      storefront,
+      sellStats,
+    } = req.query;
+
+    /** Storefront buy page: counts for all sell listings + by condition (no pagination). */
+    if (
+      (storefront === '1' || storefront === 'true') &&
+      sellStats === '1'
+    ) {
+      const match = {
+        type: 'Sell',
+        vendorId: { $exists: true, $ne: null },
+        $nor: [{ submissionStatus: 'draft' }],
+      };
+      const rows = await Product.find(match)
+        .populate('vendorId', '_id')
+        .select('condition variants.condition')
+        .lean();
+
+      const visible = (rows || []).filter((p) => p.vendorId);
+
+      const norm = (raw) =>
+        String(raw ?? '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, ' ');
+
+      let brandNew = 0;
+      let refurbished = 0;
+      for (const p of visible) {
+        let c = norm(p.condition);
+        if (!c && Array.isArray(p.variants) && p.variants.length) {
+          c = norm(p.variants[0]?.condition);
+        }
+        if (c === 'brand new') brandNew += 1;
+        else if (c === 'refurbished') refurbished += 1;
+      }
+
+      return res.status(200).json({
+        total: visible.length,
+        brandNew,
+        refurbished,
+      });
+    }
 
     const query = {};
     if (search) query.productName = { $regex: search, $options: 'i' };

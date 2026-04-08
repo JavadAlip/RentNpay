@@ -1,40 +1,39 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { apiGetStorefrontVendorProducts } from '@/lib/api';
+import React, { useEffect, useState } from 'react';
+import { apiGetStorefrontSellStats } from '@/lib/api';
 
 const buybanner =
   'https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1600&q=80';
 
 const BuyBannerSection = () => {
   const [activeFilter, setActiveFilter] = useState('all');
-  const [products, setProducts] = useState([]);
+  const [stats, setStats] = useState({
+    all: 0,
+    brandNew: 0,
+    refurbished: 0,
+  });
 
   useEffect(() => {
     let mounted = true;
-    apiGetStorefrontVendorProducts('limit=250')
+    apiGetStorefrontSellStats()
       .then((res) => {
         if (!mounted) return;
-        const all = Array.isArray(res?.data?.products) ? res.data.products : [];
-        setProducts(all.filter((p) => String(p?.type) === 'Sell'));
+        const d = res?.data || {};
+        setStats({
+          all: Number(d.total) || 0,
+          brandNew: Number(d.brandNew) || 0,
+          refurbished: Number(d.refurbished) || 0,
+        });
       })
       .catch(() => {
         if (!mounted) return;
-        setProducts([]);
+        setStats({ all: 0, brandNew: 0, refurbished: 0 });
       });
     return () => {
       mounted = false;
     };
   }, []);
-
-  const stats = useMemo(() => {
-    const all = products.length;
-    const brandNew = products.filter(
-      (p) => String(p?.condition || '').toLowerCase() === 'brand new',
-    ).length;
-    const preOwned = Math.max(0, all - brandNew);
-    return { all, brandNew, preOwned };
-  }, [products]);
 
   return (
     <section className="w-full bg-white py-6 sm:py-10 px-3 sm:px-4">
@@ -88,7 +87,7 @@ const BuyBannerSection = () => {
                   : 'bg-[#f7f7f7] text-gray-800 border border-gray-200'
               }`}
             >
-              Pre-Owned / Refurbished ({stats.preOwned})
+              Pre-Owned / Refurbished ({stats.refurbished})
             </button>
           </div>
         </div>
