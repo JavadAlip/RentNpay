@@ -28,6 +28,8 @@ router.post('/', userAuth, async (req, res) => {
       const depUnit = Number(product.refundableDeposit || 0);
       normalizedLines.push({
         product: productId,
+        productType:
+          String(product.type || '').trim() === 'Sell' ? 'Sell' : 'Rental',
         quantity: qty,
         pricePerDay: Number(line.pricePerDay),
         refundableDeposit: Number.isFinite(depUnit) ? depUnit * qty : 0,
@@ -149,7 +151,7 @@ router.get('/', adminAuth, async (req, res) => {
   try {
     const orders = await Order.find({})
       .populate('user', 'fullName emailAddress')
-      .populate('products.product', 'productName image')
+      .populate('products.product', 'productName image type')
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {

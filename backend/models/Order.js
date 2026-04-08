@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  /** Snapshot of product listing type at order time (Rental | Sell). */
+  productType: { type: String, enum: ['Rental', 'Sell'], default: 'Rental' },
   quantity: { type: Number, required: true, default: 1 },
   pricePerDay: { type: Number, required: true },
   /** Snapshot: total refundable deposit for this line (per-unit deposit × quantity). */

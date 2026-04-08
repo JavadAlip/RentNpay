@@ -106,6 +106,19 @@ const Orders = () => {
         const primary = o.products?.[0]?.product;
         const productImage =
           primary && typeof primary === 'object' ? primary.image || '' : '';
+        const productTypeSet = new Set(
+          (o.products || [])
+            .map((i) => {
+              const p = i?.product;
+              const populatedType =
+                p && typeof p === 'object' ? String(p.type || '').trim() : '';
+              if (populatedType) return populatedType;
+              const snapshotType = String(i?.productType || '').trim();
+              if (snapshotType) return snapshotType;
+              return 'Rental';
+            })
+            .filter(Boolean),
+        );
         return {
           ...o,
           amount,
@@ -114,6 +127,7 @@ const Orders = () => {
           customerEmail: o.user?.emailAddress || '',
           productLines: lines.length ? lines : ['—'],
           productImage,
+          productTypes: Array.from(productTypeSet),
         };
       }),
     [orders],
@@ -309,6 +323,7 @@ const Orders = () => {
                     <th className="px-4 py-3 text-left font-medium">Order ID</th>
                     <th className="px-4 py-3 text-left font-medium">Customer</th>
                     <th className="px-4 py-3 text-left font-medium">Products</th>
+                    <th className="px-4 py-3 text-left font-medium">Product Type</th>
                     <th className="px-4 py-3 text-left font-medium">Order date</th>
                     <th className="px-4 py-3 text-left font-medium">Status</th>
                     <th className="px-4 py-3 text-left font-medium">Amount</th>
@@ -348,6 +363,29 @@ const Orders = () => {
                           </ul>
                         </div>
                       </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-wrap gap-1.5">
+                          {order.productTypes?.length ? (
+                            order.productTypes.map((t) => {
+                              const isSell = String(t).toLowerCase() === 'sell';
+                              return (
+                                <span
+                                  key={t}
+                                  className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-semibold border ${
+                                    isSell
+                                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                      : 'bg-orange-50 text-orange-800 border-orange-200'
+                                  }`}
+                                >
+                                  {isSell ? 'Sell' : 'Rental'}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-gray-600 align-top">
                         {order.createdAt
                           ? new Date(order.createdAt).toLocaleDateString('en-GB')
@@ -368,7 +406,7 @@ const Orders = () => {
 
                   {filteredOrders.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                      <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
                         No orders found.
                       </td>
                     </tr>
@@ -376,7 +414,7 @@ const Orders = () => {
                 </tbody>
                 <tfoot>
                   <tr className="bg-[#F97316] text-white">
-                    <td colSpan={5} className="px-4 py-3 font-semibold">
+                    <td colSpan={6} className="px-4 py-3 font-semibold">
                       This page total ({pageSlice.length} orders)
                     </td>
                     <td className="px-4 py-3 font-semibold">{money(pageTotal)}</td>
