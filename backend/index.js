@@ -41,7 +41,8 @@ const corsOptions = {
     if (allowedOrigins.includes(raw) || isVercelApp) return cb(null, true);
 
     // Return "not allowed" without throwing hard error middleware.
-    return cb(null, false);
+    // return cb(null, false);
+    return cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
