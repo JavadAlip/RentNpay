@@ -85,6 +85,16 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.static('uploads'));
 
+// Health check endpoint (for uptime monitors like UptimeRobot).
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: 'rentpay-server',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
