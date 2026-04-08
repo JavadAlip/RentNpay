@@ -85,6 +85,8 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.static('uploads'));
 
+//test
+
 // Health check endpoint (for uptime monitors like UptimeRobot).
 app.get('/api/health', (req, res) => {
   res.status(200).json({
