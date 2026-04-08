@@ -16,6 +16,10 @@ const parsePrice = (raw) => {
 const ProductCard = ({ product, offer }) => {
   const { _id, productName, image, price, type, category, subCategory, stock } =
     product;
+  const isSellProduct = String(type || '').toLowerCase() === 'sell';
+  const productHref = isSellProduct
+    ? `/buy-product-details/${_id}`
+    : `/rent-product-details/${_id}`;
   const base =
     type === 'Rental'
       ? getRentalListingAmount(product)
@@ -36,7 +40,7 @@ const ProductCard = ({ product, offer }) => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all">
-      <Link href={`/rent-product-details/${_id}`} className="block">
+      <Link href={productHref} className="block">
         <div className="relative h-40 sm:h-44 bg-gray-100 overflow-hidden">
           <span className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500 text-white">
             Bestseller
@@ -103,7 +107,7 @@ const ProductCard = ({ product, offer }) => {
         </div>
 
         <Link
-          href={`/rent-product-details/${_id}`}
+          href={productHref}
           className={`mt-3 w-full inline-flex items-center justify-center gap-1 rounded-xl py-2 text-sm font-medium border ${
             inStock
               ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
@@ -115,7 +119,7 @@ const ProductCard = ({ product, offer }) => {
           ) : (
             <Bell className="w-4 h-4" />
           )}
-          {inStock ? 'Rent Now' : 'Get Notified'}
+          {inStock ? (isSellProduct ? 'Buy Now' : 'Rent Now') : 'Get Notified'}
         </Link>
       </div>
     </div>
