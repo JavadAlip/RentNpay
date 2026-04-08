@@ -2,11 +2,23 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Heart, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock3, Heart, Star } from 'lucide-react';
 import { apiGetStorefrontVendorProducts } from '@/lib/api';
 import { getRentalListingAmount } from '@/lib/rentalPriceDisplay';
 
 const CARDS_PER_PAGE = 3;
+
+const getDeliveryLabel = (product) => {
+  const n = Number(product?.logisticsVerification?.deliveryTimelineValue);
+  const rawUnit = String(
+    product?.logisticsVerification?.deliveryTimelineUnit || 'Days',
+  ).trim();
+  if (Number.isFinite(n) && n > 0) {
+    const unit = rawUnit || 'Days';
+    return `${n} ${unit}`;
+  }
+  return '2-4 days';
+};
 
 export default function BuySimilarProducts() {
   const [products, setProducts] = useState([]);
@@ -72,14 +84,20 @@ export default function BuySimilarProducts() {
                       <span className="absolute top-3 left-3 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full">
                         Bestseller
                       </span>
-                      <button className="absolute top-3 right-3 bg-white p-1 rounded-full shadow">
-                        <Heart size={14} />
-                      </button>
                       <img
                         src={item?.image || 'https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=700&q=80'}
                         alt={item?.productName}
                         className="w-full h-44 object-cover rounded-xl"
                       />
+                      <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/95 border border-gray-200 px-2.5 py-1 text-[10px] text-gray-700 shadow-sm">
+                          <Clock3 size={11} className="text-blue-500" />
+                          {getDeliveryLabel(item)}
+                        </span>
+                        <button className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 border border-gray-200 shadow-sm">
+                          <Heart size={14} className="text-gray-600" />
+                        </button>
+                      </div>
                     </div>
                     <div className="px-4 pb-4">
                       <div className="flex items-center justify-between mb-1">
@@ -100,7 +118,7 @@ export default function BuySimilarProducts() {
                         </span>
                       </div>
                       <Link
-                        href={`/rent-product-details/${item?._id}`}
+                        href={`/buy-product-details/${item?._id}`}
                         className="block w-full text-center bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium"
                       >
                         Buy Now
