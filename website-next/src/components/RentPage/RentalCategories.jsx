@@ -18,7 +18,7 @@ const RentalCategories = () => {
         const list = Array.isArray(res.data)
           ? res.data
           : res.data.categories || [];
-        setCategories(list);
+        setCategories(list.filter((c) => c.availableInRent));
       })
       .catch(() => setCategories([]))
       .finally(() => setLoading(false));

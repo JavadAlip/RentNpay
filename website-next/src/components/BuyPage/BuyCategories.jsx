@@ -30,7 +30,7 @@ const BuyCategories = () => {
           : Array.isArray(res?.data?.categories)
             ? res.data.categories
             : [];
-        setCategories(list);
+        setCategories(list.filter((c) => c.availableInBuy));
       })
       .catch(() => {
         if (!mounted) return;
