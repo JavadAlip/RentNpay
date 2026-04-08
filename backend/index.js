@@ -30,13 +30,29 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin(origin, cb) {
-    // Allow server-to-server/no-origin tools, and allowed browser origins.
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked for origin: ${origin}`));
+    // Allow server-to-server/no-origin tools.
+    if (!origin) return cb(null, true);
+
+    const raw = String(origin).trim();
+    const lower = raw.toLowerCase();
+    const isVercelApp = lower.endsWith('.vercel.app');
+
+    // Explicit allowlist + all vercel preview/prod domains.
+    if (allowedOrigins.includes(raw) || isVercelApp) return cb(null, true);
+
+    // Return "not allowed" without throwing hard error middleware.
+    return cb(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+  ],
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
