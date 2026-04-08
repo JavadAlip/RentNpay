@@ -55,6 +55,30 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
+// Fail-safe CORS headers for hosting/proxy preflight quirks on Render.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    const lower = String(origin).toLowerCase();
+    const isAllowed =
+      allowedOrigins.includes(origin) || lower.endsWith('.vercel.app');
+    if (isAllowed) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+    }
+  }
+  res.header(
+    'Access-Control-Allow-Methods',
+    'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  );
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Requested-With, Accept, Origin',
+  );
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  return next();
+});
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
