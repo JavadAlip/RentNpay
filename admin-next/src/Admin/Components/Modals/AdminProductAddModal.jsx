@@ -561,6 +561,21 @@ const AdminProductAddModal = ({
   const [standardFilterOpen, setStandardFilterOpen] = useState(false);
   const [templateApplyLoadingId, setTemplateApplyLoadingId] = useState(null);
 
+  const filteredCategories = useMemo(() => {
+    return (categories || []).filter((c) => {
+      if (form.type === 'Sell') return c.availableInBuy;
+      // default Rental form
+      return c.availableInRent;
+    });
+  }, [categories, form.type]);
+
+  const filteredSubCategories = useMemo(() => {
+    return (subCategories || []).filter((s) => {
+      if (form.type === 'Sell') return s.availableInBuy;
+      return s.availableInRent;
+    });
+  }, [subCategories, form.type]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -1648,7 +1663,7 @@ const AdminProductAddModal = ({
             className="border rounded-lg px-3 py-2"
           >
             <option value="">Select category</option>
-            {categories.map((c) => (
+            {filteredCategories.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
               </option>
@@ -1659,14 +1674,15 @@ const AdminProductAddModal = ({
           <select
             name="subCategory"
             value={
-              subCategories.find((s) => s.name === form.subCategory)?._id || ''
+              filteredSubCategories.find((s) => s.name === form.subCategory)
+                ?._id || ''
             }
             onChange={handleSubCategoryChange}
             className="border rounded-lg px-3 py-2"
             disabled={!selectedCategoryId}
           >
             <option value="">Select subcategory</option>
-            {subCategories.map((s) => (
+            {filteredSubCategories.map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}
               </option>

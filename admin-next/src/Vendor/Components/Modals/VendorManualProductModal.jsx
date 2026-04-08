@@ -409,6 +409,20 @@ export default function VendorManualProductModal({
   });
   const [marketLowLoading, setMarketLowLoading] = useState(false);
 
+  const filteredCategories = useMemo(() => {
+    const isSell = listingKind === 'sell';
+    return (categories || []).filter((c) =>
+      isSell ? c.availableInBuy : c.availableInRent,
+    );
+  }, [categories, listingKind]);
+
+  const filteredSubCategories = useMemo(() => {
+    const isSell = listingKind === 'sell';
+    return (subCategories || []).filter((s) =>
+      isSell ? s.availableInBuy : s.availableInRent,
+    );
+  }, [subCategories, listingKind]);
+
   // ── reset on open ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
@@ -1353,7 +1367,7 @@ export default function VendorManualProductModal({
             className="border rounded-lg px-3 py-2"
           >
             <option value="">Select category</option>
-            {categories.map((c) => (
+            {filteredCategories.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
               </option>
@@ -1364,14 +1378,15 @@ export default function VendorManualProductModal({
           <select
             name="subCategory"
             value={
-              subCategories.find((s) => s.name === form.subCategory)?._id || ''
+              filteredSubCategories.find((s) => s.name === form.subCategory)
+                ?._id || ''
             }
             onChange={handleSubCategoryChange}
             className="border rounded-lg px-3 py-2"
             disabled={!selectedCategoryId}
           >
             <option value="">Select subcategory</option>
-            {subCategories.map((s) => (
+            {filteredSubCategories.map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}
               </option>

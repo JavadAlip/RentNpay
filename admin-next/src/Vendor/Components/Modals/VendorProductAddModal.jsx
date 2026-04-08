@@ -354,6 +354,18 @@ export default function VendorProductAddModal({
   const [existingImages, setExistingImages] = useState([]);
   const [newImages, setNewImages] = useState([]);
 
+  const filteredCategories = useMemo(() => {
+    return (categories || []).filter((c) =>
+      listingType === 'sell' ? c.availableInBuy : c.availableInRent,
+    );
+  }, [categories, listingType]);
+
+  const filteredSubCategories = useMemo(() => {
+    return (subCategories || []).filter((s) =>
+      listingType === 'sell' ? s.availableInBuy : s.availableInRent,
+    );
+  }, [subCategories, listingType]);
+
   const getTemplateRefundableDeposit = useCallback((t, variantIdx) => {
     if (!t) return '';
 
@@ -1188,7 +1200,7 @@ export default function VendorProductAddModal({
                       className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                     >
                       <option value="">Select category</option>
-                      {categories.map((c) => (
+                      {filteredCategories.map((c) => (
                         <option key={c._id} value={c._id}>
                           {c.name}
                         </option>
@@ -1206,7 +1218,7 @@ export default function VendorProductAddModal({
                       disabled={!categoryId}
                     >
                       <option value="">Select sub-category</option>
-                      {subCategories.map((s) => (
+                      {filteredSubCategories.map((s) => (
                         <option key={s._id} value={s._id}>
                           {s.name}
                         </option>
