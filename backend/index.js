@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config(); // ✅ MUST BE FIRST
+dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
@@ -12,11 +12,35 @@ import categoryRoutes from './routes/categories.js';
 import cartRoutes from './routes/cart.js';
 import orderRoutes from './routes/orders.js';
 import userRoutes from './routes/users.js';
+import ensureUserCustomerNumbers from './utils/ensureUserCustomerNumbers.js';
 
 const app = express();
 
 // Middlewares
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://rentnpay-admin.vercel.app',
+  'https://rentnpay.vercel.app',
+  ...(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean),
+];
+
+const corsOptions = {
+  origin(origin, cb) {
+    // Allow server-to-server/no-origin tools, and allowed browser origins.
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.static('uploads'));
 
@@ -41,22 +65,7 @@ function logMongoConnectionHelp(err) {
   const code = err?.code;
   const msg = String(err?.message || '');
   if (code === 'ENOTFOUND' && msg.toLowerCase().includes('querysrv')) {
-    console.error(`
-→ SRV DNS lookup failed (common when offline, strict DNS, or bad Atlas hostname).
-
-  Fix options:
-  1) Add to backend/.env (keep Atlas in MONGODB_URI):
-     MONGODB_URI_FALLBACK=mongodb://127.0.0.1:27017/rentpay
-     The server will use it automatically when SRV lookup fails (local Mongo must be running).
-  2) Or set MONGODB_URI alone to: mongodb://127.0.0.1:27017/rentpay
-  3) Atlas: copy a fresh URI; confirm cluster exists and is not paused.
-  4) Network: try other Wi‑Fi, VPN off, or DNS 8.8.8.8 / 1.1.1.1.
-  5) Use Atlas "standard connection string" (non-SRV) if SRV is blocked.
-`);
   } else if (!process.env.MONGODB_URI?.trim()) {
-    console.error(
-      '→ MONGODB_URI is missing. Copy backend/.env.example to backend/.env and set MONGODB_URI.',
-    );
   }
 }
 
@@ -83,9 +92,6 @@ async function connectMongo() {
     return { uri: mongoUri, usedFallback: false };
   } catch (err) {
     if (fallback && fallback !== mongoUri && isSrvDnsFailure(err)) {
-      console.warn(
-        '⚠ MONGODB_URI SRV lookup failed — trying MONGODB_URI_FALLBACK…',
-      );
       await mongoose.connect(fallback);
       return { uri: fallback, usedFallback: true };
     }
@@ -94,14 +100,19 @@ async function connectMongo() {
 }
 
 connectMongo()
-  .then(({ usedFallback }) => {
+  .then(async ({ usedFallback }) => {
     console.log(
       usedFallback
         ? '✅ MongoDB Connected (using MONGODB_URI_FALLBACK)'
-        : '✅ MongoDB Connected',
+        : ' MongoDB Connected',
     );
+    try {
+      await ensureUserCustomerNumbers();
+    } catch (e) {
+      console.error('ensureUserCustomerNumbers:', e?.message || e);
+    }
     app.listen(process.env.PORT || 5000, () => {
-      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
+      console.log(` Server running on port ${process.env.PORT || 5000}`);
     });
   })
   .catch((err) => {
