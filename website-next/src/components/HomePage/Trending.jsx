@@ -44,8 +44,7 @@ const Trending = () => {
       .then(([pRes, oRes]) => {
         if (!mounted) return;
         const allProducts = pRes.data?.products || [];
-        const rentProducts = allProducts.filter((p) => p.type === 'Rental');
-        setProducts(rentProducts);
+        setProducts(allProducts);
 
         const map = {};
         (oRes.data?.offers || []).forEach((o) => {
@@ -117,9 +116,9 @@ const Trending = () => {
     activeTab === 'All'
       ? products
       : activeTab === 'Rent'
-        ? products
+        ? products.filter((p) => String(p.type || '') === 'Rental')
         : activeTab === 'Sale'
-          ? products.filter((p) => p.type === 'Sell')
+          ? products.filter((p) => String(p.type || '') === 'Sell')
           : products.filter((p) =>
               String(p.category || '')
                 .toLowerCase()
@@ -332,14 +331,14 @@ const Trending = () => {
         <div className="flex justify-center gap-4 mt-10">
           <button
             onClick={prevSlide}
-            className="p-3 border rounded-full hover:bg-gray-100"
+            className="p-3 border rounded-full bg-white text-gray-800 hover:bg-black hover:text-white transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
 
           <button
             onClick={nextSlide}
-            className="p-3 bg-black text-white rounded-full"
+            className="p-3 border rounded-full bg-white text-gray-800 hover:bg-black hover:text-white transition-colors"
           >
             <ChevronRight size={20} />
           </button>
