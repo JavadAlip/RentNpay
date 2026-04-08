@@ -25,7 +25,10 @@ function pickProductRentalConfigurations(product) {
   const top = product?.rentalConfigurations;
   if (Array.isArray(top) && top.length) return top;
   const v0 = product?.variants?.[0];
-  if (Array.isArray(v0?.rentalConfigurations) && v0.rentalConfigurations.length) {
+  if (
+    Array.isArray(v0?.rentalConfigurations) &&
+    v0.rentalConfigurations.length
+  ) {
     return v0.rentalConfigurations;
   }
   return [];
@@ -43,7 +46,11 @@ function tierRentAmount(tier) {
 function getInventoryPriceLabel(product) {
   if (product?.type && String(product.type) !== 'Rental') {
     const raw = product?.price;
-    if (raw != null && String(raw).trim() !== '' && String(raw).trim() !== '0') {
+    if (
+      raw != null &&
+      String(raw).trim() !== '' &&
+      String(raw).trim() !== '0'
+    ) {
       return String(raw).trim();
     }
     return '—';
@@ -54,9 +61,8 @@ function getInventoryPriceLabel(product) {
     const isDay = configs.some((c) => c?.periodUnit === 'day');
     if (isDay) {
       const tier =
-        configs.find(
-          (c) => c?.periodUnit === 'day' && Number(c?.days) === 3,
-        ) || configs.find((c) => c?.periodUnit === 'day');
+        configs.find((c) => c?.periodUnit === 'day' && Number(c?.days) === 3) ||
+        configs.find((c) => c?.periodUnit === 'day');
       if (tier) {
         const amt = tierRentAmount(tier);
         const d = Number(tier?.days) > 0 ? Number(tier.days) : 3;
@@ -66,9 +72,7 @@ function getInventoryPriceLabel(product) {
     } else {
       const tier =
         configs.find(
-          (c) =>
-            c?.periodUnit !== 'day' &&
-            Number(c?.months) === 3,
+          (c) => c?.periodUnit !== 'day' && Number(c?.months) === 3,
         ) ||
         configs.find(
           (c) =>
@@ -100,6 +104,7 @@ const Products = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [manualModalDesign, setManualModalDesign] = useState('vendor');
+  const [manualListingKind, setManualListingKind] = useState('rental');
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [query, setQuery] = useState('');
@@ -407,22 +412,41 @@ const Products = () => {
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  if (kycStatus !== 'approved') {
-                    toast.error(
-                      'KYC not approved yet. Complete KYC and wait for admin approval.',
-                    );
-                    return;
-                  }
-                  setEditingProduct(null);
-                  setIsAddModalOpen(true);
-                }}
-                disabled={kycLoading || kycStatus !== 'approved'}
-                className="px-4 py-2 rounded-full bg-orange-500 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                + Add New Product
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    if (kycStatus !== 'approved') {
+                      toast.error(
+                        'KYC not approved yet. Complete KYC and wait for admin approval.',
+                      );
+                      return;
+                    }
+                    setEditingProduct(null);
+                    setIsAddModalOpen(true);
+                  }}
+                  disabled={kycLoading || kycStatus !== 'approved'}
+                  className="px-4 py-2 rounded-full bg-orange-500 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  + Add New Product
+                </button>
+                {/* <button
+                  type="button"
+                  onClick={() => {
+                    if (kycStatus !== 'approved') {
+                      toast.error(
+                        'KYC not approved yet. Complete KYC and wait for admin approval.',
+                      );
+                      return;
+                    }
+                    setManualListingKind('sell');
+                    setIsManualModalOpen(true);
+                  }}
+                  disabled={kycLoading || kycStatus !== 'approved'}
+                  className="px-4 py-2 rounded-full border border-blue-200 bg-white text-blue-800 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  + Manual sell listing
+                </button> */}
+              </div>
             </div>
 
             {kycStatus !== 'approved' ? (
@@ -644,6 +668,7 @@ const Products = () => {
         onOpenManualProduct={() => {
           setIsAddModalOpen(false);
           setManualModalDesign('admin');
+          setManualListingKind('rental');
           setIsManualModalOpen(true);
         }}
       />
@@ -653,12 +678,17 @@ const Products = () => {
         onClose={() => {
           setIsManualModalOpen(false);
           setManualModalDesign('vendor');
+          setManualListingKind('rental');
         }}
         onSubmit={async (form) => {
           const ok = await handleCreateProduct(form);
-          if (ok) setIsManualModalOpen(false);
+          if (ok) {
+            setIsManualModalOpen(false);
+            setManualListingKind('rental');
+          }
         }}
         designMode={manualModalDesign}
+        listingKind={manualListingKind}
       />
 
       {deleteTarget && (

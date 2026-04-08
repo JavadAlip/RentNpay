@@ -82,6 +82,17 @@ const toNum = (v, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
+const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+
+function normalizeConditionForListingType(condition, listingType) {
+  const c = String(condition || '').trim();
+  if (listingType === 'Sell') {
+    return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
+  }
+  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+}
+
 function formatInrCompact(n) {
   if (!Number.isFinite(n) || n <= 0) return '';
   return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
@@ -351,6 +362,8 @@ const defaultForm = {
   logisticsVerification: { inventoryOwnerName: '', city: '' },
   price: '',
   stock: '',
+  salePrice: '',
+  mrpPrice: '',
   status: 'Active',
   isActive: true,
   images: [],
@@ -371,6 +384,8 @@ export default function VendorManualProductModal({
   fetchStandardListingTemplate = null,
   standardSearchPlaceholder = 'Search standard listed products',
   enableStandardProductSearch = true,
+  /** 'rental' | 'sell' — sell uses Brand New / Refurbished only and sales payload */
+  listingKind = 'rental',
 }) {
   const dispatch = useDispatch();
   const { categories, subCategories } = useSelector((s) => s.category);
@@ -398,7 +413,12 @@ export default function VendorManualProductModal({
   useEffect(() => {
     if (!isOpen) return;
     dispatch(getCategories());
-    setForm({ ...defaultForm });
+    const isSell = listingKind === 'sell';
+    setForm({
+      ...defaultForm,
+      type: isSell ? 'Sell' : 'Rental',
+      condition: isSell ? 'Brand New' : 'Good',
+    });
     setSelectedCategoryId('');
     setStandardSearch('');
     setStandardCategoryFilter('all');
@@ -407,10 +427,10 @@ export default function VendorManualProductModal({
     setDeliveryTimelineUnit('Days');
     setMarketLowTenures({ month: {}, day: {} });
     setMarketLowLoading(false);
-  }, [isOpen, dispatch]);
+  }, [isOpen, dispatch, listingKind]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen || listingKind === 'sell') return undefined;
     const token =
       typeof window !== 'undefined'
         ? localStorage.getItem('vendorToken')
@@ -442,7 +462,7 @@ export default function VendorManualProductModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, form.category, form.subCategory]);
+  }, [isOpen, form.category, form.subCategory, listingKind]);
 
   // ── sync category select when form.category changes (template apply) ────────
   useEffect(() => {
@@ -937,6 +957,79 @@ export default function VendorManualProductModal({
       specMap[label] = value;
     }
 
+    const sellCond = normalizeConditionForListingType(form.condition, 'Sell');
+    const rentCond = normalizeConditionForListingType(form.condition, 'Rental');
+
+    if (listingKind === 'sell') {
+      const sp = toNum(form.salePrice, 0);
+      const anyVp = variants.some((v) => String(v?.price ?? '').trim() !== '');
+      if (!sp && !anyVp) {
+        toast.error('Enter sale price (product-level or on a variant).');
+        return;
+      }
+      const variantsPayloadSell = variants
+        .filter((v) => up(v?.variantName))
+        .map((v) => {
+          const { color, storage, ram } = extractColorStorageRamFromSpecRows(
+            v?.specRows,
+          );
+          return {
+            variantName: up(v?.variantName),
+            color,
+            storage,
+            ram,
+            condition: sellCond,
+            price: up(v?.price || form.salePrice),
+            stock: toNum(v?.stock, 0),
+          };
+        });
+      const saleLabel =
+        String(form.salePrice ?? '').trim() !== ''
+          ? String(form.salePrice).trim()
+          : up(v0?.price) || String(sp || '');
+      const payloadSell = {
+        productName: up(form.productName),
+        type: 'Sell',
+        category: up(form.category),
+        subCategory: up(form.subCategory),
+        brand: up(form.brand),
+        condition: sellCond,
+        shortDescription: up(form.shortDescription),
+        description: up(form.description),
+        specifications: {
+          ...(form.specifications && typeof form.specifications === 'object'
+            ? form.specifications
+            : {}),
+          ...specMap,
+        },
+        variants: variantsPayloadSell,
+        rentalConfigurations: [],
+        refundableDeposit: 0,
+        salesConfiguration: {
+          allowVendorEditSalePrice: true,
+          salePrice: toNum(form.salePrice, toNum(v0?.price, 0)),
+          mrpPrice: toNum(form.mrpPrice, 0),
+        },
+        logisticsVerification: {
+          inventoryOwnerName: up(form.logisticsVerification?.inventoryOwnerName),
+          city: up(form.logisticsVerification?.city),
+          deliveryTimelineValue: toNum(deliveryTimelineValue, 0),
+          deliveryTimelineUnit,
+        },
+        existingImages: existingImages.slice(0, 5),
+        images: images.slice(0, 5),
+        price: saleLabel,
+        stock: toNum(derivedStock, 0),
+        status: 'Active',
+        submissionStatus: 'published',
+        createdVia: 'manual',
+        allowVendorEditRentalPrices: true,
+      };
+      const ok = await onSubmit?.(payloadSell);
+      if (ok) onClose?.();
+      return;
+    }
+
     const variantsPayload = variants
       .filter((v) => up(v?.variantName))
       .map((v) => {
@@ -948,7 +1041,7 @@ export default function VendorManualProductModal({
           color,
           storage,
           ram,
-          condition: 'Like New',
+          condition: rentCond,
           price: up(v?.price),
           stock: toNum(v?.stock, 0),
         };
@@ -991,7 +1084,7 @@ export default function VendorManualProductModal({
       category: up(form.category),
       subCategory: up(form.subCategory),
       brand: up(form.brand),
-      condition: up(form.condition || 'Good'),
+      condition: rentCond,
       shortDescription: up(form.shortDescription),
       description: up(form.description),
       specifications: {
@@ -1033,10 +1126,12 @@ export default function VendorManualProductModal({
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Add New Listing
+              {listingKind === 'sell' ? 'Add sell listing' : 'Add new listing'}
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              List your product, rental, or service
+              {listingKind === 'sell'
+                ? 'Manual sell product — condition and pricing below'
+                : 'List your product, rental, or service'}
             </p>
           </div>
           <button
@@ -1053,11 +1148,23 @@ export default function VendorManualProductModal({
         >
           {/* ── Listing type row ── */}
           <div className="md:col-span-2 grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-orange-300 text-orange-600 bg-orange-50 text-center py-2 text-sm font-medium">
+            <div
+              className={`rounded-xl border text-center py-2 text-sm font-medium ${
+                listingKind === 'rental'
+                  ? 'border-orange-300 text-orange-600 bg-orange-50'
+                  : 'border-gray-200 text-gray-400 bg-gray-50'
+              }`}
+            >
               Add Rental
             </div>
-            <div className="rounded-xl border text-gray-400 bg-gray-50 text-center py-2 text-sm">
-              Sales Configuration (Later)
+            <div
+              className={`rounded-xl border text-center py-2 text-sm font-medium ${
+                listingKind === 'sell'
+                  ? 'border-blue-500 text-blue-800 bg-blue-50'
+                  : 'border-gray-200 text-gray-400 bg-gray-50'
+              }`}
+            >
+              Sell product
             </div>
           </div>
 
@@ -1206,7 +1313,9 @@ export default function VendorManualProductModal({
 
           <div className="border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600">
             Listing Type:{' '}
-            <span className="font-medium text-gray-900">Rental</span>
+            <span className="font-medium text-gray-900">
+              {listingKind === 'sell' ? 'Sell' : 'Rental'}
+            </span>
           </div>
 
           <input
@@ -1219,14 +1328,21 @@ export default function VendorManualProductModal({
 
           <select
             name="condition"
-            value={form.condition}
+            value={normalizeConditionForListingType(
+              form.condition,
+              listingKind === 'sell' ? 'Sell' : 'Rental',
+            )}
             onChange={handleChange}
             className="border rounded-lg px-3 py-2"
           >
-            <option>Brand New</option>
-            <option>Like New</option>
-            <option>Good</option>
-            <option>Fair</option>
+            {(listingKind === 'sell'
+              ? SELL_CONDITION_OPTIONS
+              : RENTAL_CONDITION_OPTIONS
+            ).map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
           </select>
 
           {/* Category */}
@@ -1277,6 +1393,35 @@ export default function VendorManualProductModal({
             placeholder="Detailed description"
             className="border rounded-lg px-3 py-2 md:col-span-2 min-h-[90px]"
           />
+
+          {listingKind === 'sell' ? (
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Sale price <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="salePrice"
+                  value={form.salePrice}
+                  onChange={handleChange}
+                  placeholder="e.g. 24999"
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  MRP (optional)
+                </label>
+                <input
+                  name="mrpPrice"
+                  value={form.mrpPrice}
+                  onChange={handleChange}
+                  placeholder="e.g. 29999"
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          ) : null}
 
           {/* ── Product Specifications ── */}
           {/* <div className="md:col-span-2 border-t pt-4 mt-1">
@@ -1476,7 +1621,41 @@ export default function VendorManualProductModal({
                     </div>
                   </div>
 
+                  {listingKind === 'sell' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          Variant sale price
+                        </p>
+                        <input
+                          value={variant.price || ''}
+                          onChange={(e) =>
+                            updateVariant(index, 'price', e.target.value)
+                          }
+                          placeholder="If empty, uses product sale price above"
+                          className="w-full border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          Variant stock
+                        </p>
+                        <input
+                          type="number"
+                          min={0}
+                          value={variant.stock ?? ''}
+                          onChange={(e) =>
+                            updateVariant(index, 'stock', e.target.value)
+                          }
+                          placeholder="Units"
+                          className="w-full border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
                   {/* Rental configuration card */}
+                  {listingKind !== 'sell' ? (
                   <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
                     {/* Card header */}
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -1754,8 +1933,10 @@ export default function VendorManualProductModal({
                       );
                     })()}
                   </div>
+                  ) : null}
 
                   {/* Refundable deposit per-variant */}
+                  {listingKind !== 'sell' ? (
                   <div>
                     <p className="text-sm font-medium text-gray-900 mb-1">
                       Refundable deposit
@@ -1774,6 +1955,7 @@ export default function VendorManualProductModal({
                       className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
                     />
                   </div>
+                  ) : null}
                 </div>
               ))}
             </div>

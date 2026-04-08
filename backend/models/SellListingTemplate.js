@@ -37,8 +37,8 @@ const sellListingTemplateSchema = new mongoose.Schema(
     brand: { type: String, default: '' },
     condition: {
       type: String,
-      enum: ['Brand New', 'Like New', 'Good', 'Fair'],
-      default: 'Good',
+      enum: ['Brand New', 'Refurbished'],
+      default: 'Brand New',
     },
     shortDescription: { type: String, default: '' },
     description: { type: String, default: '' },

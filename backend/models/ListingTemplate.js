@@ -69,7 +69,7 @@ const listingTemplateSchema = new mongoose.Schema(
     brand: { type: String, default: '' },
     condition: {
       type: String,
-      enum: ['Brand New', 'Like New', 'Good', 'Fair'],
+      enum: ['Brand New', 'Like New', 'Good', 'Fair', 'Refurbished'],
       default: 'Good',
     },
     shortDescription: { type: String, default: '' },

@@ -29,6 +29,17 @@ function toNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
+const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+
+function normalizeConditionForListingType(condition, listingType) {
+  const c = String(condition || '').trim();
+  if (listingType === 'Sell') {
+    return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
+  }
+  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+}
+
 function specsObjectFromTemplate(t, variantIndex = 0) {
   const specs =
     t?.specifications &&
@@ -422,7 +433,12 @@ export default function VendorProductAddModal({
     setListingType(String(p.type || 'Rental') === 'Sell' ? 'sell' : 'rent');
     setProductName(p.productName || '');
     setBrand(p.brand || '');
-    setCondition(p.condition || 'Good');
+    setCondition(
+      normalizeConditionForListingType(
+        p.condition,
+        String(p.type || 'Rental') === 'Sell' ? 'Sell' : 'Rental',
+      ),
+    );
     setShortDescription(p.shortDescription || '');
     setDescription(p.description || '');
     const specObj =
@@ -591,7 +607,12 @@ export default function VendorProductAddModal({
       setSelectedTemplateId(t._id);
       setProductName(t.productName || '');
       setBrand(t.brand || '');
-      setCondition(t.condition || 'Good');
+      setCondition(
+        normalizeConditionForListingType(
+          t.condition,
+          listingType === 'sell' ? 'Sell' : 'Rental',
+        ),
+      );
       setShortDescription(t.shortDescription || '');
       setDescription(t.description || '');
       setSpecs(specsObjectFromTemplate(t));
@@ -951,7 +972,10 @@ export default function VendorProductAddModal({
       category: categoryName,
       subCategory: subCategoryName,
       brand: String(brand || '').trim(),
-      condition: condition || 'Good',
+      condition: normalizeConditionForListingType(
+        condition || 'Good',
+        listingType === 'sell' ? 'Sell' : 'Rental',
+      ),
       shortDescription: String(shortDescription || '').trim(),
       description: String(description || '').trim(),
       specifications: specs,
@@ -1098,7 +1122,14 @@ export default function VendorProductAddModal({
                 onClick={() =>
                   opt.id !== 'service' &&
                   (() => {
-                    setListingType(opt.id);
+                    const nextKind = opt.id;
+                    setListingType(nextKind);
+                    setCondition((prev) =>
+                      normalizeConditionForListingType(
+                        prev,
+                        nextKind === 'sell' ? 'Sell' : 'Rental',
+                      ),
+                    );
                     setCustomListing(false);
                     setFullTemplate(null);
                     setSelectedTemplateId(null);
@@ -1411,14 +1442,26 @@ export default function VendorProductAddModal({
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Condition</label>
-                    <input
-                      value={condition}
+                    <select
+                      value={normalizeConditionForListingType(
+                        condition,
+                        listingType === 'sell' ? 'Sell' : 'Rental',
+                      )}
                       onChange={(e) => setCondition(e.target.value)}
-                      readOnly={detailsLocked}
+                      disabled={detailsLocked}
                       className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
-                    />
+                    >
+                      {(listingType === 'sell'
+                        ? SELL_CONDITION_OPTIONS
+                        : RENTAL_CONDITION_OPTIONS
+                      ).map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   {/* <div className="sm:col-span-2">
                     <label className="text-xs text-gray-500">

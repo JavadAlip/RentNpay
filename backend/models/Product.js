@@ -94,7 +94,7 @@ const productSchema = new mongoose.Schema(
     },
     condition: {
       type: String,
-      enum: ['Brand New', 'Like New', 'Good', 'Fair'],
+      enum: ['Brand New', 'Like New', 'Good', 'Fair', 'Refurbished'],
       default: 'Good',
     },
     shortDescription: {

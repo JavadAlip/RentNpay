@@ -129,6 +129,18 @@ function numOr(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
+const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+
+/** Keep condition valid for listing type (sell templates only allow two values). */
+function normalizeConditionForListingType(condition, listingType) {
+  const c = String(condition || '').trim();
+  if (listingType === 'Sell') {
+    return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
+  }
+  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+}
+
 function mapFlexibleRentalTierFromApi(cfg, index) {
   const periodUnit = cfg.periodUnit === 'day' ? 'day' : 'month';
   const months = numOr(cfg.months, 0);
@@ -430,6 +442,8 @@ function buildVendorFormStateFromListingTemplate(template) {
     });
   }
 
+  const tplType = template.type || 'Rental';
+
   const variantsFromTemplate =
     Array.isArray(template.variants) && template.variants.length
       ? template.variants.map((v) => ({
@@ -438,7 +452,10 @@ function buildVendorFormStateFromListingTemplate(template) {
           color: v.color || '',
           storage: v.storage || '',
           ram: v.ram || '',
-          condition: v.condition || template.condition || '',
+          condition: normalizeConditionForListingType(
+            v.condition || template.condition,
+            tplType,
+          ),
           price: v.price || template.price || '',
           stock:
             v.stock === undefined || v.stock === null
@@ -451,7 +468,10 @@ function buildVendorFormStateFromListingTemplate(template) {
           {
             ...legacyEmptyVariant(),
             variantName: template.productName || '',
-            condition: template.condition || '',
+            condition: normalizeConditionForListingType(
+              template.condition,
+              tplType,
+            ),
             price: template.price || '',
             stock:
               template.stock === undefined || template.stock === null
@@ -463,11 +483,11 @@ function buildVendorFormStateFromListingTemplate(template) {
   return {
     sku: template.sku || '',
     productName: template.productName || '',
-    type: template.type || 'Rental',
+    type: tplType,
     category: template.category || '',
     subCategory: template.subCategory || '',
     brand: template.brand || '',
-    condition: template.condition || 'Good',
+    condition: normalizeConditionForListingType(template.condition, tplType),
     shortDescription: template.shortDescription || '',
     description: template.description || '',
     specifications,
@@ -563,15 +583,19 @@ const AdminProductAddModal = ({
             ? initialData.variants.map(mapVariantFromApi)
             : [];
 
+        const initType = initialData.type || 'Rental';
         setForm({
           ...defaultForm,
           sku: initialData.sku || '',
           productName: initialData.productName || '',
-          type: initialData.type || 'Rental',
+          type: initType,
           category: initialData.category || '',
           subCategory: initialData.subCategory || '',
           brand: initialData.brand || '',
-          condition: initialData.condition || 'Good',
+          condition: normalizeConditionForListingType(
+            initialData.condition,
+            initType,
+          ),
           shortDescription: initialData.shortDescription || '',
           description: initialData.description || '',
           specifications: {},
@@ -616,14 +640,18 @@ const AdminProductAddModal = ({
           },
         });
       } else {
+        const initType = initialData.type || 'Rental';
         setForm({
           sku: initialData.sku || '',
           productName: initialData.productName || '',
-          type: initialData.type || 'Rental',
+          type: initType,
           category: initialData.category || '',
           subCategory: initialData.subCategory || '',
           brand: initialData.brand || '',
-          condition: initialData.condition || 'Good',
+          condition: normalizeConditionForListingType(
+            initialData.condition,
+            initType,
+          ),
           shortDescription: initialData.shortDescription || '',
           description: initialData.description || '',
           specifications: initialData.specifications || {},
@@ -636,7 +664,10 @@ const AdminProductAddModal = ({
                   color: v.color || '',
                   storage: v.storage || '',
                   ram: v.ram || '',
-                  condition: v.condition || '',
+                  condition: normalizeConditionForListingType(
+                    v.condition || initialData.condition,
+                    initType,
+                  ),
                   price: v.price || '',
                   stock:
                     v.stock === undefined || v.stock === null
@@ -840,10 +871,22 @@ const AdminProductAddModal = ({
         : sumVariantStock || firstVariantStock;
       const derivedStock = String(derivedStockNum);
 
-      onSubmit?.({ ...form, price: derivedPrice, stock: derivedStock });
+      const cond = normalizeConditionForListingType(form.condition, form.type);
+      onSubmit?.({ ...form, condition: cond, price: derivedPrice, stock: derivedStock });
       return;
     }
-    onSubmit?.(form);
+    const cond = normalizeConditionForListingType(form.condition, form.type);
+    const variantsNormalized =
+      form.type === 'Sell'
+        ? (form.variants || []).map((v) => ({
+            ...v,
+            condition: normalizeConditionForListingType(
+              v.condition || cond,
+              'Sell',
+            ),
+          }))
+        : form.variants;
+    onSubmit?.({ ...form, condition: cond, variants: variantsNormalized });
   };
 
   const categoryKey = String(form.category || '').toLowerCase();
@@ -1267,7 +1310,25 @@ const AdminProductAddModal = ({
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, type: 'Sell' }))}
+                  onClick={() =>
+                    setForm((prev) => {
+                      const next = { ...prev, type: 'Sell' };
+                      next.condition = normalizeConditionForListingType(
+                        prev.condition,
+                        'Sell',
+                      );
+                      if (prev.type !== 'Sell' && !flexibleListingForm) {
+                        next.variants = (prev.variants || []).map((v) => ({
+                          ...v,
+                          condition: normalizeConditionForListingType(
+                            v.condition || next.condition,
+                            'Sell',
+                          ),
+                        }));
+                      }
+                      return next;
+                    })
+                  }
                   className={`rounded-xl border px-4 py-3 text-left ${
                     form.type === 'Sell'
                       ? 'border-blue-500 bg-blue-50'
@@ -1280,7 +1341,23 @@ const AdminProductAddModal = ({
                 <button
                   type="button"
                   onClick={() =>
-                    setForm((prev) => ({ ...prev, type: 'Rental' }))
+                    setForm((prev) => {
+                      const next = { ...prev, type: 'Rental' };
+                      next.condition = normalizeConditionForListingType(
+                        prev.condition,
+                        'Rental',
+                      );
+                      if (prev.type === 'Sell' && !flexibleListingForm) {
+                        next.variants = (prev.variants || []).map((v) => ({
+                          ...v,
+                          condition: normalizeConditionForListingType(
+                            v.condition || next.condition,
+                            'Rental',
+                          ),
+                        }));
+                      }
+                      return next;
+                    })
                   }
                   className={`rounded-xl border px-4 py-3 text-left ${
                     form.type !== 'Sell'
@@ -1543,14 +1620,25 @@ const AdminProductAddModal = ({
           />
           <select
             name="condition"
-            value={form.condition}
+            value={normalizeConditionForListingType(
+              form.condition,
+              allowListingTypeSwitch
+                ? form.type === 'Sell'
+                  ? 'Sell'
+                  : 'Rental'
+                : 'Rental',
+            )}
             onChange={handleChange}
             className="border rounded-lg px-3 py-2"
           >
-            <option>Brand New</option>
-            <option>Like New</option>
-            <option>Good</option>
-            <option>Fair</option>
+            {(allowListingTypeSwitch && form.type === 'Sell'
+              ? SELL_CONDITION_OPTIONS
+              : RENTAL_CONDITION_OPTIONS
+            ).map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
           </select>
           {/* Category (dynamic) */}
           <select
@@ -2096,14 +2184,41 @@ const AdminProductAddModal = ({
                           placeholder="RAM"
                           className="border rounded-lg px-3 py-2"
                         />
-                        <input
-                          value={variant.condition}
-                          onChange={(e) =>
-                            updateVariant(index, 'condition', e.target.value)
-                          }
-                          placeholder="Condition"
-                          className="border rounded-lg px-3 py-2"
-                        />
+                        {form.type === 'Sell' ? (
+                          <select
+                            value={normalizeConditionForListingType(
+                              variant.condition || form.condition,
+                              'Sell',
+                            )}
+                            onChange={(e) =>
+                              updateVariant(index, 'condition', e.target.value)
+                            }
+                            className="border rounded-lg px-3 py-2"
+                          >
+                            {SELL_CONDITION_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select
+                            value={normalizeConditionForListingType(
+                              variant.condition || form.condition,
+                              'Rental',
+                            )}
+                            onChange={(e) =>
+                              updateVariant(index, 'condition', e.target.value)
+                            }
+                            className="border rounded-lg px-3 py-2"
+                          >
+                            {RENTAL_CONDITION_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                         <input
                           value={variant.price}
                           onChange={(e) =>
