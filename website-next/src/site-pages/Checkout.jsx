@@ -52,9 +52,11 @@ export default function Checkout() {
       items.reduce(
         (sum, i) =>
           sum +
-          Number(i.pricePerDay) *
-            Number(i.rentalMonths || 1) *
-            Number(i.quantity),
+          (String(i.productType || 'Rental') === 'Rental'
+            ? Number(i.pricePerDay) *
+              Number(i.rentalMonths || 1) *
+              Number(i.quantity)
+            : Number(i.pricePerDay) * Number(i.quantity)),
         0,
       ),
     [items],
@@ -179,7 +181,9 @@ export default function Checkout() {
   };
 
   const proceedToPayment = () => {
-    const rentalMonthsValues = items.map((i) => i.rentalMonths || 1);
+    const rentalMonthsValues = items
+      .filter((i) => String(i.productType || 'Rental') === 'Rental')
+      .map((i) => i.rentalMonths || 1);
     const first = rentalMonthsValues[0];
     const allSame = rentalMonthsValues.every((v) => v === first);
     if (!allSame) {
@@ -338,9 +342,11 @@ export default function Checkout() {
                 <span className="font-medium text-gray-900">
                   ₹
                   {(
-                    Number(i.pricePerDay) *
-                    Number(i.rentalMonths || 1) *
-                    Number(i.quantity)
+                    (String(i.productType || 'Rental') === 'Rental'
+                      ? Number(i.pricePerDay) *
+                        Number(i.rentalMonths || 1) *
+                        Number(i.quantity)
+                      : Number(i.pricePerDay) * Number(i.quantity))
                   ).toLocaleString('en-IN')}
                 </span>
               </div>

@@ -25,6 +25,7 @@ const Cart = () => {
   const dispatch = useDispatch();
 
   const { pushToast } = useToast();
+  const isRentalItem = (item) => String(item?.productType || 'Rental') === 'Rental';
 
   const stockMapKey = useMemo(
     () => items.map((i) => i.productId).sort().join('_'),
@@ -34,17 +35,28 @@ const Cart = () => {
 
   const total = useMemo(() => {
     return items.reduce((sum, i) => {
-      const rentalMonths = Number(i.rentalMonths || 1);
-      return sum + Number(i.pricePerDay) * rentalMonths * Number(i.quantity);
+      const qty = Number(i.quantity || 0);
+      const unitPrice = Number(i.pricePerDay || 0);
+      if (isRentalItem(i)) {
+        const rentalMonths = Number(i.rentalMonths || 1);
+        return sum + unitPrice * rentalMonths * qty;
+      }
+      return sum + unitPrice * qty;
     }, 0);
   }, [items]);
 
   const refundableDepositTotal = useMemo(() => {
     return items.reduce((sum, i) => {
+      if (!isRentalItem(i)) return sum;
       const deposit = Number(i.refundableDeposit || 1000);
       return sum + deposit * Number(i.quantity || 0);
     }, 0);
   }, [items]);
+
+  const hasRentalItems = useMemo(
+    () => items.some((i) => isRentalItem(i)),
+    [items],
+  );
 
   const deliveryFee = useMemo(() => {
     return items.length ? 99 : 0;
@@ -143,6 +155,7 @@ const Cart = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div className="xl:col-span-8 space-y-4">
+            {hasRentalItems ? (
             <div className="rounded-2xl border border-blue-200 bg-blue-50/50 px-5 py-4">
               <p className="font-semibold text-2xl text-gray-900 flex items-center gap-2">
                 3 Months Lock-IN Period
@@ -152,6 +165,7 @@ const Cart = () => {
                 You got a 3 months lock-in, ending early means paying for the rest
               </p>
             </div>
+            ) : null}
 
           {items.map((item) => (
             <div
@@ -168,8 +182,12 @@ const Cart = () => {
                       e.target.src = 'https://via.placeholder.com/100';
                     }}
                   />
-                  <span className="absolute top-2 left-2 text-[10px] uppercase px-2 py-0.5 rounded-full bg-orange-500 text-white">
-                    Rental
+                  <span
+                    className={`absolute top-2 left-2 text-[10px] uppercase px-2 py-0.5 rounded-full text-white ${
+                      isRentalItem(item) ? 'bg-orange-500' : 'bg-blue-600'
+                    }`}
+                  >
+                    {isRentalItem(item) ? 'Rental' : 'Buy'}
                   </span>
                 </div>
 
@@ -178,9 +196,11 @@ const Cart = () => {
                     <p className="font-semibold text-2xl text-gray-900 truncate">
                       {item.title}
                     </p>
-                    <div className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
-                      {item.rentalMonths || 1} Months
-                    </div>
+                    {isRentalItem(item) ? (
+                      <div className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
+                        {item.rentalMonths || 1} Months
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-md">
@@ -188,14 +208,18 @@ const Cart = () => {
                       <p className="text-3xl font-semibold text-amber-700">
                         ₹{item.pricePerDay}
                       </p>
-                      <p className="text-xs text-gray-500">Monthly Rent</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-3xl font-semibold text-gray-900">
-                        ₹{item.refundableDeposit || 1000}
+                      <p className="text-xs text-gray-500">
+                        {isRentalItem(item) ? 'Monthly Rent' : 'Sale Price'}
                       </p>
-                      <p className="text-xs text-gray-500">Deposit</p>
                     </div>
+                    {isRentalItem(item) ? (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                        <p className="text-3xl font-semibold text-gray-900">
+                          ₹{item.refundableDeposit || 1000}
+                        </p>
+                        <p className="text-xs text-gray-500">Deposit</p>
+                      </div>
+                    ) : null}
                   </div>
 
                   <p className="text-xs text-gray-500 mt-2">Delivery in 2-3 days</p>
@@ -265,21 +289,25 @@ const Cart = () => {
           <div className="xl:col-span-4">
             <div className="bg-white rounded-2xl border border-gray-200 p-5 sticky top-24">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                Order Summary Rental
+                Order Summary
               </h2>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Items Total</span>
                   <span className="font-medium">₹{total.toFixed(0)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Base Rental Cost</span>
-                  <span className="font-medium">₹{total.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Refundable Deposits</span>
-                  <span className="font-medium">₹{refundableDepositTotal.toFixed(0)}</span>
-                </div>
+                {hasRentalItems ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Base Rental Cost</span>
+                    <span className="font-medium">₹{total.toFixed(0)}</span>
+                  </div>
+                ) : null}
+                {hasRentalItems ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Refundable Deposits</span>
+                    <span className="font-medium">₹{refundableDepositTotal.toFixed(0)}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Delivery Fee</span>
                   <span className="font-medium">₹{deliveryFee}</span>
@@ -290,6 +318,7 @@ const Cart = () => {
                 </div>
               </div>
 
+              {hasRentalItems ? (
               <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
@@ -301,6 +330,7 @@ const Cart = () => {
                 </div>
                 <span className="font-semibold text-blue-700">₹{careProtection}</span>
               </div>
+              ) : null}
 
               <div className="mt-4 rounded-xl bg-blue-50 px-3 py-3 flex items-center justify-between">
                 <span className="font-semibold text-gray-900">Total to Pay Today</span>

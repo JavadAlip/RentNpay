@@ -96,6 +96,8 @@ const cartSlice = createSlice({
         title,
         image,
         tenureUnit = 'month',
+        productType = 'Rental',
+        refundableDeposit = 0,
       } = payload;
       const tu = tenureUnit === 'day' ? 'day' : 'month';
       const existing = state.items.find((i) => i.productId === productId);
@@ -109,11 +111,15 @@ const cartSlice = createSlice({
           title,
           image,
           tenureUnit: tu,
+          productType: String(productType || 'Rental'),
+          refundableDeposit: Number(refundableDeposit || 0),
         });
 
       if (existing) {
         existing.rentalMonths = rentalMonths;
         existing.tenureUnit = tu;
+        existing.productType = String(productType || existing.productType || 'Rental');
+        existing.refundableDeposit = Number(refundableDeposit || 0);
       }
       saveCart(state.items);
     },

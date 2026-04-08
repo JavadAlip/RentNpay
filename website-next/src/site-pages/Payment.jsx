@@ -25,9 +25,11 @@ export default function Payment() {
     return items.reduce(
       (sum, i) =>
         sum +
-        Number(i.pricePerDay) *
-          Number(i.rentalMonths || 1) *
-          Number(i.quantity),
+        (String(i.productType || 'Rental') === 'Rental'
+          ? Number(i.pricePerDay) *
+            Number(i.rentalMonths || 1) *
+            Number(i.quantity)
+          : Number(i.pricePerDay) * Number(i.quantity)),
       0,
     );
   }, [items]);
@@ -79,8 +81,12 @@ export default function Payment() {
 
     setLoading(true);
     try {
-      const rentalDuration = Number(items?.[0]?.rentalMonths || 1);
-      const tenureUnit = items?.[0]?.tenureUnit === 'day' ? 'day' : 'month';
+      const rentalItems = items.filter(
+        (i) => String(i.productType || 'Rental') === 'Rental',
+      );
+      const rentalDuration = Number(rentalItems?.[0]?.rentalMonths || 1);
+      const tenureUnit =
+        rentalItems?.[0]?.tenureUnit === 'day' ? 'day' : 'month';
       const orderRes = await apiCreateOrder({
         products: items.map((i) => ({
           product: i.productId,
@@ -268,9 +274,11 @@ export default function Payment() {
                 </span>
                 <span className="font-medium text-gray-900">
                   ₹{(
-                    Number(i.pricePerDay) *
-                    Number(i.rentalMonths || 1) *
-                    Number(i.quantity)
+                    (String(i.productType || 'Rental') === 'Rental'
+                      ? Number(i.pricePerDay) *
+                        Number(i.rentalMonths || 1) *
+                        Number(i.quantity)
+                      : Number(i.pricePerDay) * Number(i.quantity))
                   ).toLocaleString('en-IN')}
                 </span>
               </div>

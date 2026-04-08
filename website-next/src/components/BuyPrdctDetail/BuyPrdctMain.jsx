@@ -3,6 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, ShieldCheck, Truck, BadgeCheck, Star } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { addToCart } from '@/store/slices/cartSlice';
 
 const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=1200&q=80',
@@ -22,6 +24,7 @@ function parseSellPrice(product) {
 
 const BuyPrdctMain = ({ product }) => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [mainImg, setMainImg] = useState(() => {
     if (Array.isArray(product?.images) && product.images.length) {
       return product.images[0];
@@ -72,8 +75,37 @@ const BuyPrdctMain = ({ product }) => {
   }, [product?.logisticsVerification?.deliveryTimelineValue, product?.logisticsVerification?.deliveryTimelineUnit]);
 
   const goToCheckout = () => {
-    // For now, reuse existing /checkout flow; cart integration can be wired later.
+    dispatch(
+      addToCart({
+        productId: product?._id,
+        quantity: 1,
+        rentalMonths: 1,
+        tenureUnit: 'month',
+        pricePerDay: price || 0,
+        title: product?.productName || 'Buy product',
+        image: gallery[0] || product?.image || '',
+        productType: 'Sell',
+        refundableDeposit: 0,
+      }),
+    );
     router.push('/checkout');
+  };
+
+  const goToCart = () => {
+    dispatch(
+      addToCart({
+        productId: product?._id,
+        quantity: 1,
+        rentalMonths: 1,
+        tenureUnit: 'month',
+        pricePerDay: price || 0,
+        title: product?.productName || 'Buy product',
+        image: gallery[0] || product?.image || '',
+        productType: 'Sell',
+        refundableDeposit: 0,
+      }),
+    );
+    router.push('/cart');
   };
 
   return (
@@ -196,6 +228,7 @@ const BuyPrdctMain = ({ product }) => {
             </button>
             <button
               type="button"
+              onClick={goToCart}
               className="w-full rounded-xl border border-blue-300 text-blue-700 font-semibold py-3 hover:bg-blue-50"
             >
               Add to Cart
