@@ -41,6 +41,17 @@ const FeaturedCategories = () => {
     sliderRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
   };
 
+  const getCategoryRedirect = (item) => {
+    const categoryName = encodeURIComponent(item?.name || '');
+    const inRent = item?.availableInRent === true;
+    const inBuy = item?.availableInBuy === true;
+
+    if (inBuy && !inRent) return `/buy?category=${categoryName}`;
+    if (inRent && !inBuy) return `/rent?category=${categoryName}`;
+    // If category is enabled in both (or flags missing), show combined products listing.
+    return `/products?category=${categoryName}`;
+  };
+
   return (
     <section className="w-full py-16 px-4 bg-gray-50">
       <div className="max-w-6xl mx-auto">
@@ -57,7 +68,7 @@ const FeaturedCategories = () => {
           </div>
 
           <button
-            onClick={() => router.push('/rent')}
+            onClick={() => router.push('/products')}
             className="bg-black text-white px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm w-fit whitespace-nowrap"
           >
             View All
@@ -82,9 +93,7 @@ const FeaturedCategories = () => {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      router.push(`/rent?category=${encodeURIComponent(item.name || '')}`)
-                    }
+                    onClick={() => router.push(getCategoryRedirect(item))}
                     className="w-full bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md transition flex items-center justify-center"
                   >
                     <img

@@ -1,7 +1,9 @@
 import React from 'react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
+import { useRouter } from 'next/navigation';
 
 const HomeMain = () => {
+  const router = useRouter();
   return (
     <section className="w-full bg-gray-50 py-16 px-4">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-10">
@@ -15,12 +17,15 @@ const HomeMain = () => {
 
           <p className="text-gray-600 text-sm md:text-base max-w-md mx-auto md:mx-0">
             The hyper-local marketplace for furniture, electronics, and expert
-            repairs. Delivered from verified shops near you.
+            repairs. <span className="font-semibold text-gray-900">Delivered from verified shops near you.</span>
           </p>
 
           <div className="flex flex-row flex-wrap gap-3 sm:gap-4 justify-center md:justify-start">
-            <button className="bg-gray-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-800 transition whitespace-nowrap">
-              Buy Now
+            <button
+              onClick={() => router.push('/buy')}
+              className="bg-gray-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-800 transition whitespace-nowrap"
+            >
+              Buy New
             </button>
 
             <button className="border border-gray-300 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-100 transition whitespace-nowrap">

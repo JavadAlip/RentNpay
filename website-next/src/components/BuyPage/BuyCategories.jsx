@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGetCategories } from '@/lib/api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
+import { useRouter } from 'next/navigation';
 
 const fallbackImageByIndex = (i) =>
   `https://images.unsplash.com/photo-${[
@@ -19,6 +21,7 @@ const ITEMS_PER_PAGE = 12;
 const BuyCategories = () => {
   const [page, setPage] = useState(0);
   const [categories, setCategories] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -74,7 +77,11 @@ const BuyCategories = () => {
             </p>
           </div>
 
-          <button className="bg-black text-white px-5 py-2 rounded-full text-sm w-fit">
+          <button
+            type="button"
+            onClick={() => router.push('/products')}
+            className="bg-black text-white px-5 py-2 rounded-full text-sm w-fit"
+          >
             View All Categories
           </button>
         </div>
@@ -82,16 +89,26 @@ const BuyCategories = () => {
         {/* Categories Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
           {visibleItems.map((item, index) => (
-            <div key={index} className="text-center">
-              <div className="bg-white border rounded-xl p-6 hover:shadow-md transition">
+            <div
+              key={item._id || item.slug || index}
+              className="text-center cursor-pointer group"
+              onClick={() =>
+                router.push(`/buy?category=${encodeURIComponent(item.name || '')}`)
+              }
+            >
+              <div className="bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
                 <img
-                  src={item.image || fallbackImageByIndex(index)}
+                  src={item.image || fallbackImageByIndex(index) || mainimg}
                   alt={item.name}
-                  className="w-full h-20 object-cover rounded"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = mainimg;
+                  }}
                 />
               </div>
 
-              <p className="mt-3 text-gray-800 font-medium text-sm">
+              <p className="mt-3 text-gray-800 font-medium text-sm group-hover:text-orange-500 transition-colors">
                 {item.name}
               </p>
             </div>
