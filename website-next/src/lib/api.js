@@ -63,6 +63,8 @@ export const apiCreateOrder = (data) => api.post('/orders', data);
 export const apiGetMyOrders = () => api.get('/orders/my');
 export const apiGetMyOrderById = (id) => api.get(`/orders/my/${id}`);
 export const apiCancelMyOrder = (id) => api.put(`/orders/my/${id}/cancel`);
+export const apiExtendMyOrderTenure = (id, data) =>
+  api.put(`/orders/my/${id}/extend`, data);
 
 // ── USER NOTIFICATIONS ───────────────────────
 export const apiGetUserNotifications = () => api.get('/users/notifications');

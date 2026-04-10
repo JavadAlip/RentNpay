@@ -14,7 +14,7 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
-import { apiGetMyOrders } from '@/lib/api';
+import { apiExtendMyOrderTenure, apiGetMyOrders } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import {
   formatMoney,
@@ -136,6 +136,7 @@ export default function RentalCommandCenter() {
     row: null,
     selectedPlanId: '',
   });
+  const [confirmingExtend, setConfirmingExtend] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -184,7 +185,7 @@ export default function RentalCommandCenter() {
   const closeExtendModal = () =>
     setExtendState({ open: false, row: null, selectedPlanId: '' });
 
-  const handleConfirmExtension = () => {
+  const handleConfirmExtension = async () => {
     if (!extendState.row || !selectedExtensionPlan) return;
     const orderId = String(extendState.row.order?._id || '');
     if (!orderId) return;
@@ -192,17 +193,30 @@ export default function RentalCommandCenter() {
     const increment = Number(selectedExtensionPlan.duration || 0);
     if (!Number.isFinite(increment) || increment <= 0) return;
 
-    // UI-first behavior: extend tenure locally until backend API is wired.
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (String(o?._id || '') !== orderId) return o;
-        const base = Math.max(1, Number(o?.rentalDuration || 1));
-        return { ...o, rentalDuration: base + increment };
-      }),
-    );
+    const productId = String(extendState.row.product?._id || '');
 
-    pushToast('Tenure extension applied successfully.', 'success');
-    closeExtendModal();
+    try {
+      setConfirmingExtend(true);
+      const res = await apiExtendMyOrderTenure(orderId, {
+        extensionUnit: selectedExtensionPlan.unit,
+        extensionDuration: increment,
+        newUnitRent: selectedExtensionPlan.unitRent,
+        productId,
+      });
+      const updated = res.data;
+      setOrders((prev) =>
+        prev.map((o) => (String(o?._id || '') === orderId ? updated : o)),
+      );
+      pushToast('Tenure extension saved successfully.', 'success');
+      closeExtendModal();
+    } catch (err) {
+      pushToast(
+        err?.response?.data?.message || 'Failed to extend tenure. Please try again.',
+        'error',
+      );
+    } finally {
+      setConfirmingExtend(false);
+    }
   };
 
   return (
@@ -731,9 +745,10 @@ export default function RentalCommandCenter() {
                     <button
                       type="button"
                       onClick={handleConfirmExtension}
-                      className="w-full rounded-xl bg-[#FF6F00] text-white py-3.5 text-lg font-semibold hover:bg-[#e56400]"
+                      disabled={confirmingExtend}
+                      className="w-full rounded-xl bg-[#FF6F00] text-white py-3.5 text-lg font-semibold hover:bg-[#e56400] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Confirm Extension
+                      {confirmingExtend ? 'Saving...' : 'Confirm Extension'}
                     </button>
                     <p className="text-center text-xs text-gray-500 mt-2">
                       No immediate payment required. Billing updates

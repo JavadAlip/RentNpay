@@ -102,6 +102,91 @@ router.get('/my/:id', userAuth, async (req, res) => {
   }
 });
 
+router.put('/my/:id/extend', userAuth, async (req, res) => {
+  try {
+    const {
+      extensionUnit,
+      extensionDuration,
+      newUnitRent,
+      productId,
+    } = req.body || {};
+
+    const unit = extensionUnit === 'day' ? 'day' : 'month';
+    const durationInc = Math.max(1, Number(extensionDuration || 0));
+    const parsedRent = Number(newUnitRent || 0);
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    }).populate('products.product');
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (String(order.status || '').toLowerCase() !== 'delivered') {
+      return res
+        .status(400)
+        .json({ message: 'Only delivered rentals can be extended.' });
+    }
+
+    const targetLine = (order.products || []).find((line) => {
+      const lineType = String(line?.productType || '').toLowerCase();
+      if (lineType === 'sell') return false;
+      const p = line?.product;
+      if (!p || typeof p === 'string') return false;
+      if (String(p?.type || '').toLowerCase() === 'sell') return false;
+      if (productId && String(p?._id || '') !== String(productId)) return false;
+      return true;
+    });
+
+    if (!targetLine || !targetLine.product || typeof targetLine.product === 'string') {
+      return res
+        .status(400)
+        .json({ message: 'No eligible rental line found to extend.' });
+    }
+
+    const product = targetLine.product;
+    const cfgs = Array.isArray(product?.rentalConfigurations)
+      ? product.rentalConfigurations
+      : [];
+    const matchingTier = cfgs.find((cfg) => {
+      const tierUnit = String(cfg?.periodUnit || '').toLowerCase() === 'day'
+        ? 'day'
+        : 'month';
+      if (tierUnit !== unit) return false;
+      const tierDuration =
+        unit === 'day'
+          ? Number(cfg?.days || 0)
+          : Number(cfg?.months || 0);
+      return tierDuration === durationInc;
+    });
+
+    if (!matchingTier) {
+      return res.status(400).json({
+        message: 'Selected extension plan is not valid for this product.',
+      });
+    }
+
+    if (parsedRent > 0) {
+      const qty = Math.max(1, Number(targetLine.quantity || 1));
+      targetLine.pricePerDay = parsedRent / qty;
+    }
+
+    order.tenureUnit = unit;
+    order.rentalDuration = Math.max(1, Number(order.rentalDuration || 1)) + durationInc;
+
+    await order.save();
+
+    const populated = await Order.findById(order._id)
+      .populate('user', 'fullName emailAddress')
+      .populate({
+        path: 'products.product',
+        populate: { path: 'vendorId', select: 'fullName emailAddress' },
+      });
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.put('/my/:id/cancel', userAuth, async (req, res) => {
   try {
     const order = await Order.findOne({
