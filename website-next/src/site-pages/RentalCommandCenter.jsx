@@ -105,9 +105,8 @@ function normalizeExtensionPlans(product, tenureUnit) {
     : [];
   const out = cfgs
     .map((cfg, idx) => {
-      const unit = String(cfg?.periodUnit || '').toLowerCase() === 'day'
-        ? 'day'
-        : 'month';
+      const unit =
+        String(cfg?.periodUnit || '').toLowerCase() === 'day' ? 'day' : 'month';
       if (unit !== tenureUnit) return null;
       const months = Math.max(0, Number(cfg?.months || 0));
       const days = Math.max(0, Number(cfg?.days || 0));
@@ -167,7 +166,8 @@ export default function RentalCommandCenter() {
     setExtendState((prev) => ({
       ...prev,
       selectedPlanId:
-        prev.selectedPlanId && extensionPlans.some((p) => p.id === prev.selectedPlanId)
+        prev.selectedPlanId &&
+        extensionPlans.some((p) => p.id === prev.selectedPlanId)
           ? prev.selectedPlanId
           : firstId,
     }));
@@ -475,7 +475,14 @@ export default function RentalCommandCenter() {
                                     onClick={() =>
                                       setExtendState({
                                         open: true,
-                                        row: { order, line, product, start, end, tenureUnit },
+                                        row: {
+                                          order,
+                                          line,
+                                          product,
+                                          start,
+                                          end,
+                                          tenureUnit,
+                                        },
                                         selectedPlanId: '',
                                       })
                                     }
@@ -545,9 +552,12 @@ export default function RentalCommandCenter() {
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
             <div className="flex items-start justify-between p-5 border-b border-gray-100">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900">Extend your Rental</h2>
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Extend your Rental
+                </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  For {extendState.row.product?.productName || 'this rental item'}
+                  For{' '}
+                  {extendState.row.product?.productName || 'this rental item'}
                 </p>
               </div>
               <button
@@ -563,7 +573,9 @@ export default function RentalCommandCenter() {
             <div className="p-5 space-y-6">
               <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
                 Current tenure ends:{' '}
-                <span className="font-semibold">{formatShortDate(extendState.row.end)}</span>
+                <span className="font-semibold">
+                  {formatShortDate(extendState.row.end)}
+                </span>
               </div>
 
               <div>
@@ -591,7 +603,8 @@ export default function RentalCommandCenter() {
                         }`}
                       >
                         <p className="font-semibold text-gray-900">
-                          +{plan.duration} {plan.unit === 'day' ? 'Days' : 'Months'}
+                          +{plan.duration}{' '}
+                          {plan.unit === 'day' ? 'Days' : 'Months'}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
                           ₹{formatMoney(plan.unitRent)}/{unitLabel}
@@ -609,7 +622,10 @@ export default function RentalCommandCenter() {
                       <div>
                         <p className="text-sm text-gray-600">Current rate</p>
                         <p className="text-3xl font-bold text-gray-800">
-                          ₹{formatMoney(Number(extendState.row.line?.pricePerDay || 0))}
+                          ₹
+                          {formatMoney(
+                            Number(extendState.row.line?.pricePerDay || 0),
+                          )}
                           /{selectedExtensionPlan.unit === 'day' ? 'day' : 'mo'}
                         </p>
                       </div>
@@ -639,7 +655,9 @@ export default function RentalCommandCenter() {
                       </div>
                       <span className="text-amber-600 font-semibold">
                         +{selectedExtensionPlan.duration}{' '}
-                        {selectedExtensionPlan.unit === 'day' ? 'days' : 'months'}
+                        {selectedExtensionPlan.unit === 'day'
+                          ? 'days'
+                          : 'months'}
                       </span>
                       <div className="text-right">
                         <p className="font-medium">New End</p>
@@ -669,11 +687,15 @@ export default function RentalCommandCenter() {
                       Payment Summary
                     </h4>
                     <div className="flex items-center justify-between text-sm py-1">
-                      <span className="text-gray-600">Extension fee (difference)</span>
+                      <span className="text-gray-600">
+                        Extension fee (difference)
+                      </span>
                       <span className="font-semibold text-emerald-600">₹0</span>
                     </div>
                     <div className="flex items-center justify-between text-sm py-1 border-t border-gray-100 mt-1 pt-2">
-                      <span className="text-gray-600">Best rental cost (next cycle)</span>
+                      <span className="text-gray-600">
+                        Best rental cost (next cycle)
+                      </span>
                       <span className="font-semibold text-gray-900">
                         ₹{formatMoney(selectedExtensionPlan.unitRent)}/
                         {selectedExtensionPlan.unit === 'day' ? 'day' : 'mo'}
@@ -714,13 +736,15 @@ export default function RentalCommandCenter() {
                       Confirm Extension
                     </button>
                     <p className="text-center text-xs text-gray-500 mt-2">
-                      No immediate payment required. Billing updates automatically.
+                      No immediate payment required. Billing updates
+                      automatically.
                     </p>
                   </div>
                 </>
               ) : (
                 <p className="text-sm text-gray-500">
-                  No matching extension tenure options are available for this product.
+                  No matching extension tenure options are available for this
+                  product.
                 </p>
               )}
             </div>
