@@ -83,14 +83,22 @@ const toNum = (v, fallback = 0) => {
 };
 
 const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
-const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+const RENTAL_MANUAL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
+
+function normalizeManualRentalCondition(condition) {
+  const c = String(condition || '').trim();
+  if (RENTAL_MANUAL_CONDITION_OPTIONS.includes(c)) return c;
+  if (c === 'Like New') return 'Brand New';
+  if (c === 'Good' || c === 'Fair') return 'Refurbished';
+  return 'Brand New';
+}
 
 function normalizeConditionForListingType(condition, listingType) {
   const c = String(condition || '').trim();
   if (listingType === 'Sell') {
     return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
   }
-  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+  return normalizeManualRentalCondition(c);
 }
 
 function formatInrCompact(n) {
@@ -353,7 +361,7 @@ const defaultForm = {
   category: '',
   subCategory: '',
   brand: '',
-  condition: 'Good',
+  condition: 'Brand New',
   shortDescription: '',
   description: '',
   specifications: {},
@@ -431,7 +439,7 @@ export default function VendorManualProductModal({
     setForm({
       ...defaultForm,
       type: isSell ? 'Sell' : 'Rental',
-      condition: isSell ? 'Brand New' : 'Good',
+      condition: 'Brand New',
     });
     setSelectedCategoryId('');
     setStandardSearch('');
@@ -814,7 +822,12 @@ export default function VendorManualProductModal({
           category: template.category || prev.category,
           subCategory: template.subCategory || prev.subCategory,
           brand: template.brand || prev.brand,
-          condition: template.condition || prev.condition,
+          condition:
+            listingKind === 'rental'
+              ? normalizeManualRentalCondition(
+                  template.condition || prev.condition,
+                )
+              : template.condition || prev.condition,
           shortDescription: template.shortDescription || prev.shortDescription,
           description: template.description || prev.description,
           specifications: template.specifications || {},
@@ -1351,7 +1364,7 @@ export default function VendorManualProductModal({
           >
             {(listingKind === 'sell'
               ? SELL_CONDITION_OPTIONS
-              : RENTAL_CONDITION_OPTIONS
+              : RENTAL_MANUAL_CONDITION_OPTIONS
             ).map((opt) => (
               <option key={opt} value={opt}>
                 {opt}

@@ -104,8 +104,7 @@ export const getSubCategories = createAsyncThunk(
         (typeof window !== 'undefined'
           ? localStorage.getItem('adminToken')
           : null);
-      if (!token) return rejectWithValue('Please login again to continue.');
-      const res = await apiGetSubCategories(categoryId, token);
+      const res = await apiGetSubCategories(categoryId, token || null);
       return res.data;
     } catch (error) {
       return rejectWithValue(

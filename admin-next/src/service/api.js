@@ -226,12 +226,10 @@ export const apiCreateSubCategory = (data, token) =>
     },
   });
 
-// Get SubCategories
+// Get SubCategories (public; optional token for backwards compatibility)
 export const apiGetSubCategories = (categoryId, token) =>
   API.get(`/admin/get-sub-categories/${categoryId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 
 // Delete SubCategory

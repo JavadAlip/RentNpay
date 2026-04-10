@@ -75,7 +75,8 @@ router.post(
   ]),
   createSubCategory,
 );
-router.get('/get-sub-categories/:categoryId', adminAuth, getSubCategories);
+// Public read (same as get-categories) so vendor storefront can load subcategories without admin login.
+router.get('/get-sub-categories/:categoryId', getSubCategories);
 router.delete('/delete-sub-category/:id', adminAuth, deleteSubCategory);
 
 router.get('/listing-templates', adminAuth, listListingTemplates);
@@ -111,7 +112,11 @@ router.put(
   upload.any(),
   updateSellListingTemplate,
 );
-router.delete('/sell-listing-templates/:id', adminAuth, deleteSellListingTemplate);
+router.delete(
+  '/sell-listing-templates/:id',
+  adminAuth,
+  deleteSellListingTemplate,
+);
 router.patch(
   '/sell-listing-templates/:id/active',
   adminAuth,

@@ -184,7 +184,7 @@ const Products = () => {
     payload.append('category', next.category || '');
     payload.append('subCategory', next.subCategory || '');
     payload.append('brand', next.brand || '');
-    payload.append('condition', next.condition || 'Good');
+    payload.append('condition', next.condition || 'Brand New');
     payload.append('shortDescription', next.shortDescription || '');
     payload.append('description', next.description || '');
     payload.append('specifications', JSON.stringify(next.specifications || {}));
@@ -228,7 +228,7 @@ const Products = () => {
     payload.append('category', form.category);
     payload.append('subCategory', form.subCategory);
     payload.append('brand', form.brand || '');
-    payload.append('condition', form.condition || 'Good');
+    payload.append('condition', form.condition || 'Brand New');
     payload.append('shortDescription', form.shortDescription || '');
     payload.append('description', form.description || '');
     payload.append('specifications', JSON.stringify(form.specifications || {}));
@@ -301,7 +301,7 @@ const Products = () => {
     payload.append('category', form.category);
     payload.append('subCategory', form.subCategory);
     payload.append('brand', form.brand || '');
-    payload.append('condition', form.condition || 'Good');
+    payload.append('condition', form.condition || 'Brand New');
     payload.append('shortDescription', form.shortDescription || '');
     payload.append('description', form.description || '');
     payload.append('specifications', JSON.stringify(form.specifications || {}));

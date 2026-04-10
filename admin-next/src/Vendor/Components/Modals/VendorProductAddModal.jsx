@@ -30,14 +30,42 @@ function toNum(v, fallback = 0) {
 }
 
 const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
-const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+/** Admin template rentals may still use these values (read-only for vendor). */
+const RENTAL_TEMPLATE_CONDITION_OPTIONS = [
+  'Brand New',
+  'Like New',
+  'Good',
+  'Fair',
+  'Refurbished',
+];
+/** Vendor manual / custom rental listings: editable condition set only. */
+const RENTAL_MANUAL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
 
-function normalizeConditionForListingType(condition, listingType) {
+function normalizeRentalTemplateCondition(condition) {
+  const c = String(condition || '').trim();
+  return RENTAL_TEMPLATE_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+}
+
+function normalizeManualRentalCondition(condition) {
+  const c = String(condition || '').trim();
+  if (RENTAL_MANUAL_CONDITION_OPTIONS.includes(c)) return c;
+  if (c === 'Like New') return 'Brand New';
+  if (c === 'Good' || c === 'Fair') return 'Refurbished';
+  return 'Brand New';
+}
+
+function normalizeConditionForListingType(
+  condition,
+  listingType,
+  vendorManualRental = false,
+) {
   const c = String(condition || '').trim();
   if (listingType === 'Sell') {
     return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
   }
-  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+  return vendorManualRental
+    ? normalizeManualRentalCondition(c)
+    : normalizeRentalTemplateCondition(c);
 }
 
 function specsObjectFromTemplate(t, variantIndex = 0) {
@@ -323,7 +351,7 @@ export default function VendorProductAddModal({
 
   const [productName, setProductName] = useState('');
   const [brand, setBrand] = useState('');
-  const [condition, setCondition] = useState('Good');
+  const [condition, setCondition] = useState('Brand New');
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [specs, setSpecs] = useState({});
@@ -342,7 +370,8 @@ export default function VendorProductAddModal({
   const [refundableDeposit, setRefundableDeposit] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [mrpPrice, setMrpPrice] = useState('');
-  const [allowVendorSalePriceEdit, setAllowVendorSalePriceEdit] = useState(true);
+  const [allowVendorSalePriceEdit, setAllowVendorSalePriceEdit] =
+    useState(true);
 
   const [logistics, setLogistics] = useState({
     deliveryTimelineValue: '',
@@ -361,10 +390,14 @@ export default function VendorProductAddModal({
   }, [categories, listingType]);
 
   const filteredSubCategories = useMemo(() => {
-    return (subCategories || []).filter((s) =>
-      listingType === 'sell' ? s.availableInBuy : s.availableInRent,
-    );
-  }, [subCategories, listingType]);
+    return (subCategories || []).filter((s) => {
+      const matchesListing =
+        listingType === 'sell' ? s.availableInBuy : s.availableInRent;
+      if (!matchesListing) return false;
+      if (!categoryId) return true;
+      return String(s.category || '') === String(categoryId);
+    });
+  }, [subCategories, listingType, categoryId]);
 
   const getTemplateRefundableDeposit = useCallback((t, variantIdx) => {
     if (!t) return '';
@@ -413,7 +446,7 @@ export default function VendorProductAddModal({
     setSubCategoryId('');
     setProductName('');
     setBrand('');
-    setCondition('Good');
+    setCondition('Brand New');
     setShortDescription('');
     setDescription('');
     setSpecs({});
@@ -449,6 +482,7 @@ export default function VendorProductAddModal({
       normalizeConditionForListingType(
         p.condition,
         String(p.type || 'Rental') === 'Sell' ? 'Sell' : 'Rental',
+        String(p.type || 'Rental') !== 'Sell' && p.createdVia !== 'template',
       ),
     );
     setShortDescription(p.shortDescription || '');
@@ -623,6 +657,7 @@ export default function VendorProductAddModal({
         normalizeConditionForListingType(
           t.condition,
           listingType === 'sell' ? 'Sell' : 'Rental',
+          false,
         ),
       );
       setShortDescription(t.shortDescription || '');
@@ -985,16 +1020,20 @@ export default function VendorProductAddModal({
       subCategory: subCategoryName,
       brand: String(brand || '').trim(),
       condition: normalizeConditionForListingType(
-        condition || 'Good',
+        condition || 'Brand New',
         listingType === 'sell' ? 'Sell' : 'Rental',
+        listingType === 'rent' &&
+          (mode === 'create'
+            ? !fullTemplate
+            : initialData?.createdVia !== 'template'),
       ),
       shortDescription: String(shortDescription || '').trim(),
       description: String(description || '').trim(),
       specifications: specs,
       variants: buildVariantsPayload(),
-      rentalConfigurations:
-        listingType === 'sell' ? [] : buildRentalPayload(),
-      refundableDeposit: listingType === 'sell' ? 0 : toNum(refundableDeposit, 0),
+      rentalConfigurations: listingType === 'sell' ? [] : buildRentalPayload(),
+      refundableDeposit:
+        listingType === 'sell' ? 0 : toNum(refundableDeposit, 0),
       salesConfiguration:
         listingType === 'sell'
           ? {
@@ -1086,6 +1125,13 @@ export default function VendorProductAddModal({
       !allowVendorSalePriceEdit &&
       listingType === 'sell');
 
+  const conditionSelectOptions =
+    listingType === 'sell'
+      ? SELL_CONDITION_OPTIONS
+      : detailsLocked
+        ? RENTAL_TEMPLATE_CONDITION_OPTIONS
+        : RENTAL_MANUAL_CONDITION_OPTIONS;
+
   const displayVariants =
     fullTemplate && Array.isArray(fullTemplate.variants)
       ? variantIndices
@@ -1137,10 +1183,13 @@ export default function VendorProductAddModal({
                     const nextKind = opt.id;
                     setListingType(nextKind);
                     setCondition((prev) =>
-                      normalizeConditionForListingType(
-                        prev,
-                        nextKind === 'sell' ? 'Sell' : 'Rental',
-                      ),
+                      nextKind === 'sell'
+                        ? normalizeConditionForListingType(prev, 'Sell')
+                        : normalizeConditionForListingType(
+                            prev,
+                            'Rental',
+                            true,
+                          ),
                     );
                     setCustomListing(false);
                     setFullTemplate(null);
@@ -1170,7 +1219,11 @@ export default function VendorProductAddModal({
 
           {/* Category / subcategory (from template or manual) */}
           <SectionCard
-            title={listingType === 'sell' ? 'What are you listing?' : 'What are you renting?'}
+            title={
+              listingType === 'sell'
+                ? 'What are you listing?'
+                : 'What are you renting?'
+            }
           >
             <div className="flex flex-wrap items-center gap-2">
               {fullTemplate ? (
@@ -1227,7 +1280,9 @@ export default function VendorProductAddModal({
                   </div>
                   <p className="w-full text-xs text-gray-500">
                     {customListing
-                      ? 'Custom listing: choose category, then fill details below.'
+                      ? categoryId && subCategoryId
+                        ? 'Custom listing: fill product details in the sections below.'
+                        : 'Custom listing: choose category and sub-category to unlock the form below.'
                       : 'Pick a standard product to auto-fill category and details.'}
                   </p>
                 </>
@@ -1458,6 +1513,7 @@ export default function VendorProductAddModal({
                       value={normalizeConditionForListingType(
                         condition,
                         listingType === 'sell' ? 'Sell' : 'Rental',
+                        listingType === 'rent' && !detailsLocked,
                       )}
                       onChange={(e) => setCondition(e.target.value)}
                       disabled={detailsLocked}
@@ -1465,10 +1521,7 @@ export default function VendorProductAddModal({
                         fullTemplate && mode === 'create' ? 'bg-gray-50' : ''
                       }`}
                     >
-                      {(listingType === 'sell'
-                        ? SELL_CONDITION_OPTIONS
-                        : RENTAL_CONDITION_OPTIONS
-                      ).map((opt) => (
+                      {conditionSelectOptions.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
                         </option>
@@ -1539,7 +1592,9 @@ export default function VendorProductAddModal({
                           className="flex flex-wrap gap-2 items-end rounded-xl border border-gray-100 bg-white p-3"
                         >
                           <div className="flex-1 min-w-[140px]">
-                            <label className="text-xs text-gray-500">Label</label>
+                            <label className="text-xs text-gray-500">
+                              Label
+                            </label>
                             <input
                               value={row.label}
                               onChange={(e) =>
@@ -1550,7 +1605,9 @@ export default function VendorProductAddModal({
                             />
                           </div>
                           <div className="flex-1 min-w-[140px]">
-                            <label className="text-xs text-gray-500">Value</label>
+                            <label className="text-xs text-gray-500">
+                              Value
+                            </label>
                             <input
                               value={row.value}
                               onChange={(e) =>
@@ -1661,98 +1718,98 @@ export default function VendorProductAddModal({
                     )
                   }
                 >
-                <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-100 mb-4 w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setRentalPricingModel('month')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      rentalPricingModel === 'month'
-                        ? 'bg-white shadow text-gray-900'
-                        : 'text-gray-600'
-                    }`}
-                    disabled={rentalFieldsLocked}
-                  >
-                    Month-wise
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRentalPricingModel('day')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      rentalPricingModel === 'day'
-                        ? 'bg-white shadow text-gray-900'
-                        : 'text-gray-600'
-                    }`}
-                    disabled={rentalFieldsLocked}
-                  >
-                    Day-wise
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {rentalTiers.map((tier, i) => (
-                    <div
-                      key={i}
-                      className="relative rounded-xl border-2 border-orange-200 bg-orange-50/30 p-3"
+                  <div className="flex rounded-xl border border-gray-200 p-1 bg-gray-100 mb-4 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setRentalPricingModel('month')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        rentalPricingModel === 'month'
+                          ? 'bg-white shadow text-gray-900'
+                          : 'text-gray-600'
+                      }`}
+                      disabled={rentalFieldsLocked}
                     >
-                      {tier.bestValue ? (
-                        <span className="absolute top-2 right-2 text-[10px] font-semibold bg-orange-500 text-white px-2 py-0.5 rounded-full">
-                          Best value
-                        </span>
-                      ) : null}
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                        {tier.tierLabel ||
-                          (rentalPricingModel === 'day' ? 'Term' : 'Term')}
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900 mb-2">
-                        {rentalPricingModel === 'day'
-                          ? `${tier.days || 0} Days`
-                          : `${tier.months || 0} Months`}
-                      </p>
-                      <label className="text-xs text-gray-600">
-                        {rentalPricingModel === 'day'
-                          ? 'Rent (per day)'
-                          : 'Monthly rent'}
-                      </label>
-                      <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
-                        <span className="pl-2 flex items-center text-gray-500 text-sm">
-                          ₹
-                        </span>
-                        <input
-                          value={tier.monthlyRent}
-                          onChange={(e) =>
-                            updateTier(i, 'monthlyRent', e.target.value)
-                          }
-                          className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
-                          disabled={rentalFieldsLocked}
-                        />
+                      Month-wise
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRentalPricingModel('day')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        rentalPricingModel === 'day'
+                          ? 'bg-white shadow text-gray-900'
+                          : 'text-gray-600'
+                      }`}
+                      disabled={rentalFieldsLocked}
+                    >
+                      Day-wise
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {rentalTiers.map((tier, i) => (
+                      <div
+                        key={i}
+                        className="relative rounded-xl border-2 border-orange-200 bg-orange-50/30 p-3"
+                      >
+                        {tier.bestValue ? (
+                          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                            Best value
+                          </span>
+                        ) : null}
+                        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                          {tier.tierLabel ||
+                            (rentalPricingModel === 'day' ? 'Term' : 'Term')}
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 mb-2">
+                          {rentalPricingModel === 'day'
+                            ? `${tier.days || 0} Days`
+                            : `${tier.months || 0} Months`}
+                        </p>
+                        <label className="text-xs text-gray-600">
+                          {rentalPricingModel === 'day'
+                            ? 'Rent (per day)'
+                            : 'Monthly rent'}
+                        </label>
+                        <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
+                          <span className="pl-2 flex items-center text-gray-500 text-sm">
+                            ₹
+                          </span>
+                          <input
+                            value={tier.monthlyRent}
+                            onChange={(e) =>
+                              updateTier(i, 'monthlyRent', e.target.value)
+                            }
+                            className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
+                            disabled={rentalFieldsLocked}
+                          />
+                        </div>
+                        <label className="text-xs text-gray-600 mt-2 block">
+                          Shipping charges
+                        </label>
+                        <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
+                          <span className="pl-2 flex items-center text-gray-500 text-sm">
+                            ₹
+                          </span>
+                          <input
+                            value={tier.shippingCharges}
+                            onChange={(e) =>
+                              updateTier(i, 'shippingCharges', e.target.value)
+                            }
+                            className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
+                            disabled={rentalFieldsLocked}
+                          />
+                        </div>
+                        {!rentalFieldsLocked && rentalTiers.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => removeRentalTier(i)}
+                            className="mt-2 text-xs text-red-600 hover:underline"
+                          >
+                            Remove term
+                          </button>
+                        ) : null}
                       </div>
-                      <label className="text-xs text-gray-600 mt-2 block">
-                        Shipping charges
-                      </label>
-                      <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
-                        <span className="pl-2 flex items-center text-gray-500 text-sm">
-                          ₹
-                        </span>
-                        <input
-                          value={tier.shippingCharges}
-                          onChange={(e) =>
-                            updateTier(i, 'shippingCharges', e.target.value)
-                          }
-                          className="w-full py-2 pr-2 text-sm outline-none rounded-lg"
-                          disabled={rentalFieldsLocked}
-                        />
-                      </div>
-                      {!rentalFieldsLocked && rentalTiers.length > 1 ? (
-                        <button
-                          type="button"
-                          onClick={() => removeRentalTier(i)}
-                          className="mt-2 text-xs text-red-600 hover:underline"
-                        >
-                          Remove term
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
                 </SectionCard>
               ) : (
                 <SectionCard
@@ -1762,7 +1819,9 @@ export default function VendorProductAddModal({
                 >
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-gray-600">Selling Price *</label>
+                      <label className="text-xs text-gray-600">
+                        Selling Price *
+                      </label>
                       <input
                         value={sellPrice}
                         onChange={(e) => setSellPrice(e.target.value)}
@@ -1783,19 +1842,25 @@ export default function VendorProductAddModal({
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="rounded-lg border bg-white p-2.5">
-                          <p className="text-[10px] text-gray-500">MRP / Market Price</p>
+                          <p className="text-[10px] text-gray-500">
+                            MRP / Market Price
+                          </p>
                           <p className="text-sm font-semibold text-gray-900">
                             ₹
-                            {Number.isFinite(Number(mrpPrice)) && Number(mrpPrice) > 0
+                            {Number.isFinite(Number(mrpPrice)) &&
+                            Number(mrpPrice) > 0
                               ? Number(mrpPrice).toLocaleString('en-IN')
                               : '0'}
                           </p>
                         </div>
                         <div className="rounded-lg border bg-white p-2.5">
-                          <p className="text-[10px] text-gray-500">Lowest Price Online</p>
+                          <p className="text-[10px] text-gray-500">
+                            Lowest Price Online
+                          </p>
                           <p className="text-sm font-semibold text-emerald-700">
                             ₹
-                            {Number.isFinite(Number(sellPrice)) && Number(sellPrice) > 0
+                            {Number.isFinite(Number(sellPrice)) &&
+                            Number(sellPrice) > 0
                               ? Number(sellPrice).toLocaleString('en-IN')
                               : '0'}
                           </p>
@@ -1816,7 +1881,9 @@ export default function VendorProductAddModal({
                     </div>
 
                     <div>
-                      <label className="text-xs text-gray-600">MRP (optional)</label>
+                      <label className="text-xs text-gray-600">
+                        MRP (optional)
+                      </label>
                       <input
                         value={mrpPrice}
                         onChange={(e) => setMrpPrice(e.target.value)}
@@ -1831,22 +1898,22 @@ export default function VendorProductAddModal({
 
               {listingType !== 'sell' ? (
                 <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Refundable Deposit
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Security deposit returned after rental period ends
-                </p>
-                <div className="mt-3 flex rounded-xl border border-violet-200 bg-white max-w-xs">
-                  <span className="pl-3 flex items-center text-gray-500">
-                    ₹
-                  </span>
-                  <input
-                    value={refundableDeposit}
-                    onChange={(e) => setRefundableDeposit(e.target.value)}
-                    className="w-full py-2.5 pr-3 text-sm outline-none rounded-xl"
-                  />
-                </div>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Refundable Deposit
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Security deposit returned after rental period ends
+                  </p>
+                  <div className="mt-3 flex rounded-xl border border-violet-200 bg-white max-w-xs">
+                    <span className="pl-3 flex items-center text-gray-500">
+                      ₹
+                    </span>
+                    <input
+                      value={refundableDeposit}
+                      onChange={(e) => setRefundableDeposit(e.target.value)}
+                      className="w-full py-2.5 pr-3 text-sm outline-none rounded-xl"
+                    />
+                  </div>
                 </div>
               ) : null}
 
@@ -1902,7 +1969,7 @@ export default function VendorProductAddModal({
                       Number of units available for rent
                     </p>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="text-xs text-gray-500">
                       Inventory owner (optional)
                     </label>
@@ -1916,8 +1983,8 @@ export default function VendorProductAddModal({
                       }
                       className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
                     />
-                  </div>
-                  <div>
+                  </div> */}
+                  {/* <div>
                     <label className="text-xs text-gray-500">
                       City (optional)
                     </label>
@@ -1928,7 +1995,7 @@ export default function VendorProductAddModal({
                       }
                       className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
                     />
-                  </div>
+                  </div> */}
                 </div>
               </SectionCard>
             </>
