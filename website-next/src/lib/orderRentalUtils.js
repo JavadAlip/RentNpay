@@ -174,8 +174,8 @@ export function primaryLine(order) {
 }
 
 /**
- * Active lease lines: customer has item (`delivered`) with time left on tenure,
- * or order in transit / confirmed (optional pay staging). Excludes `completed`.
+ * Active lease lines shown in customer payment flows:
+ * delivered rental lines with time left on tenure. Excludes buy/sell lines.
  */
 export function flattenActiveLeaseRows(orders) {
   const rows = [];
@@ -190,6 +190,7 @@ export function flattenActiveLeaseRows(orders) {
         if (String(line.productType || '').toLowerCase() === 'sell') continue;
         const p = line.product;
         if (!p || typeof p === 'string') continue;
+        if (String(p.type || '').toLowerCase() === 'sell') continue;
         const unit = resolveTenureUnit(order, p, duration);
         const end = computeLeaseEnd(start, duration, unit);
         const daysLeft = Math.ceil(
@@ -208,30 +209,6 @@ export function flattenActiveLeaseRows(orders) {
         });
       }
       continue;
-    }
-    if (st !== 'shipped' && st !== 'confirmed') continue;
-    const start = order.createdAt ? new Date(order.createdAt) : new Date();
-    const duration = order.rentalDuration;
-    for (const line of order.products || []) {
-      if (String(line.productType || '').toLowerCase() === 'sell') continue;
-      const p = line.product;
-      if (!p || typeof p === 'string') continue;
-      const unit = resolveTenureUnit(order, p, duration);
-      const end = computeLeaseEnd(start, duration, unit);
-      const daysLeft = Math.ceil(
-        (startOfDay(end).getTime() - today.getTime()) / 86400000,
-      );
-      if (daysLeft <= 0) continue;
-      rows.push({
-        key: `${order._id}-${String(p._id || line.product)}-${rows.length}`,
-        order,
-        line,
-        product: p,
-        start,
-        end,
-        tenureUnit: unit,
-        daysLeft,
-      });
     }
   }
   return rows;

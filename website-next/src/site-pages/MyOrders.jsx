@@ -127,7 +127,7 @@ function tabCounts(orders) {
     if (kind === 'cancelled') c.cancelled += 1;
     else if (kind === 'completed_done' || kind === 'delivered_purchase') {
       c.delivered += 1;
-    } else c.active_rentals += 1;
+    } else if (kind === 'active_rental') c.active_rentals += 1;
   }
   return c;
 }
@@ -141,12 +141,7 @@ function orderMatchesTab(order, tab) {
   }
   if (tab === 'services') return false;
   if (tab === 'active_rentals') {
-    return (
-      kind === 'shipped' ||
-      kind === 'processing' ||
-      kind === 'active_rental' ||
-      kind === 'tenure_ended'
-    );
+    return kind === 'active_rental';
   }
   return true;
 }
@@ -784,18 +779,11 @@ function OrderCard({ order }) {
             ₹{formatMoney(total)}
           </p>
           <p className="text-sm text-gray-500 mt-1">
-            We&apos;ll notify you when your rental ships.
+            We&apos;ll notify you when your product ships.
           </p>
         </div>
       </div>
-      <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <Link
-          href="/my-rentals"
-          className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 rounded-lg text-white text-sm font-semibold ${ORANGE}`}
-        >
-          <MapPin className="w-4 h-4" />
-          Track order
-        </Link>
+      <div className="px-4 pb-4 flex justify-end">
         <span className="text-sm text-gray-600 inline-flex items-center justify-center sm:justify-end gap-1 cursor-pointer hover:underline">
           Need help?
           <ExternalLink className="w-3.5 h-3.5" />

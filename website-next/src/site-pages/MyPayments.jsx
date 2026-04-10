@@ -191,9 +191,8 @@ export default function MyPayments() {
                     No scheduled payments right now
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    Orders that are confirmed or in transit may appear here.
-                    Once an order is marked Delivered, it moves to your order
-                    history instead.
+                    Only delivered active rental products appear here.
+                    Buy/sell delivered orders are shown on the orders page.
                   </p>
                 </div>
               ) : (

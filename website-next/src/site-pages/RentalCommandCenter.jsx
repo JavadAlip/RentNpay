@@ -32,8 +32,11 @@ function flattenRentals(orders) {
     const start = order.createdAt ? new Date(order.createdAt) : new Date();
     const duration = order.rentalDuration;
     for (const line of order.products || []) {
+      const lineType = String(line?.productType || '').toLowerCase();
+      if (lineType === 'sell') continue;
       const p = line.product;
       if (!p || typeof p === 'string') continue;
+      if (String(p?.type || '').toLowerCase() === 'sell') continue;
       const unit = resolveTenureUnit(order, p, duration);
       const end = computeLeaseEnd(start, duration, unit);
       rows.push({ order, line, product: p, start, end, tenureUnit: unit });
