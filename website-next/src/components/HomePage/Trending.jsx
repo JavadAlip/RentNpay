@@ -76,7 +76,9 @@ const Trending = () => {
       .then((res) => {
         if (!mounted) return;
         setWishedIds(
-          Array.isArray(res.data?.wishedProductIds) ? res.data.wishedProductIds : [],
+          Array.isArray(res.data?.wishedProductIds)
+            ? res.data.wishedProductIds
+            : [],
         );
       })
       .catch(() => {
@@ -246,7 +248,9 @@ const Trending = () => {
                       <Heart
                         size={16}
                         className={
-                          isWished(item._id) ? 'text-red-500 fill-red-500' : 'text-gray-700'
+                          isWished(item._id)
+                            ? 'text-red-500 fill-red-500'
+                            : 'text-gray-700'
                         }
                       />
                     </button>

@@ -106,10 +106,34 @@ export function computeLeaseEnd(start, durationRaw, unit) {
   return d;
 }
 
+export function primaryProduct(order) {
+  const line = order.products?.[0];
+  const p = line?.product;
+  if (!p || typeof p === 'string') return null;
+  return p;
+}
+
+/** Buy/sell checkout lines snapshot `productType: 'Sell'`; fall back to populated product.type. */
+export function orderIsPurchase(order) {
+  const line = order.products?.[0];
+  if (line && String(line.productType || '').toLowerCase() === 'sell') {
+    return true;
+  }
+  const p = primaryProduct(order);
+  return p != null && String(p.type || '').toLowerCase() === 'sell';
+}
+
+/** One-time purchase total (sale price × qty), not rent × duration. */
+export function purchaseLineTotal(order) {
+  const line = order.products?.[0];
+  return Number(line?.pricePerDay || 0) * Number(line?.quantity || 1);
+}
+
 /** Days until next monthly billing before lease end; null if day-tenure or past lease. */
 export function daysUntilNextRent(order, product) {
   const st = normalizeStatus(order.status);
   if (st !== 'delivered') return null;
+  if (orderIsPurchase(order)) return null;
   const start = order.createdAt ? new Date(order.createdAt) : new Date();
   const unit = resolveTenureUnit(order, product, order.rentalDuration);
   if (unit === 'day') return null;
@@ -145,13 +169,6 @@ export function orderGrandTotal(order) {
   return rent + dep;
 }
 
-export function primaryProduct(order) {
-  const line = order.products?.[0];
-  const p = line?.product;
-  if (!p || typeof p === 'string') return null;
-  return p;
-}
-
 export function primaryLine(order) {
   return order.products?.[0] || null;
 }
@@ -170,6 +187,7 @@ export function flattenActiveLeaseRows(orders) {
       const start = order.createdAt ? new Date(order.createdAt) : new Date();
       const duration = order.rentalDuration;
       for (const line of order.products || []) {
+        if (String(line.productType || '').toLowerCase() === 'sell') continue;
         const p = line.product;
         if (!p || typeof p === 'string') continue;
         const unit = resolveTenureUnit(order, p, duration);
@@ -195,6 +213,7 @@ export function flattenActiveLeaseRows(orders) {
     const start = order.createdAt ? new Date(order.createdAt) : new Date();
     const duration = order.rentalDuration;
     for (const line of order.products || []) {
+      if (String(line.productType || '').toLowerCase() === 'sell') continue;
       const p = line.product;
       if (!p || typeof p === 'string') continue;
       const unit = resolveTenureUnit(order, p, duration);

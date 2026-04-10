@@ -28,6 +28,8 @@ import {
   daysUntilNextRent,
   orderLineTotal,
   primaryProduct,
+  orderIsPurchase,
+  purchaseLineTotal,
 } from '@/lib/orderRentalUtils';
 
 const PAGE_SIZE = 5;
@@ -60,6 +62,16 @@ function classifyOrder(order) {
     };
   }
   if (st === 'completed') {
+    if (orderIsPurchase(order)) {
+      return {
+        kind: 'delivered_purchase',
+        purchasePhase: 'completed',
+        leaseEnd,
+        daysLeft,
+        unit,
+        product,
+      };
+    }
     return {
       kind: 'completed_done',
       leaseEnd,
@@ -69,6 +81,16 @@ function classifyOrder(order) {
     };
   }
   if (st === 'delivered') {
+    if (orderIsPurchase(order)) {
+      return {
+        kind: 'delivered_purchase',
+        purchasePhase: 'delivered',
+        leaseEnd,
+        daysLeft,
+        unit,
+        product,
+      };
+    }
     if (daysLeft > 0) {
       return {
         kind: 'active_rental',
@@ -103,8 +125,9 @@ function tabCounts(orders) {
   for (const o of orders) {
     const { kind } = classifyOrder(o);
     if (kind === 'cancelled') c.cancelled += 1;
-    else if (kind === 'completed_done') c.delivered += 1;
-    else c.active_rentals += 1;
+    else if (kind === 'completed_done' || kind === 'delivered_purchase') {
+      c.delivered += 1;
+    } else c.active_rentals += 1;
   }
   return c;
 }
@@ -113,7 +136,9 @@ function orderMatchesTab(order, tab) {
   const { kind } = classifyOrder(order);
   if (tab === 'all') return true;
   if (tab === 'cancelled') return kind === 'cancelled';
-  if (tab === 'delivered') return kind === 'completed_done';
+  if (tab === 'delivered') {
+    return kind === 'completed_done' || kind === 'delivered_purchase';
+  }
   if (tab === 'services') return false;
   if (tab === 'active_rentals') {
     return (
@@ -353,6 +378,76 @@ function OrderCard({ order }) {
   const total = orderLineTotal(order);
   const placed = formatOrderDate(order.createdAt);
   const oid = orderDisplayId(order);
+
+  if (meta.kind === 'delivered_purchase') {
+    const phase = meta.purchasePhase || 'delivered';
+    const milestoneDate = formatOrderDate(order.updatedAt || order.createdAt);
+    const headerDateLabel =
+      phase === 'completed'
+        ? `Completed on: ${milestoneDate}`
+        : `Delivered on: ${milestoneDate}`;
+    const badgeLabel = phase === 'completed' ? 'Completed' : 'Delivered';
+    const purchaseTotal = purchaseLineTotal(order);
+    const qty = order.products?.[0]?.quantity ?? 1;
+
+    return (
+      <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
+          <div>
+            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{headerDateLabel}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {badgeLabel}
+          </span>
+        </div>
+        <div className="p-4 flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+            {img ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Package className="w-8 h-8" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-900">{title}</p>
+            <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
+              ₹{formatMoney(purchaseTotal)}
+            </p>
+            <p className="text-sm text-emerald-600 mt-2 flex items-center gap-1.5 font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {phase === 'completed'
+                ? 'Thank you — order complete'
+                : 'Delivered successfully'}
+            </p>
+            {/* <p className="text-xs text-gray-500 mt-1.5">
+              Qty: {qty}
+              {phase === 'delivered' ? ' · Payment: Prepaid' : ''}
+            </p> */}
+          </div>
+        </div>
+        <div className="px-4 pb-4 pt-0 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <button
+            type="button"
+            className="flex-1 min-h-[44px] rounded-xl border-2 border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 inline-flex items-center justify-center gap-2"
+          >
+            <Star className="w-4 h-4 text-gray-700" />
+            Rate &amp; Review
+          </button>
+          <button
+            type="button"
+            className="text-sm font-medium text-slate-500 hover:text-slate-700 hover:underline text-center sm:text-left sm:shrink-0"
+          >
+            Return or Exchange
+          </button>
+        </div>
+      </li>
+    );
+  }
 
   if (meta.kind === 'cancelled') {
     return (
