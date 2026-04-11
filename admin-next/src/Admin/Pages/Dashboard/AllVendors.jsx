@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getAllVendors } from '../../../redux/slices/adminSlice';
 import Link from 'next/link';
 import { apiCreateVendorProfile } from '@/service/api';
+import { toast } from 'react-toastify';
 
 const AllVendors = () => {
   const dispatch = useDispatch();
@@ -16,7 +17,6 @@ const AllVendors = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [createdCreds, setCreatedCreds] = useState('');
   const [form, setForm] = useState({
     fullName: '',
     emailAddress: '',
@@ -87,7 +87,6 @@ const AllVendors = () => {
   const openCreate = () => {
     setForm({ fullName: '', emailAddress: '', password: '' });
     setCreateError('');
-    setCreatedCreds('');
     setCreateOpen(true);
   };
 
@@ -110,11 +109,12 @@ const AllVendors = () => {
         },
         token,
       );
-      setCreatedCreds(
+      toast.success(
         `Vendor created. Temporary password: ${res.data?.tempPassword || 'N/A'}`,
       );
       dispatch(getAllVendors());
       setForm({ fullName: '', emailAddress: '', password: '' });
+      setCreateOpen(false);
     } catch (err) {
       setCreateError(err.response?.data?.message || 'Failed to create vendor profile.');
     } finally {
@@ -125,15 +125,17 @@ const AllVendors = () => {
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
-        <h1 className="text-3xl font-semibold text-gray-900">All Partners & Vendors</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage vendor profiles, verification status, and inventory
-        </p>
-        <div className="mt-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900">All Partners & Vendors</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage vendor profiles, verification status, and inventory
+            </p>
+          </div>
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
+            className="shrink-0 self-end px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
           >
             + Create Vendor Profile
           </button>
@@ -355,11 +357,6 @@ const AllVendors = () => {
 
               {createError ? (
                 <p className="text-sm text-red-600">{createError}</p>
-              ) : null}
-              {createdCreds ? (
-                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                  {createdCreds}
-                </p>
               ) : null}
 
               <div className="pt-1 flex items-center justify-end gap-2">
