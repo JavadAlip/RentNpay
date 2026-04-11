@@ -1,13 +1,32 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, DollarSign, Filter, Search, Tag } from 'lucide-react';
+import {
+  Box,
+  Calendar,
+  Clock,
+  DollarSign,
+  Filter,
+  Package,
+  Save,
+  Search,
+  Tag,
+  Upload,
+} from 'lucide-react';
 import {
   getCategories,
   getSubCategories,
 } from '../../../redux/slices/categorySlice';
+
+/** Prefer icon URL, then image, for category / subcategory picker cards. */
+function categoryOrSubAssetUrl(item) {
+  const icon = String(item?.icon || '').trim();
+  if (icon) return icon;
+  const img = String(item?.image || '').trim();
+  return img || '';
+}
 
 const SPEC_FIELDS_BY_CATEGORY = {
   furniture: [
@@ -130,15 +149,19 @@ function numOr(v, fallback = 0) {
 }
 
 const SELL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
-const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Like New', 'Good', 'Fair'];
+/** Admin rental listings: same two options as sell (no Like New / Good / Fair). */
+const RENTAL_CONDITION_OPTIONS = ['Brand New', 'Refurbished'];
 
-/** Keep condition valid for listing type (sell templates only allow two values). */
+/** Keep condition valid for listing type. */
 function normalizeConditionForListingType(condition, listingType) {
   const c = String(condition || '').trim();
   if (listingType === 'Sell') {
     return SELL_CONDITION_OPTIONS.includes(c) ? c : 'Brand New';
   }
-  return RENTAL_CONDITION_OPTIONS.includes(c) ? c : 'Good';
+  if (RENTAL_CONDITION_OPTIONS.includes(c)) return c;
+  if (c === 'Like New') return 'Brand New';
+  if (c === 'Good' || c === 'Fair') return 'Refurbished';
+  return 'Brand New';
 }
 
 function mapFlexibleRentalTierFromApi(cfg, index) {
@@ -340,6 +363,108 @@ function VariantNewImagePreview({ file }) {
   ) : null;
 }
 
+function VariantRowNewThumb({ file }) {
+  const [url, setUrl] = useState('');
+  useEffect(() => {
+    if (!file) return undefined;
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  if (!url) {
+    return (
+      <div className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 bg-gray-100" />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 object-cover bg-white"
+    />
+  );
+}
+
+function VariantListThumbnail({ variant }) {
+  const existing = (variant.existingVariantImages || [])[0];
+  const firstNew = (variant.images || [])[0];
+  if (existing) {
+    return (
+      <img
+        src={existing}
+        alt=""
+        className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 bg-white object-cover"
+      />
+    );
+  }
+  if (firstNew) {
+    return <VariantRowNewThumb file={firstNew} />;
+  }
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-xs font-medium text-gray-400">
+      —
+    </div>
+  );
+}
+
+/** One-line price for variant summary row (flexible listing). */
+function flexibleVariantPriceLine(variant, listingType) {
+  if (listingType === 'Sell') {
+    const p = variant?.price;
+    if (p != null && String(p).trim() !== '') return `₹${p}`;
+    return '—';
+  }
+  const cfgs = variant?.rentalConfigurations || [];
+  const first = cfgs[0];
+  if (!first) return '—';
+  const rent = first.customerRent;
+  if (rent == null || String(rent).trim() === '') return '—';
+  const suffix = variant?.rentalPricingModel === 'day' ? 'day' : 'month';
+  return `₹${rent}/${suffix}`;
+}
+
+/** Strip File blobs so draft JSON can be stored in localStorage. */
+function serializeFormForDraft(form) {
+  const productStringUrls = (form.images || []).filter(
+    (x) => typeof x === 'string' && String(x).trim(),
+  );
+  const productExisting = (form.existingImages || []).filter(Boolean);
+  const mergedProductImages = [...productExisting, ...productStringUrls].slice(
+    0,
+    5,
+  );
+  return {
+    ...form,
+    images: [],
+    existingImages: mergedProductImages,
+    variants: (form.variants || []).map((v) => {
+      const filePicks = (v.images || []).filter((x) => x instanceof File);
+      const stringUrlsFromImages = (v.images || []).filter(
+        (x) => typeof x === 'string' && String(x).trim(),
+      );
+      const existing = (v.existingVariantImages || []).filter(Boolean);
+      const mergedUrls = [...existing, ...stringUrlsFromImages].slice(0, 5);
+      const { images: _ignored, ...rest } = v;
+      void filePicks;
+      return {
+        ...rest,
+        images: [],
+        existingVariantImages: mergedUrls,
+      };
+    }),
+  };
+}
+
+function buildDraftPayload(form, mode, initialData) {
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    mode,
+    editingId: initialData?._id || initialData?.id || null,
+    form: serializeFormForDraft(form),
+  };
+}
+
 const defaultForm = {
   sku: '',
   productName: '',
@@ -347,7 +472,7 @@ const defaultForm = {
   category: '',
   subCategory: '',
   brand: '',
-  condition: 'Good',
+  condition: 'Brand New',
   shortDescription: '',
   description: '',
   specifications: {},
@@ -386,6 +511,147 @@ const defaultForm = {
     mrpPrice: '',
   },
 };
+
+function strDraftVal(x) {
+  if (x === undefined || x === null) return '';
+  return String(x);
+}
+
+function normalizeVariantFromDraftSnapshot(v) {
+  const rentalPricingModel = v.rentalPricingModel === 'day' ? 'day' : 'month';
+  const rentalConfigurations =
+    Array.isArray(v.rentalConfigurations) && v.rentalConfigurations.length
+      ? v.rentalConfigurations.map((cfg) => ({
+          months:
+            cfg.months !== undefined && cfg.months !== null
+              ? Number(cfg.months) || 0
+              : 0,
+          days:
+            cfg.days !== undefined && cfg.days !== null
+              ? Number(cfg.days) || 0
+              : 0,
+          periodUnit: cfg.periodUnit === 'day' ? 'day' : 'month',
+          tierLabel: strDraftVal(cfg.tierLabel),
+          label: strDraftVal(cfg.label),
+          pricePerDay: strDraftVal(cfg.pricePerDay),
+          customerRent: strDraftVal(cfg.customerRent),
+          customerShipping: strDraftVal(cfg.customerShipping),
+          vendorRent: strDraftVal(cfg.vendorRent),
+          vendorShipping: strDraftVal(cfg.vendorShipping),
+        }))
+      : rentalPricingModel === 'day'
+        ? defaultRentalTermsDay()
+        : defaultRentalTermsMonth();
+
+  return {
+    _clientKey: v._clientKey || newVariantClientKey(),
+    variantName: v.variantName || '',
+    price: strDraftVal(v.price),
+    stock:
+      v.stock === undefined || v.stock === null ? '' : strDraftVal(v.stock),
+    images: [],
+    existingVariantImages: (() => {
+      const ex = Array.isArray(v.existingVariantImages)
+        ? v.existingVariantImages.filter(Boolean)
+        : [];
+      if (ex.length) return ex.slice(0, 5);
+      const legacy = Array.isArray(v.images)
+        ? v.images.filter((u) => typeof u === 'string' && u.trim())
+        : [];
+      return legacy.slice(0, 5);
+    })(),
+    specRows:
+      Array.isArray(v.specRows) && v.specRows.length
+        ? v.specRows.map((r) => ({
+            label: strDraftVal(r.label),
+            value: strDraftVal(r.value),
+          }))
+        : [{ label: '', value: '' }],
+    rentalPricingModel,
+    allowVendorEditRentalPrices: v.allowVendorEditRentalPrices !== false,
+    rentalConfigurations,
+    refundableDeposit:
+      v.refundableDeposit === undefined || v.refundableDeposit === null
+        ? ''
+        : strDraftVal(v.refundableDeposit),
+  };
+}
+
+/** Rebuild flexible listing `form` state from a localStorage draft blob. */
+function flexibleListingFormFromSerializedDraft(f) {
+  if (!f || typeof f !== 'object') return null;
+  const variantsRaw = f.variants;
+  const variants =
+    Array.isArray(variantsRaw) && variantsRaw.length
+      ? variantsRaw.map(normalizeVariantFromDraftSnapshot)
+      : [emptyFlexibleVariant()];
+
+  const productCustomSpecs =
+    Array.isArray(f.productCustomSpecs) && f.productCustomSpecs.length
+      ? f.productCustomSpecs.map((r) => ({
+          label: strDraftVal(r.label),
+          value: strDraftVal(r.value),
+        }))
+      : [{ label: '', value: '' }];
+
+  const initType = f.type === 'Sell' ? 'Sell' : 'Rental';
+  return {
+    ...defaultForm,
+    sku: strDraftVal(f.sku),
+    productName: f.productName || '',
+    type: initType,
+    category: strDraftVal(f.category).trim(),
+    subCategory: strDraftVal(f.subCategory).trim(),
+    brand: strDraftVal(f.brand),
+    condition: normalizeConditionForListingType(f.condition, initType),
+    shortDescription: strDraftVal(f.shortDescription),
+    description: strDraftVal(f.description),
+    specifications:
+      f.specifications && typeof f.specifications === 'object'
+        ? f.specifications
+        : {},
+    productCustomSpecs,
+    variants,
+    rentalConfigurations: [...defaultForm.rentalConfigurations],
+    refundableDeposit: strDraftVal(f.refundableDeposit),
+    logisticsVerification: {
+      inventoryOwnerName: strDraftVal(
+        f.logisticsVerification?.inventoryOwnerName,
+      ),
+      city: strDraftVal(f.logisticsVerification?.city),
+    },
+    price: strDraftVal(f.price),
+    stock:
+      f.stock === undefined || f.stock === null ? '' : strDraftVal(f.stock),
+    status: f.status || 'Active',
+    isActive: f.isActive !== false,
+    images: [],
+    existingImages: (() => {
+      const ex = Array.isArray(f.existingImages)
+        ? f.existingImages.filter(Boolean)
+        : [];
+      if (ex.length) return ex.slice(0, 5);
+      const legacy = Array.isArray(f.images)
+        ? f.images.filter((u) => typeof u === 'string' && u.trim())
+        : [];
+      return legacy.slice(0, 5);
+    })(),
+    salesConfiguration: {
+      allowVendorEditSalePrice:
+        f.salesConfiguration?.allowVendorEditSalePrice !== false,
+      salePrice:
+        f.salesConfiguration?.salePrice === undefined ||
+        f.salesConfiguration?.salePrice === null
+          ? ''
+          : strDraftVal(f.salesConfiguration.salePrice),
+      mrpPrice:
+        f.salesConfiguration?.mrpPrice === undefined ||
+        f.salesConfiguration?.mrpPrice === null
+          ? ''
+          : strDraftVal(f.salesConfiguration.mrpPrice),
+    },
+  };
+}
 
 /** Map admin ListingTemplate → vendor legacy form (non–flexible listing). */
 function buildVendorFormStateFromListingTemplate(template) {
@@ -549,7 +815,15 @@ const AdminProductAddModal = ({
   subtitle = 'Rental listing form',
   submitCreateLabel = 'Save Product',
   submitEditLabel = 'Update Product',
+  /** Tailwind classes for the primary submit button (footer). */
+  submitPrimaryClassName = 'px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600',
   flexibleListingForm = false,
+  /** localStorage key prefix; draft key is `${key}:${mode}:${id|new}`. */
+  draftStorageKey = 'adminProductAddModalDraft',
+  /** Called after a successful local draft write (e.g. refresh parent data). */
+  onSaveDraft = null,
+  /** When set while opening, replaces flexible form from saved draft (cleared by parent on close). */
+  draftBootstrapPayload = null,
 }) => {
   const dispatch = useDispatch();
   const { categories, subCategories } = useSelector((state) => state.category);
@@ -575,6 +849,46 @@ const AdminProductAddModal = ({
       return s.availableInRent;
     });
   }, [subCategories, form.type]);
+
+  /** Draft restore: include saved main/sub even when flags hide them from filtered lists */
+  const mainCategoryPickerItems = useMemo(() => {
+    if (!flexibleListingForm) return filteredCategories;
+    const fc = filteredCategories;
+    const want = String(form.category || '').trim().toLowerCase();
+    if (!want) return fc;
+    const inFiltered = fc.some(
+      (c) => String(c.name || '').trim().toLowerCase() === want,
+    );
+    if (inFiltered) return fc;
+    const extra = (categories || []).find(
+      (c) => String(c.name || '').trim().toLowerCase() === want,
+    );
+    return extra ? [...fc, extra] : fc;
+  }, [flexibleListingForm, filteredCategories, categories, form.category]);
+
+  const subCategoryPickerItems = useMemo(() => {
+    if (!flexibleListingForm) return filteredSubCategories;
+    const fs = filteredSubCategories;
+    const want = String(form.subCategory || '').trim().toLowerCase();
+    if (!want) return fs;
+    const inFiltered = fs.some(
+      (s) => String(s.name || '').trim().toLowerCase() === want,
+    );
+    if (inFiltered) return fs;
+    if (!selectedCategoryId) return fs;
+    const extra = (subCategories || []).find(
+      (s) =>
+        String(s.name || '').trim().toLowerCase() === want &&
+        String(s.category || '') === String(selectedCategoryId),
+    );
+    return extra ? [...fs, extra] : fs;
+  }, [
+    flexibleListingForm,
+    filteredSubCategories,
+    subCategories,
+    form.subCategory,
+    selectedCategoryId,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -641,7 +955,8 @@ const AdminProductAddModal = ({
               : [],
           salesConfiguration: {
             allowVendorEditSalePrice:
-              initialData.salesConfiguration?.allowVendorEditSalePrice !== false,
+              initialData.salesConfiguration?.allowVendorEditSalePrice !==
+              false,
             salePrice:
               initialData.salesConfiguration?.salePrice === undefined ||
               initialData.salesConfiguration?.salePrice === null
@@ -727,7 +1042,8 @@ const AdminProductAddModal = ({
               : [],
           salesConfiguration: {
             allowVendorEditSalePrice:
-              initialData.salesConfiguration?.allowVendorEditSalePrice !== false,
+              initialData.salesConfiguration?.allowVendorEditSalePrice !==
+              false,
             salePrice:
               initialData.salesConfiguration?.salePrice === undefined ||
               initialData.salesConfiguration?.salePrice === null
@@ -742,6 +1058,11 @@ const AdminProductAddModal = ({
         });
       }
     } else if (flexibleListingForm) {
+      // Local draft restore: dedicated effect hydrates form + category; do not wipe here
+      // (otherwise selectedCategoryId is cleared and category tiles / subs never match).
+      if (draftBootstrapPayload?.form) {
+        return;
+      }
       setForm({
         ...defaultForm,
         variants: [],
@@ -752,7 +1073,19 @@ const AdminProductAddModal = ({
       setForm({ ...defaultForm });
       setSelectedCategoryId('');
     }
-  }, [isOpen, initialData, dispatch, flexibleListingForm]);
+  }, [isOpen, initialData, draftBootstrapPayload, dispatch, flexibleListingForm]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !flexibleListingForm || !draftBootstrapPayload?.form) {
+      return;
+    }
+    const next = flexibleListingFormFromSerializedDraft(
+      draftBootstrapPayload.form,
+    );
+    if (next) {
+      setForm(next);
+    }
+  }, [isOpen, flexibleListingForm, draftBootstrapPayload]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -765,12 +1098,38 @@ const AdminProductAddModal = ({
   useEffect(() => {
     if (!isOpen || !initialData || !categories.length) return;
 
-    const matched = categories.find((c) => c.name === initialData.category);
+    const cn = String(initialData.category || '').trim();
+    if (!cn) return;
+    const matched = categories.find((c) => String(c.name || '').trim() === cn);
     if (matched) {
       setSelectedCategoryId(matched._id);
       dispatch(getSubCategories(matched._id));
     }
   }, [isOpen, initialData, categories, dispatch]);
+
+  // Flexible Custom Listings: map saved `form.category` (draft / edit / clone) → main category tile + fetch subs
+  useEffect(() => {
+    if (!isOpen || !flexibleListingForm) return;
+    const catName = String(form.category || '').trim();
+    if (!catName || !categories.length) return;
+    const want = catName.toLowerCase();
+    const matched = categories.find(
+      (c) => String(c.name || '').trim().toLowerCase() === want,
+    );
+    if (!matched) return;
+    if (selectedCategoryId !== matched._id) {
+      setSelectedCategoryId(matched._id);
+    }
+    dispatch(getSubCategories(matched._id));
+  }, [
+    isOpen,
+    flexibleListingForm,
+    form.category,
+    categories,
+    selectedCategoryId,
+    draftBootstrapPayload,
+    dispatch,
+  ]);
 
   // Create mode + template apply: keep category/subcategory selects in sync with form.category
   useEffect(() => {
@@ -807,13 +1166,10 @@ const AdminProductAddModal = ({
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCategoryChange = (e) => {
-    const id = e.target.value;
+  const applyCategorySelection = (id) => {
     setSelectedCategoryId(id);
-
     const cat = categories.find((c) => c._id === id);
     const categoryName = cat?.name || '';
-
     setForm((prev) => ({
       ...prev,
       category: categoryName,
@@ -823,25 +1179,57 @@ const AdminProductAddModal = ({
         ? { productCustomSpecs: [{ label: '', value: '' }] }
         : {}),
     }));
-
     if (id) {
       dispatch(getSubCategories(id));
     }
   };
 
-  const handleSubCategoryChange = (e) => {
-    const id = e.target.value;
+  const applySubCategorySelection = (id) => {
     const sub = subCategories.find((s) => s._id === id);
     const subName = sub?.name || '';
-
     setForm((prev) => ({
       ...prev,
       subCategory: subName,
     }));
   };
 
+  const handleSaveDraft = () => {
+    const base =
+      String(draftStorageKey || 'adminProductAddModalDraft').trim() ||
+      'adminProductAddModalDraft';
+    const editId = initialData?._id || initialData?.id || 'new';
+    const storageKey = `${base}:${mode}:${editId}`;
+    const payload = buildDraftPayload(form, mode, initialData);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+      toast.success('Draft saved. Returning to the list…');
+      onSaveDraft?.(payload);
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        'Could not save draft. Check browser storage or try a smaller form.',
+      );
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!String(form.category || '').trim()) {
+      toast.error('Please select a main category.');
+      return;
+    }
+    if (!String(form.subCategory || '').trim()) {
+      toast.error('Please select a sub-category.');
+      return;
+    }
+    if (!String(form.productName || '').trim()) {
+      toast.error('Please enter a product title.');
+      return;
+    }
+    if (!String(form.description || '').trim()) {
+      toast.error('Please enter a description.');
+      return;
+    }
     if (flexibleListingForm) {
       if (!form.variants?.length) {
         toast.error('Add at least one product variant.');
@@ -887,7 +1275,12 @@ const AdminProductAddModal = ({
       const derivedStock = String(derivedStockNum);
 
       const cond = normalizeConditionForListingType(form.condition, form.type);
-      onSubmit?.({ ...form, condition: cond, price: derivedPrice, stock: derivedStock });
+      onSubmit?.({
+        ...form,
+        condition: cond,
+        price: derivedPrice,
+        stock: derivedStock,
+      });
       return;
     }
     const cond = normalizeConditionForListingType(form.condition, form.type);
@@ -1097,20 +1490,37 @@ const AdminProductAddModal = ({
     }));
   };
 
-  const onVariantFiles = (vIdx, e) => {
-    const selected = Array.from(e.target.files || []).slice(0, 5);
-    e.target.value = '';
+  const applyVariantImageFiles = (vIdx, fileList) => {
+    const picked = Array.from(fileList || []).filter((f) =>
+      String(f?.type || '').startsWith('image/'),
+    );
+    if (!picked.length) return;
     setForm((prev) => ({
       ...prev,
-      variants: prev.variants.map((v, i) =>
-        i === vIdx
-          ? {
-              ...v,
-              images: [...(v.images || []), ...selected].slice(0, 5),
-            }
-          : v,
-      ),
+      variants: prev.variants.map((v, i) => {
+        if (i !== vIdx) return v;
+        const existing = (v.existingVariantImages || []).length;
+        const current = (v.images || []).length;
+        const room = Math.max(0, 5 - existing - current);
+        const selected = picked.slice(0, room);
+        if (!selected.length) return v;
+        return {
+          ...v,
+          images: [...(v.images || []), ...selected],
+        };
+      }),
     }));
+  };
+
+  const onVariantFiles = (vIdx, e) => {
+    applyVariantImageFiles(vIdx, e.target.files);
+    e.target.value = '';
+  };
+
+  const onVariantFilesDragDrop = (vIdx, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applyVariantImageFiles(vIdx, e.dataTransfer?.files);
   };
 
   const removeVariantNewImage = (vIdx, imgIdx) => {
@@ -1259,7 +1669,9 @@ const AdminProductAddModal = ({
           return;
         }
         setForm(buildVendorFormStateFromListingTemplate(template));
-        toast.success('Template loaded — adjust details and save your listing.');
+        toast.success(
+          'Template loaded — adjust details and save your listing.',
+        );
       } catch (err) {
         toast.error(
           err?.response?.data?.message || 'Failed to load listing template.',
@@ -1291,8 +1703,8 @@ const AdminProductAddModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:p-4">
-      <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+      <div className="flex min-h-0 w-full max-w-5xl max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               {mode === 'edit' ? modalTitleEdit : modalTitleCreate}
@@ -1307,6 +1719,7 @@ const AdminProductAddModal = ({
           </button>
         </div>
 
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
         <form
           onSubmit={handleSubmit}
           className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -1404,25 +1817,160 @@ const AdminProductAddModal = ({
             )}
           </div>
 
+          {/* Category / subcategory — same shell + header as Search Standard; placed above catalog search */}
+          <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-4 py-4 border-b border-gray-100 bg-gray-50/70">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Tag className="h-5 w-5" strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-gray-900">
+                    {form.type === 'Sell'
+                      ? 'What are you listing?'
+                      : 'What are you renting?'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Select category to see relevant fields
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 space-y-6">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-3">
+                  Step 1: Main Category <span className="text-red-500">*</span>
+                </p>
+                {mainCategoryPickerItems.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-2">
+                    No categories available for this listing type.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+                    {mainCategoryPickerItems.map((c) => {
+                      const selected = selectedCategoryId === c._id;
+                      const asset = categoryOrSubAssetUrl(c);
+                      return (
+                        <button
+                          key={c._id}
+                          type="button"
+                          onClick={() => applyCategorySelection(c._id)}
+                          className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 min-h-[5.5rem] text-center transition ${
+                            selected
+                              ? 'border-orange-500 bg-orange-50/50 shadow-sm'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50/80'
+                          }`}
+                        >
+                          {asset ? (
+                            <img
+                              src={asset}
+                              alt=""
+                              className={`h-10 w-10 sm:h-11 sm:w-11 object-contain ${
+                                selected ? '' : 'opacity-90'
+                              }`}
+                            />
+                          ) : (
+                            <Package
+                              className={`h-10 w-10 sm:h-11 sm:w-11 shrink-0 ${
+                                selected ? 'text-orange-500' : 'text-gray-400'
+                              }`}
+                              strokeWidth={1.75}
+                            />
+                          )}
+                          <span
+                            className={`text-[11px] sm:text-xs font-medium leading-tight line-clamp-2 w-full ${
+                              selected ? 'text-orange-600' : 'text-gray-600'
+                            }`}
+                          >
+                            {c.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-3">
+                  Step 2: Sub Category <span className="text-red-500">*</span>
+                </p>
+                {!selectedCategoryId ? (
+                  <p className="text-sm text-gray-500 rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-6 text-center">
+                    Choose a main category first.
+                  </p>
+                ) : subCategoryPickerItems.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-2">
+                    No sub-categories for this category yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+                    {subCategoryPickerItems.map((s) => {
+                      const selected =
+                        String(form.subCategory || '').trim().toLowerCase() ===
+                        String(s.name || '').trim().toLowerCase();
+                      const asset = categoryOrSubAssetUrl(s);
+                      return (
+                        <button
+                          key={s._id}
+                          type="button"
+                          onClick={() => applySubCategorySelection(s._id)}
+                          className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 min-h-[5.5rem] text-center transition ${
+                            selected
+                              ? 'border-orange-500 bg-orange-50/50 shadow-sm'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50/80'
+                          }`}
+                        >
+                          {asset ? (
+                            <img
+                              src={asset}
+                              alt=""
+                              className={`h-10 w-10 sm:h-11 sm:w-11 object-contain ${
+                                selected ? '' : 'opacity-90'
+                              }`}
+                            />
+                          ) : (
+                            <Package
+                              className={`h-10 w-10 sm:h-11 sm:w-11 shrink-0 ${
+                                selected ? 'text-orange-500' : 'text-gray-400'
+                              }`}
+                              strokeWidth={1.75}
+                            />
+                          )}
+                          <span
+                            className={`text-[11px] sm:text-xs font-medium leading-tight line-clamp-2 w-full ${
+                              selected ? 'text-orange-600' : 'text-gray-600'
+                            }`}
+                          >
+                            {s.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {enableStandardProductSearch ? (
             <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
               <div className="px-4 py-4 border-b border-gray-100 bg-gray-50/70">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                     <Tag className="h-5 w-5" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-gray-900">
+                  </div> */}
+                  {/* <div className="min-w-0"> */}
+                  {/* <h2 className="text-base font-semibold text-gray-900">
                       Search Standard Listed Products
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    </h2> */}
+                  {/* <p className="text-xs text-gray-500 mt-0.5">
                       {standardCatalogTableOnly
                         ? 'Same templates as on the Custom Listings page — search and filter below'
                         : standardCatalogPopulateFullForm
                           ? 'Pick an admin template and tap Add to fill the form — then save as your vendor listing'
                           : 'Add multiple product variants'}
-                    </p>
-                  </div>
+                    </p> */}
+                  {/* </div> */}
                 </div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1 min-w-0">
@@ -1593,9 +2141,7 @@ const AdminProductAddModal = ({
                                 : 'bg-orange-500 hover:bg-orange-600'
                             }`}
                           >
-                            {templateApplyLoadingId === p._id
-                              ? '…'
-                              : 'Add'}
+                            {templateApplyLoadingId === p._id ? '…' : 'Add'}
                           </button>
                         </div>
                       </li>
@@ -1606,218 +2152,364 @@ const AdminProductAddModal = ({
             </div>
           ) : null}
 
-          <div className="md:col-span-2">
-            <p className="text-sm font-semibold text-gray-900 mb-2">
-              Basic Information
-            </p>
-          </div>
-          <input
-            name="productName"
-            value={form.productName}
-            onChange={handleChange}
-            placeholder="Product name"
-            className="border rounded-lg px-3 py-2"
-            required
-          />
-
-          {!allowListingTypeSwitch ? (
-            <div className="border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600">
-              Listing Type:{' '}
-              <span className="font-medium text-gray-900">Rental</span>
+          <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-gray-900 mb-4">
+              Basic Details
+            </h2>
+            <div className="space-y-4">
+              {!allowListingTypeSwitch ? (
+                <p className="text-xs text-gray-600 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                  <span className="font-semibold text-gray-800">
+                    Listing type:
+                  </span>{' '}
+                  Rental
+                </p>
+              ) : null}
+              <div>
+                <label
+                  htmlFor="admin-product-title"
+                  className="block text-sm font-medium text-gray-900 mb-1"
+                >
+                  Product title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="admin-product-title"
+                  name="productName"
+                  value={form.productName}
+                  onChange={handleChange}
+                  placeholder="e.g., Samsung Galaxy S23"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="admin-product-brand"
+                    className="block text-sm font-medium text-gray-900 mb-1"
+                  >
+                    Brand
+                  </label>
+                  <input
+                    id="admin-product-brand"
+                    name="brand"
+                    value={form.brand}
+                    onChange={handleChange}
+                    placeholder="e.g., Samsung"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-listing-condition"
+                    className="block text-sm font-medium text-gray-900 mb-1"
+                  >
+                    Condition <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="admin-listing-condition"
+                    name="condition"
+                    value={normalizeConditionForListingType(
+                      form.condition,
+                      allowListingTypeSwitch
+                        ? form.type === 'Sell'
+                          ? 'Sell'
+                          : 'Rental'
+                        : 'Rental',
+                    )}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                  >
+                    {(allowListingTypeSwitch && form.type === 'Sell'
+                      ? SELL_CONDITION_OPTIONS
+                      : RENTAL_CONDITION_OPTIONS
+                    ).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="admin-product-description"
+                  className="block text-sm font-medium text-gray-900 mb-1"
+                >
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="admin-product-description"
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  placeholder="Provide detailed description including key features, condition, etc."
+                  className="w-full min-h-[120px] resize-y border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                />
+              </div>
             </div>
-          ) : null}
-          <input
-            name="brand"
-            value={form.brand}
-            onChange={handleChange}
-            placeholder="Brand"
-            className="border rounded-lg px-3 py-2"
-          />
-          <select
-            name="condition"
-            value={normalizeConditionForListingType(
-              form.condition,
-              allowListingTypeSwitch
-                ? form.type === 'Sell'
-                  ? 'Sell'
-                  : 'Rental'
-                : 'Rental',
-            )}
-            onChange={handleChange}
-            className="border rounded-lg px-3 py-2"
-          >
-            {(allowListingTypeSwitch && form.type === 'Sell'
-              ? SELL_CONDITION_OPTIONS
-              : RENTAL_CONDITION_OPTIONS
-            ).map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          {/* Category (dynamic) */}
-          <select
-            name="category"
-            value={selectedCategoryId}
-            onChange={handleCategoryChange}
-            className="border rounded-lg px-3 py-2"
-          >
-            <option value="">Select category</option>
-            {filteredCategories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Subcategory (depends on category) */}
-          <select
-            name="subCategory"
-            value={
-              filteredSubCategories.find((s) => s.name === form.subCategory)
-                ?._id || ''
-            }
-            onChange={handleSubCategoryChange}
-            className="border rounded-lg px-3 py-2"
-            disabled={!selectedCategoryId}
-          >
-            <option value="">Select subcategory</option>
-            {filteredSubCategories.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            placeholder="Detailed description"
-            className="border rounded-lg px-3 py-2 md:col-span-2 min-h-[90px]"
-          />
+          </div>
 
           {flexibleListingForm ? (
             <>
-              <div className="md:col-span-2 border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Product variants
-                  </p>
+              <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/80 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                      <Tag className="h-5 w-5" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-gray-900">
+                        Product Variants
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Add multiple product variants
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={addVariant}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-medium text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100"
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 w-full sm:w-auto"
                   >
-                    + Add variant
+                    + Add Variant
                   </button>
                 </div>
-                <div className="space-y-4">
-                  {form.variants.map((variant, index) => (
-                    <div
-                      key={variant._clientKey || `flex-${index}`}
-                      className="rounded-xl border border-gray-200 bg-white p-4 space-y-4 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-gray-800">
-                          Variant {index + 1}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => removeVariant(index)}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Remove variant
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <input
-                          value={variant.variantName || ''}
-                          onChange={(e) =>
-                            updateVariant(index, 'variantName', e.target.value)
-                          }
-                          placeholder="Variant name (e.g. 256GB Gold)"
-                          className="border rounded-lg px-3 py-2 md:col-span-3"
-                        />
-                      </div>
 
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 mb-2">
-                          Product media
-                        </p>
-                        {(variant.existingVariantImages || []).length > 0 ? (
-                          <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-2">
-                            {(variant.existingVariantImages || []).map(
-                              (src, vi) => (
+                <div className="p-4 sm:p-5">
+                  {form.variants.length > 0 ? (
+                    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white divide-y divide-gray-100">
+                      {form.variants.map((variant, index) => (
+                        <div
+                          key={`sum-${variant._clientKey || index}`}
+                          className="flex flex-wrap items-center gap-3 px-3 py-3 sm:px-4"
+                        >
+                          <VariantListThumbnail variant={variant} />
+                          <div className="min-w-0 flex-1 basis-[8rem]">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {String(variant.variantName || '').trim() ||
+                                `Variant ${index + 1}`}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {flexibleVariantPriceLine(variant, form.type)}
+                            </p>
+                          </div>
+                          <div className="flex w-full gap-4 text-xs text-gray-600 sm:w-auto sm:text-sm">
+                            <div className="min-w-0 flex-1 sm:w-28 sm:flex-none">
+                              <span className="text-gray-400 sm:hidden">
+                                Category{' '}
+                              </span>
+                              <span className="truncate block">
+                                {form.category || '—'}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1 sm:w-28 sm:flex-none">
+                              <span className="text-gray-400 sm:hidden">
+                                Sub{' '}
+                              </span>
+                              <span className="truncate block">
+                                {form.subCategory || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 py-1">
+                      No variants yet. Click &quot;+ Add Variant&quot; to create
+                      one.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                {/* <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-4 sm:px-5">
+                  <h2 className="text-base font-semibold text-gray-900">
+                    Variant details
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Media, specifications, and rental settings for each variant.
+                  </p>
+                </div> */}
+                <div className="p-4 sm:p-5 space-y-5">
+                  {form.variants.map((variant, index) => {
+                    const mediaInputId = `variant-media-${variant._clientKey || index}`;
+                    const existingCount = (variant.existingVariantImages || [])
+                      .length;
+                    const newCount = (variant.images || []).length;
+                    const mediaTotal = existingCount + newCount;
+                    const mediaRoom = Math.max(0, 5 - mediaTotal);
+                    return (
+                      <div
+                        key={variant._clientKey || `flex-${index}`}
+                        className="rounded-xl border border-gray-100 bg-gray-50/40 p-4 sm:p-5 space-y-5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {/* Variant {index + 1} */}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeVariant(index)}
+                            className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            Remove variant
+                          </button>
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor={`admin-flex-variant-name-${variant._clientKey || index}`}
+                            className="block text-sm font-medium text-gray-900 mb-1.5"
+                          >
+                            Variant name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id={`admin-flex-variant-name-${variant._clientKey || index}`}
+                            value={variant.variantName || ''}
+                            onChange={(e) =>
+                              updateVariant(
+                                index,
+                                'variantName',
+                                e.target.value,
+                              )
+                            }
+                            placeholder="eg. 5 Seater sofa"
+                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"
+                          />
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Package
+                              className="h-4 w-4 shrink-0 text-violet-600"
+                              strokeWidth={2}
+                            />
+                            <h3 className="text-sm font-semibold text-gray-900">
+                              Product Media
+                            </h3>
+                          </div>
+                          <p className="text-xs text-gray-500 leading-relaxed">
+                            Upload up to 5 high-quality media. The first image
+                            will be the cover photo.
+                          </p>
+                          {(variant.existingVariantImages || []).length > 0 ? (
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                              {(variant.existingVariantImages || []).map(
+                                (src, vi) => (
+                                  <div
+                                    key={`ve-${vi}`}
+                                    className="relative aspect-square rounded-lg border border-gray-100 overflow-hidden bg-gray-50"
+                                  >
+                                    <img
+                                      src={src}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removeVariantExistingImage(index, vi)
+                                      }
+                                      className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white text-xs hover:bg-black/85"
+                                      aria-label="Remove image"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          ) : null}
+                          {(variant.images || []).length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {(variant.images || []).map((file, fi) => (
                                 <div
-                                  key={`ve-${vi}`}
-                                  className="relative h-20 rounded-lg border overflow-hidden"
+                                  key={fi}
+                                  className="relative rounded-lg border border-gray-100 p-1 bg-gray-50"
                                 >
-                                  <img
-                                    src={src}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <VariantNewImagePreview file={file} />
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      removeVariantExistingImage(index, vi)
+                                      removeVariantNewImage(index, fi)
                                     }
-                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white text-xs"
+                                    className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white text-xs hover:bg-red-600"
+                                    aria-label="Remove new image"
                                   >
                                     ×
                                   </button>
                                 </div>
-                              ),
-                            )}
-                          </div>
-                        ) : null}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => onVariantFiles(index, e)}
-                          className="w-full text-sm border rounded-lg px-3 py-2"
-                        />
-                        {(variant.images || []).length > 0 ? (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {(variant.images || []).map((file, fi) => (
-                              <div
-                                key={fi}
-                                className="relative border rounded-lg p-1"
-                              >
-                                <VariantNewImagePreview file={file} />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeVariantNewImage(index, fi)
-                                  }
-                                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                          <p className="text-sm font-medium text-gray-900">
-                            Variant specifications
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => addVariantSpecRow(index)}
-                            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700"
-                          >
-                            + Add custom specification
-                          </button>
+                              ))}
+                            </div>
+                          ) : null}
+                          {mediaRoom > 0 ? (
+                            <label
+                              htmlFor={mediaInputId}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onDrop={(e) => onVariantFilesDragDrop(index, e)}
+                              className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-4 py-8 text-center transition hover:border-violet-300 hover:bg-violet-50/30"
+                            >
+                              <Upload
+                                className="mb-2 h-9 w-9 text-blue-500"
+                                strokeWidth={1.75}
+                              />
+                              <span className="text-sm font-medium text-gray-700">
+                                Click to upload or drag and drop
+                              </span>
+                              <span className="mt-1 text-xs text-gray-500">
+                                {mediaTotal}/5 uploaded
+                              </span>
+                              <input
+                                id={mediaInputId}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => onVariantFiles(index, e)}
+                                className="sr-only"
+                              />
+                            </label>
+                          ) : (
+                            <p className="text-center text-xs text-gray-500 py-2">
+                              Maximum 5 images ({mediaTotal}/5 uploaded)
+                            </p>
+                          )}
                         </div>
-                        <div className="space-y-2">
-                          {(variant.specRows || [{ label: '', value: '' }]).map(
-                            (row, ri) => (
+
+                        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 space-y-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex items-start gap-2 min-w-0">
+                              <Box
+                                className="mt-0.5 h-4 w-4 shrink-0 text-violet-600"
+                                strokeWidth={2}
+                              />
+                              <div>
+                                <h3 className="text-sm font-semibold text-gray-900">
+                                  Product Specifications
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                                  Add custom fields for this variant (e.g.
+                                  material, dimensions).
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addVariantSpecRow(index)}
+                              className="shrink-0 inline-flex items-center justify-center rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700 w-full sm:w-auto"
+                            >
+                              + Add Custom Specification
+                            </button>
+                          </div>
+                          <div className="space-y-2.5">
+                            {(
+                              variant.specRows || [{ label: '', value: '' }]
+                            ).map((row, ri) => (
                               <div
                                 key={ri}
                                 className="flex flex-wrap gap-2 items-center"
@@ -1832,8 +2524,8 @@ const AdminProductAddModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  placeholder="Label"
-                                  className="flex-1 min-w-[100px] border rounded-lg px-3 py-2 text-sm"
+                                  placeholder="e.g., Fabric Material"
+                                  className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"
                                 />
                                 <input
                                   value={row.value}
@@ -1845,279 +2537,288 @@ const AdminProductAddModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  placeholder="Value"
-                                  className="flex-1 min-w-[100px] border rounded-lg px-3 py-2 text-sm"
+                                  placeholder="e.g., Velvet"
+                                  className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"
                                 />
                                 <button
                                   type="button"
                                   onClick={() =>
                                     removeVariantSpecRow(index, ri)
                                   }
-                                  className="px-2 py-1 text-red-600 text-sm"
+                                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100"
+                                  aria-label="Remove specification"
                                 >
                                   ×
                                 </button>
                               </div>
-                            ),
-                          )}
-                        </div>
-                      </div>
-
-                      {form.type !== 'Sell' ? (
-                        <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                              <DollarSign className="h-5 w-5" strokeWidth={2} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {form.type === 'Sell'
-                                  ? 'Rental configuration (optional)'
-                                  : 'Rental configuration'}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                Customer &amp; vendor pricing by term
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 sm:shrink-0">
-                            <span className="text-xs text-gray-600 max-w-[9rem] sm:max-w-none leading-tight">
-                              Allow vendors to edit prices
-                            </span>
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={
-                                variant.allowVendorEditRentalPrices !== false
-                              }
-                              onClick={() =>
-                                updateVariant(
-                                  index,
-                                  'allowVendorEditRentalPrices',
-                                  !(
-                                    variant.allowVendorEditRentalPrices !==
-                                    false
-                                  ),
-                                )
-                              }
-                              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                                variant.allowVendorEditRentalPrices !== false
-                                  ? 'bg-emerald-500'
-                                  : 'bg-gray-300'
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
-                                  variant.allowVendorEditRentalPrices !== false
-                                    ? 'translate-x-5'
-                                    : 'translate-x-0.5'
-                                }`}
-                              />
-                            </button>
+                            ))}
                           </div>
                         </div>
 
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                          <div className="inline-flex rounded-xl border border-gray-200 p-1 bg-white shadow-sm">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setVariantRentalPricingModel(index, 'month')
-                              }
-                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                                variant.rentalPricingModel !== 'day'
-                                  ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
-                                  : 'text-gray-500 hover:text-gray-800'
-                              }`}
-                            >
-                              <Calendar className="h-3.5 w-3.5" />
-                              Month-wise
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setVariantRentalPricingModel(index, 'day')
-                              }
-                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                                variant.rentalPricingModel === 'day'
-                                  ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
-                                  : 'text-gray-500 hover:text-gray-800'
-                              }`}
-                            >
-                              <Clock className="h-3.5 w-3.5" />
-                              Day-wise
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => addVariantRentalTerm(index)}
-                            className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-600 shadow-sm w-full lg:w-auto"
-                          >
-                            + Add more term
-                          </button>
-                        </div>
-
-                        {['Customer configuration', 'Vendor configuration'].map(
-                          (sectionTitle) => {
-                            const isCustomer =
-                              sectionTitle === 'Customer configuration';
-                            const rentField = isCustomer
-                              ? 'customerRent'
-                              : 'vendorRent';
-                            const shipField = isCustomer
-                              ? 'customerShipping'
-                              : 'vendorShipping';
-                            const rentLabel =
-                              variant.rentalPricingModel === 'day'
-                                ? 'Daily rent'
-                                : 'Monthly rent';
-                            return (
-                              <div key={sectionTitle}>
-                                <p className="text-xs font-semibold text-gray-800 mb-2">
-                                  {sectionTitle}
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                                  {(variant.rentalConfigurations || []).map(
-                                    (cfg, cidx) => (
-                                      <div
-                                        key={`${sectionTitle}-${cidx}`}
-                                        className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2"
-                                      >
-                                        <div className="flex items-start justify-between gap-1">
-                                          <div className="min-w-0 flex-1 space-y-1">
-                                            <input
-                                              type="text"
-                                              value={cfg.tierLabel || ''}
-                                              onChange={(e) =>
-                                                updateVariantRentalConfig(
-                                                  index,
-                                                  cidx,
-                                                  'tierLabel',
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder="SHORT TERM"
-                                              className="w-full text-[10px] font-semibold tracking-wide text-gray-400 uppercase border border-gray-200 rounded-lg px-2 py-1"
-                                            />
-                                            <input
-                                              type="text"
-                                              value={cfg.label || ''}
-                                              onChange={(e) =>
-                                                updateVariantRentalConfig(
-                                                  index,
-                                                  cidx,
-                                                  'label',
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder={
-                                                variant.rentalPricingModel ===
-                                                'day'
-                                                  ? '3 Days'
-                                                  : '3 Months'
-                                              }
-                                              className="w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2 py-1"
-                                            />
-                                          </div>
-                                          {(variant.rentalConfigurations || [])
-                                            .length > 1 ? (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                removeVariantRentalTerm(
-                                                  index,
-                                                  cidx,
-                                                )
-                                              }
-                                              className="shrink-0 text-gray-400 hover:text-red-600 text-sm px-1"
-                                              aria-label="Remove term"
-                                            >
-                                              ×
-                                            </button>
-                                          ) : null}
-                                        </div>
-                                        <div>
-                                          <label className="block text-[11px] text-gray-500 mb-1">
-                                            {rentLabel}
-                                          </label>
-                                          <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
-                                            <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
-                                              ₹
-                                            </span>
-                                            <input
-                                              type="number"
-                                              value={cfg[rentField] ?? ''}
-                                              onChange={(e) =>
-                                                updateVariantRentalConfig(
-                                                  index,
-                                                  cidx,
-                                                  rentField,
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder="0"
-                                              className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
-                                            />
-                                          </div>
-                                        </div>
-                                        <div>
-                                          <label className="block text-[11px] text-gray-500 mb-1">
-                                            Shipping charges
-                                          </label>
-                                          <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
-                                            <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
-                                              ₹
-                                            </span>
-                                            <input
-                                              type="number"
-                                              value={cfg[shipField] ?? ''}
-                                              onChange={(e) =>
-                                                updateVariantRentalConfig(
-                                                  index,
-                                                  cidx,
-                                                  shipField,
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder="0"
-                                              className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  )}
+                        {form.type !== 'Sell' ? (
+                          <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                  <DollarSign
+                                    className="h-5 w-5"
+                                    strokeWidth={2}
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {form.type === 'Sell'
+                                      ? 'Rental configuration (optional)'
+                                      : 'Rental configuration'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Customer &amp; vendor pricing by term
+                                  </p>
                                 </div>
                               </div>
-                            );
-                          },
-                        )}
-                        </div>
-                      ) : null}
+                              <div className="flex items-center gap-2 sm:shrink-0">
+                                <span className="text-xs text-gray-600 max-w-[9rem] sm:max-w-none leading-tight">
+                                  Allow vendors to edit prices
+                                </span>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={
+                                    variant.allowVendorEditRentalPrices !==
+                                    false
+                                  }
+                                  onClick={() =>
+                                    updateVariant(
+                                      index,
+                                      'allowVendorEditRentalPrices',
+                                      !(
+                                        variant.allowVendorEditRentalPrices !==
+                                        false
+                                      ),
+                                    )
+                                  }
+                                  className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                                    variant.allowVendorEditRentalPrices !==
+                                    false
+                                      ? 'bg-emerald-500'
+                                      : 'bg-gray-300'
+                                  }`}
+                                >
+                                  <span
+                                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                                      variant.allowVendorEditRentalPrices !==
+                                      false
+                                        ? 'translate-x-5'
+                                        : 'translate-x-0.5'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            </div>
 
-                      {form.type !== 'Sell' ? (
-                        <div>
-                        <p className="text-sm font-medium text-gray-900 mb-1">
-                          Refundable deposit
-                        </p>
-                        <input
-                          type="number"
-                          value={variant.refundableDeposit || ''}
-                          onChange={(e) =>
-                            updateVariant(
-                              index,
-                              'refundableDeposit',
-                              e.target.value,
-                            )
-                          }
-                          placeholder="Amount"
-                          className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
-                        />
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                              <div className="inline-flex rounded-xl border border-gray-200 p-1 bg-white shadow-sm">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVariantRentalPricingModel(index, 'month')
+                                  }
+                                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                                    variant.rentalPricingModel !== 'day'
+                                      ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
+                                      : 'text-gray-500 hover:text-gray-800'
+                                  }`}
+                                >
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  Month-wise
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setVariantRentalPricingModel(index, 'day')
+                                  }
+                                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                                    variant.rentalPricingModel === 'day'
+                                      ? 'bg-white border border-amber-200 text-gray-900 shadow-sm'
+                                      : 'text-gray-500 hover:text-gray-800'
+                                  }`}
+                                >
+                                  <Clock className="h-3.5 w-3.5" />
+                                  Day-wise
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => addVariantRentalTerm(index)}
+                                className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-600 shadow-sm w-full lg:w-auto"
+                              >
+                                + Add more term
+                              </button>
+                            </div>
+
+                            {[
+                              'Customer configuration',
+                              'Vendor configuration',
+                            ].map((sectionTitle) => {
+                              const isCustomer =
+                                sectionTitle === 'Customer configuration';
+                              const rentField = isCustomer
+                                ? 'customerRent'
+                                : 'vendorRent';
+                              const shipField = isCustomer
+                                ? 'customerShipping'
+                                : 'vendorShipping';
+                              const rentLabel =
+                                variant.rentalPricingModel === 'day'
+                                  ? 'Daily rent'
+                                  : 'Monthly rent';
+                              return (
+                                <div key={sectionTitle}>
+                                  <p className="text-xs font-semibold text-gray-800 mb-2">
+                                    {sectionTitle}
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                                    {(variant.rentalConfigurations || []).map(
+                                      (cfg, cidx) => (
+                                        <div
+                                          key={`${sectionTitle}-${cidx}`}
+                                          className="rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2"
+                                        >
+                                          <div className="flex items-start justify-between gap-1">
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                              <input
+                                                type="text"
+                                                value={cfg.tierLabel || ''}
+                                                onChange={(e) =>
+                                                  updateVariantRentalConfig(
+                                                    index,
+                                                    cidx,
+                                                    'tierLabel',
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder="SHORT TERM"
+                                                className="w-full text-[10px] font-semibold tracking-wide text-gray-400 uppercase border border-gray-200 rounded-lg px-2 py-1"
+                                              />
+                                              <input
+                                                type="text"
+                                                value={cfg.label || ''}
+                                                onChange={(e) =>
+                                                  updateVariantRentalConfig(
+                                                    index,
+                                                    cidx,
+                                                    'label',
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder={
+                                                  variant.rentalPricingModel ===
+                                                  'day'
+                                                    ? '3 Days'
+                                                    : '3 Months'
+                                                }
+                                                className="w-full text-sm font-semibold text-gray-900 border border-gray-200 rounded-lg px-2 py-1"
+                                              />
+                                            </div>
+                                            {(
+                                              variant.rentalConfigurations || []
+                                            ).length > 1 ? (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  removeVariantRentalTerm(
+                                                    index,
+                                                    cidx,
+                                                  )
+                                                }
+                                                className="shrink-0 text-gray-400 hover:text-red-600 text-sm px-1"
+                                                aria-label="Remove term"
+                                              >
+                                                ×
+                                              </button>
+                                            ) : null}
+                                          </div>
+                                          <div>
+                                            <label className="block text-[11px] text-gray-500 mb-1">
+                                              {rentLabel}
+                                            </label>
+                                            <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
+                                              <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                                ₹
+                                              </span>
+                                              <input
+                                                type="number"
+                                                value={cfg[rentField] ?? ''}
+                                                onChange={(e) =>
+                                                  updateVariantRentalConfig(
+                                                    index,
+                                                    cidx,
+                                                    rentField,
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder="0"
+                                                className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <label className="block text-[11px] text-gray-500 mb-1">
+                                              Shipping charges
+                                            </label>
+                                            <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
+                                              <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                                ₹
+                                              </span>
+                                              <input
+                                                type="number"
+                                                value={cfg[shipField] ?? ''}
+                                                onChange={(e) =>
+                                                  updateVariantRentalConfig(
+                                                    index,
+                                                    cidx,
+                                                    shipField,
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder="0"
+                                                className="min-w-0 flex-1 border-0 px-2 py-2 text-sm outline-none"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        {form.type !== 'Sell' ? (
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 mb-1">
+                              Refundable deposit
+                            </p>
+                            <input
+                              type="number"
+                              value={variant.refundableDeposit || ''}
+                              onChange={(e) =>
+                                updateVariant(
+                                  index,
+                                  'refundableDeposit',
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Amount"
+                              className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -2271,61 +2972,65 @@ const AdminProductAddModal = ({
 
               {form.type !== 'Sell' ? (
                 <div className="md:col-span-2 border-t pt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-2">
-                  {form.type === 'Sell'
-                    ? 'Rental configuration (optional)'
-                    : 'Rental Configuration'}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {form.rentalConfigurations.map((cfg, idx) => (
-                    <div
-                      key={`${cfg.months}-${idx}`}
-                      className="border rounded-xl p-3"
-                    >
-                      <p className="text-xs text-gray-500 mb-2">
-                        {cfg.months} Months
-                      </p>
-                      <input
-                        type="text"
-                        value={cfg.label}
-                        onChange={(e) =>
-                          updateRentalConfig(idx, 'label', e.target.value)
-                        }
-                        placeholder="Label"
-                        className="w-full border rounded-lg px-3 py-2 text-sm mb-2"
-                      />
-                      <input
-                        type="number"
-                        value={cfg.pricePerDay}
-                        onChange={(e) =>
-                          updateRentalConfig(idx, 'pricePerDay', e.target.value)
-                        }
-                        placeholder="Pricing per day"
-                        className="w-full border rounded-lg px-3 py-2 text-sm"
-                      />
-                    </div>
-                  ))}
-                </div>
+                  <p className="text-sm font-semibold text-gray-900 mb-2">
+                    {form.type === 'Sell'
+                      ? 'Rental configuration (optional)'
+                      : 'Rental Configuration'}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {form.rentalConfigurations.map((cfg, idx) => (
+                      <div
+                        key={`${cfg.months}-${idx}`}
+                        className="border rounded-xl p-3"
+                      >
+                        <p className="text-xs text-gray-500 mb-2">
+                          {cfg.months} Months
+                        </p>
+                        <input
+                          type="text"
+                          value={cfg.label}
+                          onChange={(e) =>
+                            updateRentalConfig(idx, 'label', e.target.value)
+                          }
+                          placeholder="Label"
+                          className="w-full border rounded-lg px-3 py-2 text-sm mb-2"
+                        />
+                        <input
+                          type="number"
+                          value={cfg.pricePerDay}
+                          onChange={(e) =>
+                            updateRentalConfig(
+                              idx,
+                              'pricePerDay',
+                              e.target.value,
+                            )
+                          }
+                          placeholder="Pricing per day"
+                          className="w-full border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
               {form.type !== 'Sell' ? (
                 <div className="md:col-span-2 border-t pt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-2">
-                  Refundable Deposit
-                </p>
-                <input
-                  type="number"
-                  value={form.refundableDeposit}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      refundableDeposit: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter refundable deposit amount"
-                  className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
-                />
+                  <p className="text-sm font-semibold text-gray-900 mb-2">
+                    Refundable Deposit
+                  </p>
+                  <input
+                    type="number"
+                    value={form.refundableDeposit}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        refundableDeposit: e.target.value,
+                      }))
+                    }
+                    placeholder="Enter refundable deposit amount"
+                    className="w-full md:w-1/2 border rounded-lg px-3 py-2 text-sm"
+                  />
                 </div>
               ) : null}
             </>
@@ -2340,14 +3045,17 @@ const AdminProductAddModal = ({
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={form.salesConfiguration?.allowVendorEditSalePrice !== false}
+                  aria-checked={
+                    form.salesConfiguration?.allowVendorEditSalePrice !== false
+                  }
                   onClick={() =>
                     setForm((prev) => ({
                       ...prev,
                       salesConfiguration: {
                         ...(prev.salesConfiguration || {}),
                         allowVendorEditSalePrice:
-                          prev.salesConfiguration?.allowVendorEditSalePrice === false,
+                          prev.salesConfiguration?.allowVendorEditSalePrice ===
+                          false,
                       },
                     }))
                   }
@@ -2359,7 +3067,8 @@ const AdminProductAddModal = ({
                 >
                   <span
                     className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
-                      form.salesConfiguration?.allowVendorEditSalePrice !== false
+                      form.salesConfiguration?.allowVendorEditSalePrice !==
+                      false
                         ? 'translate-x-5'
                         : 'translate-x-0.5'
                     }`}
@@ -2425,22 +3134,30 @@ const AdminProductAddModal = ({
             </div>
           </div> */}
 
-          <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+          <div className="md:col-span-2 flex flex-col gap-3 border-t border-gray-100 pt-4 mt-1 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border text-gray-700"
+              onClick={handleSaveDraft}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 sm:w-auto"
             >
-              Cancel
+              <Save className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={2} />
+              Save as Draft
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600"
-            >
-              {mode === 'edit' ? submitEditLabel : submitCreateLabel}
-            </button>
+            <div className="flex w-full justify-end gap-2 sm:w-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border text-gray-700"
+              >
+                Cancel
+              </button>
+              <button type="submit" className={submitPrimaryClassName}>
+                {mode === 'edit' ? submitEditLabel : submitCreateLabel}
+              </button>
+            </div>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

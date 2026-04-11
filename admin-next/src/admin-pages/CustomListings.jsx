@@ -116,6 +116,66 @@ function buildListingFormData(form) {
   return payload;
 }
 
+const CUSTOM_LISTING_DRAFT_PREFIX = 'rentnpay:customListingTemplateDraft:';
+
+/** Rows merged into the table for in-progress listings saved only in this browser. */
+function readCustomListingDraftRows() {
+  if (typeof window === 'undefined') return [];
+  const rows = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(CUSTOM_LISTING_DRAFT_PREFIX)) continue;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const payload = JSON.parse(raw);
+      const f = payload?.form;
+      if (!f) continue;
+      const thumb =
+        (Array.isArray(f.existingImages) && f.existingImages[0]) ||
+        (Array.isArray(f.variants) &&
+          f.variants[0]?.existingVariantImages?.[0]) ||
+        '';
+      const pseudoVariants = Array.isArray(f.variants)
+        ? f.variants.map((v) => ({
+            ...v,
+            images: Array.isArray(v.existingVariantImages)
+              ? v.existingVariantImages
+              : [],
+            rentalConfigurations: v.rentalConfigurations || [],
+          }))
+        : [];
+      rows.push({
+        _id: key,
+        isLocalDraft: true,
+        draftStorageKey: key,
+        draftSavedAt: payload.savedAt,
+        productName: String(f.productName || '').trim() || '(Untitled draft)',
+        type: f.type === 'Sell' ? 'Sell' : 'Rental',
+        listingKind: f.type === 'Sell' ? 'sell' : 'rental',
+        category: String(f.category || '').trim() || '—',
+        subCategory: String(f.subCategory || '').trim() || '—',
+        sku: f.sku || '',
+        price: f.price || '0',
+        stock: 0,
+        status: 'Draft',
+        isActive: false,
+        images: Array.isArray(f.existingImages) ? f.existingImages : [],
+        image: thumb,
+        variants: pseudoVariants,
+        updatedAt: payload.savedAt,
+      });
+    } catch {
+      /* skip invalid */
+    }
+  }
+  return rows.sort(
+    (a, b) =>
+      new Date(b.draftSavedAt || 0).getTime() -
+      new Date(a.draftSavedAt || 0).getTime(),
+  );
+}
+
 /** All rental tiers on template (product-level + each variant). */
 function collectAllRentalTiers(listing) {
   const out = [];
@@ -149,9 +209,7 @@ function pickMonthTier(tiers) {
   if (!monthTiers.length) return null;
   const exact3 = monthTiers.find((c) => Number(c.months) === 3);
   if (exact3) return exact3;
-  return [...monthTiers].sort(
-    (a, b) => Number(a.months) - Number(b.months),
-  )[0];
+  return [...monthTiers].sort((a, b) => Number(a.months) - Number(b.months))[0];
 }
 
 function pickDayTier(tiers) {
@@ -585,6 +643,12 @@ const CustomListings = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [localDraftRows, setLocalDraftRows] = useState([]);
+  const [draftBootstrapPayload, setDraftBootstrapPayload] = useState(null);
+
+  const refreshLocalDrafts = useCallback(() => {
+    setLocalDraftRows(readCustomListingDraftRows());
+  }, []);
 
   useEffect(() => {
     dispatch(fetchListingTemplates());
@@ -594,6 +658,10 @@ const CustomListings = () => {
     if (!modalOpen) return;
     dispatch(fetchListingTemplates());
   }, [modalOpen, dispatch]);
+
+  useEffect(() => {
+    refreshLocalDrafts();
+  }, [refreshLocalDrafts, modalOpen]);
 
   useEffect(() => {
     if (error) {
@@ -611,18 +679,23 @@ const CustomListings = () => {
     return () => document.removeEventListener('click', close);
   }, []);
 
+  const tableRows = useMemo(
+    () => [...localDraftRows, ...items],
+    [localDraftRows, items],
+  );
+
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return items.filter((t) => {
+    return tableRows.filter((t) => {
       if (typeFilter !== 'all' && String(t.type) !== typeFilter) return false;
       if (!term) return true;
       const name = String(t.productName || '').toLowerCase();
       const sku = String(t.sku || '').toLowerCase();
       return name.includes(term) || sku.includes(term);
     });
-  }, [items, query, typeFilter]);
+  }, [tableRows, query, typeFilter]);
 
-  const total = items.length;
+  const total = tableRows.length;
   const activeCount = items.filter((t) => t.isActive !== false).length;
   const inactiveCount = total - activeCount;
 
@@ -631,6 +704,14 @@ const CustomListings = () => {
     const res = await dispatch(createListingTemplate(fd));
     if (createListingTemplate.fulfilled.match(res)) {
       toast.success('Listing template saved');
+      try {
+        localStorage.removeItem(
+          'rentnpay:customListingTemplateDraft:create:new',
+        );
+      } catch {
+        /* ignore */
+      }
+      refreshLocalDrafts();
       setModalOpen(false);
     }
   };
@@ -647,12 +728,21 @@ const CustomListings = () => {
     );
     if (updateListingTemplate.fulfilled.match(res)) {
       toast.success('Listing template updated');
+      try {
+        localStorage.removeItem(
+          `rentnpay:customListingTemplateDraft:edit:${editing._id}`,
+        );
+      } catch {
+        /* ignore */
+      }
+      refreshLocalDrafts();
       setModalOpen(false);
       setEditing(null);
     }
   };
 
   const handleToggle = async (row, next) => {
+    if (row.isLocalDraft) return;
     const res = await dispatch(
       toggleListingTemplateActive({
         id: row._id,
@@ -666,7 +756,19 @@ const CustomListings = () => {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget?._id) return;
+    if (!deleteTarget) return;
+    if (deleteTarget.isLocalDraft && deleteTarget.draftStorageKey) {
+      try {
+        localStorage.removeItem(deleteTarget.draftStorageKey);
+      } catch {
+        /* ignore */
+      }
+      refreshLocalDrafts();
+      toast.success('Draft deleted');
+      setDeleteTarget(null);
+      return;
+    }
+    if (!deleteTarget._id) return;
     const res = await dispatch(
       deleteListingTemplate({
         id: deleteTarget._id,
@@ -692,20 +794,22 @@ const CustomListings = () => {
     ];
     const lines = [
       header.join(','),
-      ...filtered.map((t) =>
-        [
-          t.sku || '',
-          t.productName,
-          t.type,
-          t.category,
-          t.subCategory,
-          t.price,
-          t.isActive !== false ? 'Yes' : 'No',
-          t.status || '',
-        ]
-          .map((c) => `"${String(c).replace(/"/g, '""')}"`)
-          .join(','),
-      ),
+      ...filtered
+        .filter((t) => !t.isLocalDraft)
+        .map((t) =>
+          [
+            t.sku || '',
+            t.productName,
+            t.type,
+            t.category,
+            t.subCategory,
+            t.price,
+            t.isActive !== false ? 'Yes' : 'No',
+            t.status || '',
+          ]
+            .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+            .join(','),
+        ),
     ];
     const blob = new Blob([lines.join('\n')], {
       type: 'text/csv;charset=utf-8',
@@ -829,6 +933,7 @@ const CustomListings = () => {
           <button
             type="button"
             onClick={() => {
+              setDraftBootstrapPayload(null);
               setEditing(null);
               setModalOpen(true);
             }}
@@ -868,8 +973,14 @@ const CustomListings = () => {
                 filtered.map((t) => {
                   const active = t.isActive !== false;
                   const priceLine = formatListingTablePriceLine(t);
+                  const rowKey = t.isLocalDraft ? t.draftStorageKey : t._id;
                   return (
-                    <tr key={t._id} className="hover:bg-gray-50/80">
+                    <tr
+                      key={rowKey}
+                      className={`hover:bg-gray-50/80 ${
+                        t.isLocalDraft ? 'bg-violet-50/40' : ''
+                      }`}
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 min-w-[200px]">
                           <img
@@ -882,9 +993,16 @@ const CustomListings = () => {
                             className="w-11 h-11 rounded-lg object-cover border border-gray-100"
                           />
                           <div>
-                            <p className="font-medium text-gray-900">
-                              {t.productName}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-gray-900">
+                                {t.productName}
+                              </p>
+                              {t.isLocalDraft ? (
+                                <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                                  Draft
+                                </span>
+                              ) : null}
+                            </div>
                             <p className="text-xs text-gray-500 tabular-nums">
                               {priceLine || '—'}
                             </p>
@@ -893,6 +1011,12 @@ const CustomListings = () => {
                                 SKU: {t.sku}
                               </p>
                             ) : null}
+                            {/* {t.isLocalDraft && t.draftSavedAt ? (
+                              <p className="text-[10px] text-violet-600/90 mt-0.5">
+                                Saved{' '}
+                                {new Date(t.draftSavedAt).toLocaleString()}
+                              </p>
+                            ) : null} */}
                           </div>
                         </div>
                       </td>
@@ -902,43 +1026,78 @@ const CustomListings = () => {
                         {t.subCategory}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={active}
-                          onClick={() => handleToggle(t, !active)}
-                          className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                            active ? 'bg-emerald-500' : 'bg-red-400'
-                          }`}
-                        >
+                        {t.isLocalDraft ? (
                           <span
-                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
-                              active ? 'translate-x-5' : 'translate-x-0.5'
+                            role="img"
+                            aria-label="Draft — inactive until published"
+                            title="Draft listing (not published)"
+                            className="relative inline-flex h-7 w-12 shrink-0 cursor-default items-center rounded-full border-2 border-transparent bg-gray-300"
+                          >
+                            <span className="pointer-events-none inline-block h-6 w-6 translate-x-0.5 rounded-full bg-white shadow" />
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={active}
+                            onClick={() => handleToggle(t, !active)}
+                            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                              active ? 'bg-emerald-500' : 'bg-gray-300'
                             }`}
-                          />
-                        </button>
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
+                                active ? 'translate-x-5' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1 justify-end relative">
+                          {!t.isLocalDraft ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                setViewing(t);
+                              }}
+                              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => {
-                              setMenuOpenId(null);
-                              setViewing(t);
-                            }}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-                            title="View details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
+                              if (t.isLocalDraft) {
+                                try {
+                                  const raw = localStorage.getItem(
+                                    t.draftStorageKey,
+                                  );
+                                  if (!raw) {
+                                    toast.error('Draft no longer available.');
+                                    refreshLocalDrafts();
+                                    return;
+                                  }
+                                  setEditing(null);
+                                  setDraftBootstrapPayload(JSON.parse(raw));
+                                  setModalOpen(true);
+                                } catch {
+                                  toast.error('Could not open draft.');
+                                  refreshLocalDrafts();
+                                }
+                                return;
+                              }
+                              setDraftBootstrapPayload(null);
                               setEditing(t);
                               setModalOpen(true);
                             }}
                             className="p-2 rounded-lg text-blue-600 hover:bg-blue-50"
-                            title="Edit"
+                            title={
+                              t.isLocalDraft ? 'Continue editing draft' : 'Edit'
+                            }
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -948,7 +1107,7 @@ const CustomListings = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setMenuOpenId((id) =>
-                                  id === t._id ? null : t._id,
+                                  id === rowKey ? null : rowKey,
                                 );
                               }}
                               className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
@@ -956,8 +1115,8 @@ const CustomListings = () => {
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
-                            {menuOpenId === t._id ? (
-                              <div className="absolute right-0 mt-1 w-40 rounded-xl border border-gray-200 bg-white shadow-lg z-20 py-1">
+                            {menuOpenId === rowKey ? (
+                              <div className="absolute right-0 mt-1 w-44 rounded-xl border border-gray-200 bg-white shadow-lg z-20 py-1">
                                 <button
                                   type="button"
                                   className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -967,7 +1126,7 @@ const CustomListings = () => {
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                  Delete
+                                  {t.isLocalDraft ? 'Delete draft' : 'Delete'}
                                 </button>
                               </div>
                             ) : null}
@@ -1011,6 +1170,7 @@ const CustomListings = () => {
         onClose={() => {
           setModalOpen(false);
           setEditing(null);
+          setDraftBootstrapPayload(null);
         }}
         onSubmit={editing ? handleUpdate : handleCreate}
         mode={editing ? 'edit' : 'create'}
@@ -1024,8 +1184,17 @@ const CustomListings = () => {
         showAdminListingFlags
         flexibleListingForm
         subtitle="Custom specs & per-variant media, specifications, and rental"
-        submitCreateLabel="Save listing template"
+        submitCreateLabel="Publish"
         submitEditLabel="Update listing template"
+        submitPrimaryClassName="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+        draftStorageKey="rentnpay:customListingTemplateDraft"
+        draftBootstrapPayload={draftBootstrapPayload}
+        onSaveDraft={() => {
+          refreshLocalDrafts();
+          setModalOpen(false);
+          setEditing(null);
+          setDraftBootstrapPayload(null);
+        }}
       />
 
       {viewing ? (
@@ -1040,14 +1209,28 @@ const CustomListings = () => {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900">
-                Delete listing template
+                {deleteTarget.isLocalDraft
+                  ? 'Delete saved draft'
+                  : 'Delete listing template'}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Remove{' '}
-                <span className="font-medium text-gray-800">
-                  {deleteTarget.productName}
-                </span>
-                ? This does not delete vendor products.
+                {deleteTarget.isLocalDraft ? (
+                  <>
+                    Remove the in-progress listing{' '}
+                    <span className="font-medium text-gray-800">
+                      {deleteTarget.productName}
+                    </span>{' '}
+                    from this browser? It is not published yet.
+                  </>
+                ) : (
+                  <>
+                    Remove{' '}
+                    <span className="font-medium text-gray-800">
+                      {deleteTarget.productName}
+                    </span>
+                    ? This does not delete vendor products.
+                  </>
+                )}
               </p>
             </div>
             <div className="px-5 py-4 flex justify-end gap-2">

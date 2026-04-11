@@ -1,13 +1,18 @@
 import ListingTemplate from '../../models/ListingTemplate.js';
 import SellListingTemplate from '../../models/SellListingTemplate.js';
 
-/** Vendors can browse active admin listing templates to clone into their own products. */
+const vendorTemplateActiveQuery = () => ({
+  /** Admin “toggle off” sets `isActive: false`; hide those from vendor catalog. */
+  isActive: { $ne: false },
+});
+
+/** Vendors can browse admin listing templates that are still enabled for vendors. */
 export const listListingTemplatesForVendor = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim().toLowerCase();
     const requestedType = String(req.query.type || '').trim().toLowerCase();
     const Model = requestedType === 'sell' ? SellListingTemplate : ListingTemplate;
-    const listingTemplates = await Model.find({ isActive: true })
+    const listingTemplates = await Model.find(vendorTemplateActiveQuery())
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();
@@ -37,26 +42,27 @@ export const listListingTemplatesForVendor = async (req, res) => {
 export const getListingTemplateForVendor = async (req, res) => {
   try {
     const requestedType = String(req.query.type || '').trim().toLowerCase();
+    const active = vendorTemplateActiveQuery();
     let doc = null;
     if (requestedType === 'sell') {
       doc = await SellListingTemplate.findOne({
         _id: req.params.id,
-        isActive: true,
+        ...active,
       }).lean();
     } else if (requestedType === 'rental') {
       doc = await ListingTemplate.findOne({
         _id: req.params.id,
-        isActive: true,
+        ...active,
       }).lean();
     } else {
       doc = await ListingTemplate.findOne({
         _id: req.params.id,
-        isActive: true,
+        ...active,
       }).lean();
       if (!doc) {
         doc = await SellListingTemplate.findOne({
           _id: req.params.id,
-          isActive: true,
+          ...active,
         }).lean();
       }
     }
