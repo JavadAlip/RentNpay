@@ -29,8 +29,11 @@ const vendorKycSchema = new mongoose.Schema(
       gstin: { type: String, default: '', trim: true },
       primaryContactNumber: { type: String, default: '', trim: true },
       secondaryContactNumber: { type: String, default: '', trim: true },
-      shopActLicense: { type: String, default: '' },
-      gstCertificate: { type: String, default: '' },
+        shopActLicense: { type: String, default: '' },
+        /** Original client filename for display (URL last segment is often a Cloudinary id). */
+        shopActLicenseFileName: { type: String, default: '', trim: true },
+        gstCertificate: { type: String, default: '' },
+        gstCertificateFileName: { type: String, default: '', trim: true },
     },
     bankDetails: {
       accountHolderName: { type: String, default: '', trim: true },

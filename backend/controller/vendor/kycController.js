@@ -79,14 +79,10 @@ export const submitMyKyc = async (req, res) => {
       getUploadedFile(req, 'aadhaarBack'),
       'vendor-kyc',
     );
-    const shopActLicense = await uploadFileIfExists(
-      getUploadedFile(req, 'shopActLicense'),
-      'vendor-kyc',
-    );
-    const gstCertificate = await uploadFileIfExists(
-      getUploadedFile(req, 'gstCertificate'),
-      'vendor-kyc',
-    );
+    const shopActLicenseFile = getUploadedFile(req, 'shopActLicense');
+    const shopActLicense = await uploadFileIfExists(shopActLicenseFile, 'vendor-kyc');
+    const gstCertificateFile = getUploadedFile(req, 'gstCertificate');
+    const gstCertificate = await uploadFileIfExists(gstCertificateFile, 'vendor-kyc');
     const cancelledCheque = await uploadFileIfExists(
       getUploadedFile(req, 'cancelledCheque'),
       'vendor-kyc',
@@ -146,6 +142,17 @@ export const submitMyKyc = async (req, res) => {
       (e) => e && e.status === 'reupload_requested',
     );
 
+    const shopActLicenseFileNameBody = String(
+      req.body.shopActLicenseFileName || '',
+    )
+      .trim()
+      .slice(0, 255);
+    const gstCertificateFileNameBody = String(
+      req.body.gstCertificateFileName || '',
+    )
+      .trim()
+      .slice(0, 255);
+
     const next = {
       vendorId: req.vendor._id,
       fullName: fullName ?? existing?.fullName ?? '',
@@ -177,8 +184,20 @@ export const submitMyKyc = async (req, res) => {
           '',
         shopActLicense:
           shopActLicense || existing?.businessDetails?.shopActLicense || '',
+        shopActLicenseFileName: shopActLicense
+          ? shopActLicenseFileNameBody ||
+            String(shopActLicenseFile?.originalname || '').slice(0, 255) ||
+            existing?.businessDetails?.shopActLicenseFileName ||
+            ''
+          : existing?.businessDetails?.shopActLicenseFileName || '',
         gstCertificate:
           gstCertificate || existing?.businessDetails?.gstCertificate || '',
+        gstCertificateFileName: gstCertificate
+          ? gstCertificateFileNameBody ||
+            String(gstCertificateFile?.originalname || '').slice(0, 255) ||
+            existing?.businessDetails?.gstCertificateFileName ||
+            ''
+          : existing?.businessDetails?.gstCertificateFileName || '',
       },
       bankDetails: {
         accountHolderName:
@@ -203,35 +222,40 @@ export const submitMyKyc = async (req, res) => {
             ? true
             : existing?.storeManagement?.commissionAccepted || false,
       },
-      sectionsCompleted: {
-        personal:
-          Boolean(fullName || existing?.fullName) &&
-          Boolean(dateOfBirth || existing?.dateOfBirth) &&
-          Boolean(permanentAddress || existing?.permanentAddress) &&
-          Boolean(contactNumber || existing?.contactNumber) &&
-          Boolean(panNumber || existing?.panNumber) &&
-          Boolean(aadhaarNumber || existing?.aadhaarNumber),
-        business:
-          Boolean(shopName || existing?.businessDetails?.shopName) &&
-          Boolean(businessCategory || existing?.businessDetails?.businessCategory) &&
-          Boolean(shopActNumber || existing?.businessDetails?.shopActNumber),
-        banking:
-          Boolean(accountHolderName || existing?.bankDetails?.accountHolderName) &&
-          Boolean(accountNumber || existing?.bankDetails?.accountNumber) &&
-          Boolean(confirmAccountNumber || existing?.bankDetails?.confirmAccountNumber) &&
-          Boolean(ifscCode || existing?.bankDetails?.ifscCode),
-        store:
-          (storesParsed.length > 0 ||
-            (existing?.storeManagement?.stores || []).length > 0) &&
-          (String(slaAccepted) === 'true' ||
-            Boolean(existing?.storeManagement?.slaAccepted)) &&
-          (String(commissionAccepted) === 'true' ||
-            Boolean(existing?.storeManagement?.commissionAccepted)),
-      },
       currentStep: stepNum,
       status: 'draft',
       applicationSubmitted: false,
       documentReviews: docReviews,
+    };
+
+    const hasStr = (v) => String(v ?? '').trim().length > 0;
+    const hasDob = (v) => {
+      if (v == null || v === '') return false;
+      if (v instanceof Date) return !Number.isNaN(v.getTime());
+      return String(v).trim().length > 0;
+    };
+
+    next.sectionsCompleted = {
+      personal:
+        hasStr(next.fullName) &&
+        hasDob(next.dateOfBirth) &&
+        hasStr(next.permanentAddress) &&
+        hasStr(next.contactNumber) &&
+        hasStr(next.panNumber) &&
+        hasStr(next.aadhaarNumber),
+      business:
+        hasStr(next.businessDetails?.shopName) &&
+        hasStr(next.businessDetails?.businessCategory) &&
+        hasStr(next.businessDetails?.shopActNumber),
+      banking:
+        hasStr(next.bankDetails?.accountHolderName) &&
+        hasStr(next.bankDetails?.accountNumber) &&
+        hasStr(next.bankDetails?.confirmAccountNumber) &&
+        hasStr(next.bankDetails?.ifscCode),
+      store:
+        (next.storeManagement?.stores || []).length > 0 &&
+        next.storeManagement.slaAccepted === true &&
+        next.storeManagement.commissionAccepted === true,
     };
 
     if (!isFinalSubmit) {
@@ -240,15 +264,20 @@ export const submitMyKyc = async (req, res) => {
     }
 
     if (isFinalSubmit) {
-      if (
-        !next.sectionsCompleted.personal ||
-        !next.sectionsCompleted.business ||
-        !next.sectionsCompleted.banking ||
-        !next.sectionsCompleted.store
-      ) {
-        return res
-          .status(400)
-          .json({ message: 'Please complete all KYC steps before final submit.' });
+      const sc = next.sectionsCompleted;
+      if (!sc.personal || !sc.business || !sc.banking || !sc.store) {
+        const missing = [];
+        if (!sc.personal) missing.push('Step 1 · Proprietor (all fields + date of birth)');
+        if (!sc.business) missing.push('Step 2 · Business (shop name, category, shop act no.)');
+        if (!sc.banking) missing.push('Step 3 · Banking (account details + IFSC)');
+        if (!sc.store) {
+          missing.push(
+            'Step 4 · At least one store and both checkboxes: Terms of Service and Commission policy',
+          );
+        }
+        return res.status(400).json({
+          message: `Cannot submit yet. ${missing.join(' ')}`,
+        });
       }
       if (next.bankDetails.accountNumber !== next.bankDetails.confirmAccountNumber) {
         return res

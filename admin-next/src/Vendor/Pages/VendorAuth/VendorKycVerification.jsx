@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
+  ArrowLeft,
   Camera,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
   CreditCard,
   ExternalLink,
@@ -37,6 +40,7 @@ import personalInfoIcon from '@/assets/icons/personal-info.png';
 import welcomeKitIcon from '@/assets/icons/welcome-kit.png';
 import step1Icon from '@/assets/icons/step1.png';
 import secureFooterIcon from '@/assets/icons/secure.png';
+import saveStoreIcon from '@/assets/icons/save-store.png';
 import step2Icon from '@/assets/icons/step2.png';
 import serviceModeHeadingIcon from '@/assets/icons/service-mode.png';
 import shopHeadingIcon from '@/assets/icons/shop.png';
@@ -112,7 +116,10 @@ const emptyStore = {
   mapLng: null,
   shopFrontPhotoName: '',
   shopFrontPhotoFile: null,
+  shopFrontPhotoUrl: '',
   additionalPhotoNames: [],
+  additionalPhotoUrls: [],
+  additionalPhotoFiles: [],
   deliveryZoneType: 'pan-india',
   serviceRadiusKm: 15,
   serviceModeLocalDelivery: true,
@@ -122,6 +129,91 @@ const emptyStore = {
   isActive: true,
   allowsWalkIn: false,
   storeTimings: '',
+};
+
+/** Avoid mutating shared `emptyStore` array refs when resetting the modal draft. */
+const freshEmptyStore = () => ({
+  ...emptyStore,
+  additionalPhotoNames: [],
+  additionalPhotoUrls: [],
+  additionalPhotoFiles: [],
+});
+
+const alignStoreAdditionalPhotoArrays = (store) => {
+  const names = Array.isArray(store?.additionalPhotoNames)
+    ? [...store.additionalPhotoNames]
+    : [];
+  const urls = Array.isArray(store?.additionalPhotoUrls)
+    ? [...store.additionalPhotoUrls]
+    : [];
+  const rawFiles = Array.isArray(store?.additionalPhotoFiles)
+    ? [...store.additionalPhotoFiles]
+    : [];
+  const L = Math.max(names.length, urls.length, rawFiles.length);
+  while (names.length < L) names.push('');
+  while (urls.length < L) urls.push('');
+  while (rawFiles.length < L) rawFiles.push(null);
+  for (let i = 0; i < L; i++) {
+    if (!names[i] && urls[i]) {
+      const seg = String(urls[i]).split('/').pop() || 'Photo';
+      try {
+        names[i] = decodeURIComponent(String(seg).split('?')[0] || 'Photo');
+      } catch {
+        names[i] = 'Photo';
+      }
+    }
+  }
+  return { names, urls, files: rawFiles };
+};
+
+const storesJsonForPayload = (stores) =>
+  JSON.stringify(
+    (stores || []).map((s) => {
+      const { shopFrontPhotoFile, additionalPhotoFiles, ...rest } = s;
+      return rest;
+    }),
+  );
+
+const isShopFrontFileLike = (x) =>
+  x instanceof File ||
+  (Boolean(x) &&
+    typeof x === 'object' &&
+    typeof x.name === 'string' &&
+    typeof x.size === 'number');
+
+/** All required Configure Store Settings fields before Save Store is allowed. */
+const validateDraftStoreComplete = (d) => {
+  if (!String(d?.storeName || '').trim()) {
+    return { ok: false, message: 'Please enter the store name.' };
+  }
+  if (!String(d?.completeAddress || '').trim()) {
+    return { ok: false, message: 'Please enter the complete address.' };
+  }
+  const pinDigits = String(d?.pincode || '').replace(/\D/g, '');
+  if (pinDigits.length < 5 || pinDigits.length > 6) {
+    return {
+      ok: false,
+      message: 'Please enter a valid postal code (5 or 6 digits).',
+    };
+  }
+  const hasShopFront =
+    isShopFrontFileLike(d.shopFrontPhotoFile) ||
+    Boolean(String(d.shopFrontPhotoUrl || '').trim()) ||
+    Boolean(String(d.shopFrontPhotoName || '').trim());
+  if (!hasShopFront) {
+    return {
+      ok: false,
+      message: 'Please upload the store front photo with signboard.',
+    };
+  }
+  if (d.allowsWalkIn && !String(d.storeTimings || '').trim()) {
+    return {
+      ok: false,
+      message:
+        'Walk-in is on — please enter store timings, or turn off walk-in.',
+    };
+  }
+  return { ok: true, message: '' };
 };
 
 export default function VendorKycVerification() {
@@ -135,9 +227,11 @@ export default function VendorKycVerification() {
   const [status, setStatus] = useState('');
   const [step, setStep] = useState(1);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
-  const [draftStore, setDraftStore] = useState(emptyStore);
+  const [draftStore, setDraftStore] = useState(() => freshEmptyStore());
   const [editingStoreIdx, setEditingStoreIdx] = useState(-1);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  /** Index of store pending removal — `null` when confirm modal is closed */
+  const [storeDeleteConfirmIdx, setStoreDeleteConfirmIdx] = useState(null);
   const [mapQuery, setMapQuery] = useState('');
   const [mapResults, setMapResults] = useState([]);
   const [mapSearching, setMapSearching] = useState(false);
@@ -176,6 +270,8 @@ export default function VendorKycVerification() {
   const [persistedBusinessDocs, setPersistedBusinessDocs] = useState({
     shopActLicense: '',
     gstCertificate: '',
+    shopActLicenseFileName: '',
+    gstCertificateFileName: '',
   });
   const [persistedBankDocs, setPersistedBankDocs] = useState({
     cancelledCheque: '',
@@ -207,6 +303,10 @@ export default function VendorKycVerification() {
         setPersistedBusinessDocs({
           shopActLicense: kyc.businessDetails?.shopActLicense || '',
           gstCertificate: kyc.businessDetails?.gstCertificate || '',
+          shopActLicenseFileName:
+            kyc.businessDetails?.shopActLicenseFileName || '',
+          gstCertificateFileName:
+            kyc.businessDetails?.gstCertificateFileName || '',
         });
         setPersistedBankDocs({
           cancelledCheque: kyc.bankDetails?.cancelledCheque || '',
@@ -248,13 +348,36 @@ export default function VendorKycVerification() {
       .finally(() => setLoading(false));
   }, []);
 
+  const additionalPhotoBlobUrls = useMemo(
+    () =>
+      (draftStore.additionalPhotoFiles || []).map((f) =>
+        f instanceof File ? URL.createObjectURL(f) : '',
+      ),
+    [draftStore.additionalPhotoFiles],
+  );
+
+  useEffect(() => {
+    return () => {
+      additionalPhotoBlobUrls.forEach((u) => {
+        if (u && String(u).startsWith('blob:')) URL.revokeObjectURL(u);
+      });
+    };
+  }, [additionalPhotoBlobUrls]);
+
+  const storeModalSaveCheck = validateDraftStoreComplete(draftStore);
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
       const f = files[0] || null;
       setForm((prev) => ({ ...prev, [name]: f }));
       if (f) {
-        const isImage = String(f.type || '').startsWith('image/');
+        const ext = String(f.name || '').toLowerCase();
+        const extLooksImage =
+          /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(ext);
+        const isImage =
+          String(f.type || '').startsWith('image/') ||
+          (String(f.type || '') === '' && extLooksImage);
         const skipPreviewUrl = [
           'panPhoto',
           'aadhaarFront',
@@ -265,15 +388,21 @@ export default function VendorKycVerification() {
         ].includes(name);
         const objectUrl =
           !skipPreviewUrl && isImage ? URL.createObjectURL(f) : '';
-        setFilePreviews((prev) => ({
-          ...prev,
-          [name]: {
-            name: f.name,
-            type: f.type || '',
-            url: objectUrl,
-            isImage: skipPreviewUrl ? false : isImage,
-          },
-        }));
+        setFilePreviews((prev) => {
+          const oldUrl = prev[name]?.url;
+          if (oldUrl && String(oldUrl).startsWith('blob:')) {
+            URL.revokeObjectURL(oldUrl);
+          }
+          return {
+            ...prev,
+            [name]: {
+              name: f.name,
+              type: f.type || '',
+              url: objectUrl,
+              isImage: skipPreviewUrl ? false : isImage,
+            },
+          };
+        });
       }
       return;
     }
@@ -338,7 +467,7 @@ export default function VendorKycVerification() {
       payload.append('accountNumber', form.accountNumber);
       payload.append('confirmAccountNumber', form.confirmAccountNumber);
       payload.append('ifscCode', form.ifscCode);
-      payload.append('stores', JSON.stringify(form.stores || []));
+      payload.append('stores', storesJsonForPayload(form.stores || []));
       payload.append('slaAccepted', form.slaAccepted ? 'true' : 'false');
       payload.append(
         'commissionAccepted',
@@ -348,10 +477,14 @@ export default function VendorKycVerification() {
       if (form.panPhoto) payload.append('panPhoto', form.panPhoto);
       if (form.aadhaarFront) payload.append('aadhaarFront', form.aadhaarFront);
       if (form.aadhaarBack) payload.append('aadhaarBack', form.aadhaarBack);
-      if (form.shopActLicense)
+      if (form.shopActLicense instanceof File) {
         payload.append('shopActLicense', form.shopActLicense);
-      if (form.gstCertificate)
+        payload.append('shopActLicenseFileName', form.shopActLicense.name);
+      }
+      if (form.gstCertificate instanceof File) {
         payload.append('gstCertificate', form.gstCertificate);
+        payload.append('gstCertificateFileName', form.gstCertificate.name);
+      }
       if (form.cancelledCheque)
         payload.append('cancelledCheque', form.cancelledCheque);
 
@@ -375,15 +508,41 @@ export default function VendorKycVerification() {
         setPersistedBusinessDocs({
           shopActLicense: savedKyc.businessDetails?.shopActLicense || '',
           gstCertificate: savedKyc.businessDetails?.gstCertificate || '',
+          shopActLicenseFileName:
+            savedKyc.businessDetails?.shopActLicenseFileName || '',
+          gstCertificateFileName:
+            savedKyc.businessDetails?.gstCertificateFileName || '',
         });
         setPersistedBankDocs({
           cancelledCheque: savedKyc.bankDetails?.cancelledCheque || '',
+        });
+        setFilePreviews((prev) => {
+          const next = { ...prev };
+          for (const key of [
+            'ownerPhoto',
+            'panPhoto',
+            'aadhaarFront',
+            'aadhaarBack',
+          ]) {
+            const u = next[key]?.url;
+            if (u && String(u).startsWith('blob:')) URL.revokeObjectURL(u);
+            delete next[key];
+          }
+          return next;
         });
       }
       const nextStatus = res.data?.kyc?.status || '';
       if (nextStatus) setStatus(nextStatus);
       setForm((prev) => ({
         ...prev,
+        ...(savedKyc
+          ? {
+              ownerPhoto: null,
+              panPhoto: null,
+              aadhaarFront: null,
+              aadhaarBack: null,
+            }
+          : {}),
         stores: (prev.stores || []).map((s) => ({
           ...s,
           shopFrontPhotoFile: null,
@@ -397,16 +556,38 @@ export default function VendorKycVerification() {
         setStep(targetStep);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit KYC');
+      const msg = err.response?.data?.message || 'Failed to submit KYC';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
       setSavingKind(null);
     }
   };
 
+  const removeDraftAdditionalPhoto = (index) => {
+    setDraftStore((p) => {
+      const names = [...(p.additionalPhotoNames || [])];
+      const urls = [...(p.additionalPhotoUrls || [])];
+      const files = [...(p.additionalPhotoFiles || [])];
+      names.splice(index, 1);
+      urls.splice(index, 1);
+      files.splice(index, 1);
+      return {
+        ...p,
+        additionalPhotoNames: names,
+        additionalPhotoUrls: urls,
+        additionalPhotoFiles: files,
+      };
+    });
+  };
+
   const addStore = () => {
-    if (!draftStore.storeName.trim() || !draftStore.completeAddress.trim())
+    const check = validateDraftStoreComplete(draftStore);
+    if (!check.ok) {
+      toast.error(check.message);
       return;
+    }
     const wasEditing = editingStoreIdx >= 0;
     const expandIdx = wasEditing ? editingStoreIdx : form.stores.length;
     setForm((prev) => {
@@ -421,14 +602,22 @@ export default function VendorKycVerification() {
       return { ...prev, stores: [...prev.stores, draftStore] };
     });
     setExpandedStoreIdx(expandIdx);
-    setDraftStore(emptyStore);
+    setDraftStore(freshEmptyStore());
     setEditingStoreIdx(-1);
     setIsStoreModalOpen(false);
   };
 
   const onEditStore = (idx) => {
     setEditingStoreIdx(idx);
-    setDraftStore({ ...emptyStore, ...(form.stores[idx] || {}) });
+    const s = form.stores[idx] || {};
+    const { names, urls, files } = alignStoreAdditionalPhotoArrays(s);
+    setDraftStore({
+      ...emptyStore,
+      ...s,
+      additionalPhotoNames: names,
+      additionalPhotoUrls: urls,
+      additionalPhotoFiles: files,
+    });
     setIsStoreModalOpen(true);
   };
 
@@ -446,10 +635,20 @@ export default function VendorKycVerification() {
     });
   };
 
+  const confirmDeletePendingStore = () => {
+    if (storeDeleteConfirmIdx === null) return;
+    if (!form.stores[storeDeleteConfirmIdx]) {
+      setStoreDeleteConfirmIdx(null);
+      return;
+    }
+    onDeleteStore(storeDeleteConfirmIdx);
+    setStoreDeleteConfirmIdx(null);
+  };
+
   const closeStoreModal = () => {
     setIsStoreModalOpen(false);
     setEditingStoreIdx(-1);
-    setDraftStore(emptyStore);
+    setDraftStore(freshEmptyStore());
   };
 
   const searchMapLocations = async () => {
@@ -471,17 +670,19 @@ export default function VendorKycVerification() {
   };
 
   const selectMapLocation = (place) => {
-    const lat = Number(place?.lat || 0);
-    const lng = Number(place?.lon || 0);
+    const lat = Number(place?.lat);
+    const lng = Number(place?.lon);
     const display = String(place?.display_name || '');
     const mapLink =
-      lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? `https://maps.google.com/?q=${lat},${lng}`
+        : '';
     setDraftStore((prev) => ({
       ...prev,
       mapLocation: mapLink,
       mapAddress: display,
-      mapLat: lat || null,
-      mapLng: lng || null,
+      mapLat: Number.isFinite(lat) ? lat : null,
+      mapLng: Number.isFinite(lng) ? lng : null,
     }));
     setIsMapModalOpen(false);
   };
@@ -686,6 +887,55 @@ export default function VendorKycVerification() {
     return { ok: true };
   };
 
+  const validateStep4ForFinalSubmit = () => {
+    if (!form.slaAccepted) {
+      return {
+        ok: false,
+        message: 'Please tick I agree to the Terms of Service.',
+      };
+    }
+    if (!form.commissionAccepted) {
+      return {
+        ok: false,
+        message: 'Please tick I accept the Platform Commission policy.',
+      };
+    }
+    if (!Array.isArray(form.stores) || form.stores.length === 0) {
+      return {
+        ok: false,
+        message: 'Please create at least one store.',
+      };
+    }
+    return { ok: true, message: '' };
+  };
+
+  const handleFinalSubmitApplication = () => {
+    const v1 = validateProprietorInformation();
+    if (!v1.ok) {
+      toast.error(v1.message);
+      setStep(1);
+      return;
+    }
+    const v2 = validateBusinessDetails();
+    if (!v2.ok) {
+      toast.error(v2.message);
+      setStep(2);
+      return;
+    }
+    const v3 = validateBankingDetails();
+    if (!v3.ok) {
+      toast.error(v3.message);
+      setStep(3);
+      return;
+    }
+    const v4 = validateStep4ForFinalSubmit();
+    if (!v4.ok) {
+      toast.error(v4.message);
+      return;
+    }
+    saveStep({ targetStep: 4, finalSubmit: true });
+  };
+
   const handleSaveAndContinue = () => {
     if (step === 1) {
       const check = validateProprietorInformation();
@@ -731,6 +981,11 @@ export default function VendorKycVerification() {
     Boolean(filePreviews[field]?.name) ||
     Boolean(String(persistedProprietorDocs[field] || '').trim());
 
+  const ownerPhotoPreviewUrl =
+    filePreviews.ownerPhoto?.isImage && filePreviews.ownerPhoto?.url
+      ? filePreviews.ownerPhoto.url
+      : String(persistedProprietorDocs.ownerPhoto || '').trim();
+
   const renderIdentityDocFilename = (field) => {
     const fn = getIdentityDocFilename(field);
     if (!fn) return null;
@@ -749,6 +1004,8 @@ export default function VendorKycVerification() {
     if (f instanceof File) return f.name;
     const meta = filePreviews[field];
     if (meta?.name) return meta.name;
+    const displayName = persistedBusinessDocs[`${field}FileName`];
+    if (String(displayName || '').trim()) return String(displayName).trim();
     const saved = persistedBusinessDocs[field];
     if (!String(saved || '').trim()) return '';
     const seg = saved.split('/').pop() || saved;
@@ -1340,10 +1597,9 @@ export default function VendorKycVerification() {
                       className="relative h-20 w-20 shrink-0 cursor-pointer"
                     >
                       <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-gray-200 bg-gray-50">
-                        {filePreviews.ownerPhoto?.isImage &&
-                        filePreviews.ownerPhoto?.url ? (
+                        {ownerPhotoPreviewUrl ? (
                           <img
-                            src={filePreviews.ownerPhoto.url}
+                            src={ownerPhotoPreviewUrl}
                             alt="Owner preview"
                             className="h-full w-full object-cover"
                           />
@@ -1355,10 +1611,7 @@ export default function VendorKycVerification() {
                           />
                         )}
                       </div>
-                      {!(
-                        filePreviews.ownerPhoto?.isImage &&
-                        filePreviews.ownerPhoto?.url
-                      ) ? (
+                      {!ownerPhotoPreviewUrl ? (
                         <span
                           className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-white shadow-md ring-2 ring-white"
                           aria-hidden
@@ -1373,23 +1626,34 @@ export default function VendorKycVerification() {
                         className="inline-block cursor-pointer"
                       >
                         <span className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                          Upload Image
+                          {hasIdentityDoc('ownerPhoto')
+                            ? 'Reupload Image'
+                            : 'Upload Image'}
                         </span>
                       </label>
                       <p className="text-[11px] text-gray-500">
                         JPG or PNG - Max 3MB - Face clearly visible
                       </p>
-                      {filePreviews.ownerPhoto?.name ? (
-                        <p className="text-[11px] text-emerald-600 truncate max-w-xs">
-                          Selected: {filePreviews.ownerPhoto.name}
-                        </p>
-                      ) : null}
+                      {(() => {
+                        const fn = getIdentityDocFilename('ownerPhoto');
+                        if (!fn) return null;
+                        return (
+                          <p
+                            className="text-[11px] text-emerald-600 truncate max-w-xs"
+                            title={fn}
+                          >
+                            {form.ownerPhoto instanceof File
+                              ? `Selected: ${fn}`
+                              : fn}
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex items-start gap-2.5">
+                  <div className="flex items-center gap-2.5">
                     {renderPersonalInfoPngIcon()}
                     <h3 className="text-base font-semibold text-gray-900">
                       Personal Information
@@ -2139,7 +2403,7 @@ export default function VendorKycVerification() {
                   type="button"
                   onClick={() => {
                     setEditingStoreIdx(-1);
-                    setDraftStore(emptyStore);
+                    setDraftStore(freshEmptyStore());
                     setIsStoreModalOpen(true);
                   }}
                   className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -2244,7 +2508,7 @@ export default function VendorKycVerification() {
                             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                               Configuration:
                             </p>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-stretch">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
                               <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
                                 <div className="mb-3 flex items-center gap-2">
                                   {renderStoreServiceModePngIcon()}
@@ -2252,7 +2516,7 @@ export default function VendorKycVerification() {
                                     Service Mode:
                                   </p>
                                 </div>
-                                <div className="flex min-h-0 flex-1 flex-col gap-2">
+                                <div className="flex flex-col gap-2">
                                   <div
                                     className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
                                       s.serviceModePanIndia
@@ -2315,7 +2579,7 @@ export default function VendorKycVerification() {
                                   </p>
                                 </div>
                                 <div
-                                  className={`flex flex-1 items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
+                                  className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
                                     walkInNoPublic
                                       ? 'border-blue-500 bg-blue-50'
                                       : 'border-gray-200 bg-white'
@@ -2337,7 +2601,9 @@ export default function VendorKycVerification() {
                                     ) : null}
                                   </span>
                                   <span className="text-sm font-medium text-gray-900">
-                                    No Public Access
+                                    {walkInNoPublic
+                                      ? 'No Public Access'
+                                      : s.walkInAccessLabel || 'Public Access'}
                                   </span>
                                 </div>
                               </div>
@@ -2360,7 +2626,7 @@ export default function VendorKycVerification() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => onDeleteStore(i)}
+                                onClick={() => setStoreDeleteConfirmIdx(i)}
                                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 sm:px-5"
                               >
                                 <Trash2 className="h-4 w-4" strokeWidth={2} />
@@ -2460,7 +2726,7 @@ export default function VendorKycVerification() {
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => saveStep({ targetStep: 4, finalSubmit: true })}
+                onClick={handleFinalSubmitApplication}
                 className="w-full rounded-xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60 sm:py-3.5"
               >
                 {saving && savingKind === 'submit' ? (
@@ -2489,23 +2755,37 @@ export default function VendorKycVerification() {
                 type="button"
                 disabled={saving || step === 1}
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
-                className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
               >
+                <ArrowLeft
+                  className="h-4 w-4 shrink-0 opacity-80"
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
                 Previous Step
               </button>
               <button
                 type="button"
                 disabled={saving}
                 onClick={handleSaveAndContinue}
-                className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
               >
-                {saving && savingKind === 'continue'
-                  ? 'Saving...'
-                  : step === 2
-                    ? 'Continue to Bank Details'
-                    : step === 3
-                      ? 'Continue to Store Management'
-                      : 'Save & Continue'}
+                {saving && savingKind === 'continue' ? (
+                  'Saving...'
+                ) : (
+                  <>
+                    {step === 2
+                      ? 'Continue to Bank Details'
+                      : step === 3
+                        ? 'Continue to Store Management'
+                        : 'Save & Continue'}
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 opacity-95"
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -2514,8 +2794,8 @@ export default function VendorKycVerification() {
 
       {isStoreModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
-            <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editingStoreIdx >= 0
                   ? 'Edit Store Settings'
@@ -2530,7 +2810,8 @@ export default function VendorKycVerification() {
                 <X className="h-5 w-5" strokeWidth={2} />
               </button>
             </div>
-            <div className="mt-4 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+              <div className="space-y-4">
               <div className="space-y-3 rounded-xl border-2 border-sky-200 bg-sky-50/40 p-4">
                 <div className="flex items-center gap-2.5">
                   {renderStoreCfgBasicInfoIcon()}
@@ -2649,7 +2930,7 @@ export default function VendorKycVerification() {
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold  tracking-wide text-emerald-700">
                     {renderStoreCfgVerifiedShieldIcon()}
                     For Verified Badge
                   </span>
@@ -2684,7 +2965,11 @@ export default function VendorKycVerification() {
                         <Camera className="h-7 w-7" strokeWidth={1.75} />
                       </span>
                       <span className="text-sm font-bold text-gray-900">
-                        Upload Store Front Photo
+                        {draftStore.shopFrontPhotoFile instanceof File ||
+                        String(draftStore.shopFrontPhotoUrl || '').trim() ||
+                        String(draftStore.shopFrontPhotoName || '').trim()
+                          ? 'Reupload Store Front Photo'
+                          : 'Upload Store Front Photo'}
                       </span>
                       <span className="text-xs text-gray-600">
                         Clear photo showing shop name board
@@ -2706,49 +2991,130 @@ export default function VendorKycVerification() {
                     <label className="block text-sm font-semibold text-gray-900">
                       Additional Store Photos (Optional)
                     </label>
-                    <input
-                      id="kyc-modal-additional-photos-file"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="sr-only"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []).slice(
-                          0,
-                          4,
-                        );
-                        setDraftStore((p) => ({
-                          ...p,
-                          additionalPhotoNames: files.map((file) => file.name),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor="kyc-modal-additional-photos-file"
-                      className="mt-2 flex min-h-[168px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-4 py-8 text-center transition hover:border-slate-400 hover:bg-slate-50"
-                    >
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
-                        <Upload className="h-7 w-7" strokeWidth={1.75} />
-                      </span>
-                      <span className="text-sm font-bold text-gray-900">
-                        Add additional store photos
-                      </span>
-                      <span className="text-xs text-gray-600">
-                        Select up to 4 images — interiors, displays, or signage
-                      </span>
-                      <span className="text-[11px] font-medium text-slate-500">
-                        JPG or PNG • Max 4 photos per upload
-                      </span>
-                    </label>
-                    {draftStore.additionalPhotoNames?.length ? (
-                      <p className="mt-2 text-center text-xs font-medium text-emerald-600">
-                        {draftStore.additionalPhotoNames.length} photo(s)
-                        selected
-                      </p>
-                    ) : null}
-                    <p className="mt-3 text-center text-xs text-gray-500">
-                      Upload interior shots, product displays, etc. (Max 4
-                      photos)
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
+                      <div
+                        className={`w-full shrink-0 sm:w-1/2 sm:max-w-[50%] ${
+                          (draftStore.additionalPhotoNames || []).length >= 4
+                            ? 'opacity-60'
+                            : ''
+                        }`}
+                      >
+                        <input
+                          id="kyc-modal-additional-photos-file"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={
+                            (draftStore.additionalPhotoNames || []).length >= 4
+                          }
+                          className="sr-only"
+                          onChange={(e) => {
+                            const picked = Array.from(e.target.files || []);
+                            setDraftStore((p) => {
+                              const names = [...(p.additionalPhotoNames || [])];
+                              const urls = [...(p.additionalPhotoUrls || [])];
+                              const files = [...(p.additionalPhotoFiles || [])];
+                              const L = Math.max(
+                                names.length,
+                                urls.length,
+                                files.length,
+                              );
+                              while (names.length < L) names.push('');
+                              while (urls.length < L) urls.push('');
+                              while (files.length < L) files.push(null);
+                              for (const file of picked) {
+                                if (names.length >= 4) break;
+                                names.push(file.name);
+                                urls.push('');
+                                files.push(file);
+                              }
+                              return {
+                                ...p,
+                                additionalPhotoNames: names,
+                                additionalPhotoUrls: urls,
+                                additionalPhotoFiles: files,
+                              };
+                            });
+                            e.target.value = '';
+                          }}
+                        />
+                        {(draftStore.additionalPhotoNames || []).length >= 4 ? (
+                          <div className="mt-0 flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
+                              <Upload className="h-6 w-6" strokeWidth={1.75} />
+                            </span>
+                            <span className="text-sm font-bold text-gray-700">
+                              Maximum 4 photos
+                            </span>
+                          </div>
+                        ) : (
+                          <label
+                            htmlFor="kyc-modal-additional-photos-file"
+                            className="mt-0 flex min-h-[140px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center transition hover:border-slate-400 hover:bg-slate-50"
+                          >
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
+                              <Upload className="h-6 w-6" strokeWidth={1.75} />
+                            </span>
+                            <span className="text-sm font-bold text-gray-900">
+                              Add photo
+                            </span>
+                          </label>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                        {(draftStore.additionalPhotoNames || []).map(
+                          (name, i) => {
+                            const file = draftStore.additionalPhotoFiles?.[i];
+                            const url = draftStore.additionalPhotoUrls?.[i];
+                            const blob = additionalPhotoBlobUrls[i];
+                            const src =
+                              file instanceof File && blob
+                                ? blob
+                                : String(url || '').trim()
+                                  ? url
+                                  : '';
+                            return (
+                              <div
+                                key={`additional-ph-${i}-${name}`}
+                                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 shadow-sm"
+                              >
+                                {src ? (
+                                  <img
+                                    src={src}
+                                    alt={`Additional store photo ${i + 1}`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center p-1 text-center text-[10px] leading-tight text-gray-500">
+                                    {name || 'Photo'}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  aria-label={`Remove photo ${i + 1}`}
+                                  onClick={() => removeDraftAdditionalPhoto(i)}
+                                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-md ring-1 ring-white/90 hover:bg-black/70"
+                                >
+                                  <Trash2
+                                    className="h-3.5 w-3.5"
+                                    strokeWidth={2.25}
+                                  />
+                                </button>
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs text-gray-500">
+                      Upload interior shots, product displays, etc. Up to 4
+                      photos.
+                      {(draftStore.additionalPhotoNames || []).length ? (
+                        <span className="ml-1 font-semibold text-emerald-600">
+                          ({(draftStore.additionalPhotoNames || []).length}
+                          /4)
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                 </div>
@@ -3011,15 +3377,38 @@ export default function VendorKycVerification() {
                   </label>
                 </div>
               </div>
+              {!storeModalSaveCheck.ok ? (
+                <p
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                  role="alert"
+                >
+                  {storeModalSaveCheck.message}
+                </p>
+              ) : null}
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   onClick={addStore}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+                  disabled={!storeModalSaveCheck.ok}
+                  title={
+                    storeModalSaveCheck.ok
+                      ? undefined
+                      : storeModalSaveCheck.message
+                  }
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
-                    <Check className="h-5 w-5 text-white" strokeWidth={2.5} />
-                  </span>
+                  <img
+                    src={
+                      typeof saveStoreIcon === 'string'
+                        ? saveStoreIcon
+                        : saveStoreIcon.src
+                    }
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 shrink-0 object-contain"
+                    aria-hidden
+                  />
                   Save Store
                 </button>
                 <button
@@ -3030,6 +3419,55 @@ export default function VendorKycVerification() {
                   Cancel
                 </button>
               </div>
+            </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {storeDeleteConfirmIdx !== null ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4"
+          onClick={() => setStoreDeleteConfirmIdx(null)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-delete-title"
+          >
+            <h3
+              id="store-delete-title"
+              className="text-lg font-semibold text-gray-900"
+            >
+              Remove store?
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              This will remove{' '}
+              <span className="font-semibold text-gray-900">
+                {form.stores[storeDeleteConfirmIdx]?.storeName?.trim() ||
+                  'this store'}
+              </span>{' '}
+              from your locations. You can add it again later with Add New
+              Store.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStoreDeleteConfirmIdx(null)}
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeletePendingStore}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Delete store
+              </button>
             </div>
           </div>
         </div>
