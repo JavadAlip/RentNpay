@@ -17,8 +17,10 @@ const formatDateTime = (d) => {
 };
 
 const riskBadgeClass = (risk) => {
-  if (risk === 'Clean') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (risk.startsWith('Rejected:')) return 'bg-rose-50 text-rose-700 border-rose-200';
+  if (risk === 'Clean')
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (risk.startsWith('Rejected:'))
+    return 'bg-rose-50 text-rose-700 border-rose-200';
   if (risk.toLowerCase().includes('missing')) {
     return 'bg-rose-50 text-rose-700 border-rose-200';
   }
@@ -35,7 +37,10 @@ export default function KycQueue() {
     approved: [],
     rejected: [],
   });
-  const [metrics, setMetrics] = useState({ avgReviewTimeMins: 0, approvalRate: 0 });
+  const [metrics, setMetrics] = useState({
+    avgReviewTimeMins: 0,
+    approvalRate: 0,
+  });
   const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
@@ -57,9 +62,13 @@ export default function KycQueue() {
             rejected: [],
           },
         );
-        setMetrics(res.data?.metrics || { avgReviewTimeMins: 0, approvalRate: 0 });
+        setMetrics(
+          res.data?.metrics || { avgReviewTimeMins: 0, approvalRate: 0 },
+        );
       })
-      .catch((err) => setError(err.response?.data?.message || 'Failed to load KYC queue'))
+      .catch((err) =>
+        setError(err.response?.data?.message || 'Failed to load KYC queue'),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -75,8 +84,12 @@ export default function KycQueue() {
     <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Onboarding Queue</h1>
-          <p className="text-sm text-gray-500 mt-1">Vendor verification & risk assessment workflow</p>
+          <h1 className="text-3xl font-semibold text-gray-900">
+            Onboarding Queue
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Vendor verification & risk assessment workflow
+          </p>
         </div>
         <div className="flex gap-3">
           <div className="bg-white rounded-2xl border border-gray-200 px-4 py-2 text-center min-w-[140px]">
@@ -192,16 +205,25 @@ export default function KycQueue() {
                 <thead className="bg-gray-50">
                   <tr className="text-gray-500">
                     <th className="px-4 py-3 text-left font-medium">DATE</th>
-                    <th className="px-4 py-3 text-left font-medium">VENDOR NAME</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      VENDOR NAME
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">TYPE</th>
-                    <th className="px-4 py-3 text-left font-medium">RISK FACTORS</th>
-                    <th className="px-4 py-3 text-left font-medium">SLA TIMER</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      RISK FACTORS
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      SLA TIMER
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.vendorId} className="border-t border-gray-100">
+                    <tr
+                      key={item.vendorId}
+                      className="border-t border-gray-100"
+                    >
                       <td className="px-4 py-3 text-gray-700">
                         {formatDateTime(item.submittedAt)}
                       </td>
@@ -249,7 +271,10 @@ export default function KycQueue() {
                   ))}
                   {!items.length ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                      <td
+                        colSpan={6}
+                        className="px-4 py-10 text-center text-gray-500"
+                      >
                         No KYC records in this tab.
                       </td>
                     </tr>
@@ -263,4 +288,3 @@ export default function KycQueue() {
     </div>
   );
 }
-

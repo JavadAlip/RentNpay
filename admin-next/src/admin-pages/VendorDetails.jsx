@@ -41,6 +41,125 @@ function kycDocumentsHaveAnyUrl(docs) {
   return (docs || []).some((d) => String(d?.url || '').trim());
 }
 
+function escapeHtmlCell(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function safeExportFileName(name) {
+  const base = String(name || 'vendor')
+    .replace(/[<>:"/\\|?*]+/g, '_')
+    .replace(/\s+/g, '_')
+    .slice(0, 80);
+  return base || 'vendor';
+}
+
+/** Excel opens this HTML as a spreadsheet (no extra npm deps). */
+function buildVendorProfileExportHtml(data, kycDocsForExport) {
+  const v = data.vendor;
+  const summary = data.summary || {};
+  const financials = data.financials || {};
+  const products = data.products || [];
+  const recent = data.recentTransactions || [];
+  const loanHistory = data.loanHistory || [];
+  const moneyStr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+  const parsePrice = (raw) => {
+    const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const row = (label, val) =>
+    `<tr><td>${escapeHtmlCell(label)}</td><td>${escapeHtmlCell(val)}</td></tr>`;
+
+  const profileRows = [
+    row('Vendor code', v.vendorCode),
+    row('Business name', v.fullName),
+    row('Email', v.emailAddress),
+    row('Phone', v.mobileNumber != null ? String(v.mobileNumber) : '-'),
+    row('Referral code', v.referralCode != null ? String(v.referralCode) : '-'),
+    row('KYC status', v.isVerified ? 'Verified' : 'Pending'),
+    row(
+      'Member since',
+      v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-GB') : '-',
+    ),
+    row('Exported at', new Date().toLocaleString('en-IN')),
+  ];
+
+  const summaryRows = [
+    row('Total earnings', moneyStr(summary.totalEarnings)),
+    row('Active products', summary.activeProducts ?? 0),
+    row('Pending settlement', moneyStr(summary.pendingSettlement)),
+    row('Total products', summary.totalProducts ?? 0),
+  ];
+
+  const financialRows = [
+    row('Total earnings', moneyStr(financials.totalEarnings)),
+    row('Pending settlements', moneyStr(financials.pendingSettlement)),
+    row('Last settlement', moneyStr(financials.lastSettlement)),
+  ];
+
+  const kycRows = (kycDocsForExport || [])
+    .map(
+      (d) =>
+        `<tr><td>${escapeHtmlCell(d.title)}</td><td>${escapeHtmlCell(d.status)}</td><td>${escapeHtmlCell(d.url || '')}</td></tr>`,
+    )
+    .join('');
+
+  const productRows = products
+    .map((p) => {
+      const price = moneyStr(parsePrice(p.price));
+      return `<tr><td>${escapeHtmlCell(p.productName)}</td><td>${escapeHtmlCell(p.category)}</td><td>${escapeHtmlCell(price)}</td><td>${escapeHtmlCell(p.stock)}</td><td>${escapeHtmlCell(p.status)}</td></tr>`;
+    })
+    .join('');
+
+  const txRows = recent
+    .map((t) => {
+      const date = t.date ? new Date(t.date).toLocaleDateString('en-GB') : '-';
+      return `<tr><td>${escapeHtmlCell(date)}</td><td>${escapeHtmlCell(t.description)}</td><td>${escapeHtmlCell(moneyStr(t.amount))}</td></tr>`;
+    })
+    .join('');
+
+  const loanNote =
+    loanHistory.length > 0
+      ? `${loanHistory.length} loan record(s) on file.`
+      : 'No loan history records.';
+
+  return `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Vendor</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="2">Vendor profile</th></tr>${profileRows.join('')}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="2">Summary</th></tr>${summaryRows.join('')}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="2">Financials</th></tr>${financialRows.join('')}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="3">KYC documents</th></tr><tr><th>Document</th><th>Status</th><th>URL</th></tr>${kycRows || '<tr><td colspan="3">—</td></tr>'}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="5">Products</th></tr><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th></tr>${productRows || '<tr><td colspan="5">No products</td></tr>'}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th colspan="3">Recent transactions</th></tr><tr><th>Date</th><th>Description</th><th>Amount</th></tr>${txRows || '<tr><td colspan="3">None</td></tr>'}</table>
+<br/>
+<table border="1" cellspacing="0" cellpadding="4"><tr><th>Loan history</th></tr><tr><td>${escapeHtmlCell(loanNote)}</td></tr></table>
+</body></html>`;
+}
+
+function downloadVendorProfileExcel(data, kycDocsForExport) {
+  const html = buildVendorProfileExportHtml(data, kycDocsForExport);
+  const blob = new Blob([`\ufeff${html}`], {
+    type: 'application/vnd.ms-excel;charset=utf-8;',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const name = safeExportFileName(data.vendor?.fullName || data.vendor?.vendorCode);
+  a.href = url;
+  a.download = `${name}_profile.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function VendorDetails({ vendorId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -167,7 +286,11 @@ export default function VendorDetails({ vendorId }) {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-2 rounded-lg border border-gray-300 text-sm">
+            <button
+              type="button"
+              onClick={() => downloadVendorProfileExcel(data, kycDocs)}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+            >
               Export Profile
             </button>
             <button className="px-3 py-2 rounded-lg bg-[#F97316] text-white text-sm">
