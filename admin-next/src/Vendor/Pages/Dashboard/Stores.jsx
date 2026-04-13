@@ -1,31 +1,35 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  FileText,
+  Home,
+  MapPin,
+  Package,
+  Pencil,
+  Shield,
+  Store,
+  Trash2,
+} from 'lucide-react';
+import serviceModeHeadingIcon from '@/assets/icons/service-mode.png';
+import shopHeadingIcon from '@/assets/icons/shop.png';
+import termsHeadingIcon from '@/assets/icons/terms.png';
+import walkInHeadingIcon from '@/assets/icons/walkin.png';
+import { apiGetMyVendorKyc, apiSubmitVendorKyc } from '@/service/api';
+import VendorStoreSettingsModal from '../../Components/VendorStoreSettingsModal';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
-import { apiGetMyVendorKyc, apiSubmitVendorKyc } from '@/service/api';
+import {
+  alignStoreAdditionalPhotoArrays,
+  freshEmptyStore,
+  storesJsonForPayload,
+} from '../../utils/vendorStoreDraft';
 
-const emptyStore = {
-  storeName: '',
-  completeAddress: '',
-  pincode: '',
-  mapLocation: '',
-  mapAddress: '',
-  mapLat: null,
-  mapLng: null,
-  shopFrontPhotoName: '',
-  shopFrontPhotoFile: null,
-  shopFrontPhotoUrl: '',
-  deliveryZoneType: 'pan-india',
-  serviceRadiusKm: 15,
-  serviceModeLocalDelivery: false,
-  serviceModePanIndia: true,
-  walkInAccessLabel: 'No Public Access',
-  isDefault: false,
-  isActive: true,
-  allowsWalkIn: false,
-  storeTimings: '',
-};
+const iconSrc = (mod) => (typeof mod === 'string' ? mod : mod?.src || '');
 
 export default function VendorStoresPage() {
   const [loading, setLoading] = useState(true);
@@ -36,19 +40,24 @@ export default function VendorStoresPage() {
   const [stores, setStores] = useState([]);
   const [slaAccepted, setSlaAccepted] = useState(false);
   const [commissionAccepted, setCommissionAccepted] = useState(false);
-  const [openIdx, setOpenIdx] = useState(-1);
+  const [expandedStoreIdx, setExpandedStoreIdx] = useState(null);
+  const [storeDeleteConfirmIdx, setStoreDeleteConfirmIdx] = useState(null);
 
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
-  const [draftStore, setDraftStore] = useState(emptyStore);
+  const [draftStore, setDraftStore] = useState(() => freshEmptyStore());
   const [editingStoreIdx, setEditingStoreIdx] = useState(-1);
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [mapQuery, setMapQuery] = useState('');
-  const [mapResults, setMapResults] = useState([]);
-  const [mapSearching, setMapSearching] = useState(false);
+
+  const [storeShopIconFailed, setStoreShopIconFailed] = useState(false);
+  const [storeServiceModeIconFailed, setStoreServiceModeIconFailed] =
+    useState(false);
+  const [storeWalkinIconFailed, setStoreWalkinIconFailed] = useState(false);
+  const [storeTermsIconFailed, setStoreTermsIconFailed] = useState(false);
 
   useEffect(() => {
     const token =
-      typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null;
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
     if (!token) {
       setError('Please login again to continue.');
       setLoading(false);
@@ -64,9 +73,11 @@ export default function VendorStoresPage() {
           ? kyc.storeManagement.stores
           : [];
         setStores(list);
-        setOpenIdx(list.length ? 0 : -1);
+        setExpandedStoreIdx(list.length ? 0 : null);
         setSlaAccepted(Boolean(kyc?.storeManagement?.slaAccepted));
-        setCommissionAccepted(Boolean(kyc?.storeManagement?.commissionAccepted));
+        setCommissionAccepted(
+          Boolean(kyc?.storeManagement?.commissionAccepted),
+        );
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load stores.');
@@ -79,11 +90,21 @@ export default function VendorStoresPage() {
     () => stores.filter((s) => s.isActive !== false).length,
     [stores],
   );
+  const physicalStores = useMemo(
+    () => stores.filter((s) => s.allowsWalkIn).length,
+    [stores],
+  );
+
+  const closeStoreModal = () => {
+    setIsStoreModalOpen(false);
+    setEditingStoreIdx(-1);
+    setDraftStore(freshEmptyStore());
+  };
 
   const openAddStore = () => {
     setEditingStoreIdx(-1);
     setDraftStore({
-      ...emptyStore,
+      ...freshEmptyStore(),
       isDefault: stores.length === 0,
     });
     setIsStoreModalOpen(true);
@@ -91,63 +112,52 @@ export default function VendorStoresPage() {
 
   const openEditStore = (idx) => {
     setEditingStoreIdx(idx);
-    setDraftStore({ ...emptyStore, ...(stores[idx] || {}) });
+    const s = stores[idx] || {};
+    const aligned = alignStoreAdditionalPhotoArrays(s);
+    setDraftStore({
+      ...freshEmptyStore(),
+      ...s,
+      additionalPhotoNames: aligned.names,
+      additionalPhotoUrls: aligned.urls,
+      additionalPhotoFiles: aligned.files,
+    });
     setIsStoreModalOpen(true);
   };
 
-  const removeStore = (idx) => {
-    setStores((prev) => prev.filter((_, i) => i !== idx));
-  };
-
   const saveStoreDraft = () => {
-    if (!draftStore.storeName.trim() || !draftStore.completeAddress.trim()) return;
     setStores((prev) => {
-      if (editingStoreIdx >= 0) {
-        return prev.map((s, i) => (i === editingStoreIdx ? draftStore : s));
+      const toSave = { ...draftStore };
+      let next = [...prev];
+      if (toSave.isDefault) {
+        next = next.map((s) => ({ ...s, isDefault: false }));
       }
-      return [...prev, draftStore];
+      if (editingStoreIdx >= 0) {
+        next[editingStoreIdx] = toSave;
+      } else {
+        next.push(toSave);
+      }
+      return next;
     });
-    setDraftStore(emptyStore);
-    setEditingStoreIdx(-1);
-    setIsStoreModalOpen(false);
+    closeStoreModal();
   };
 
-  const searchMapLocations = async () => {
-    const q = mapQuery.trim();
-    if (!q) return;
-    setMapSearching(true);
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=8&q=${encodeURIComponent(q)}`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-      });
-      const data = await res.json();
-      setMapResults(Array.isArray(data) ? data : []);
-    } catch {
-      setMapResults([]);
-    } finally {
-      setMapSearching(false);
-    }
-  };
-
-  const selectMapLocation = (place) => {
-    const lat = Number(place?.lat || 0);
-    const lng = Number(place?.lon || 0);
-    const display = String(place?.display_name || '');
-    const mapLink = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
-    setDraftStore((prev) => ({
-      ...prev,
-      mapLocation: mapLink,
-      mapAddress: display,
-      mapLat: lat || null,
-      mapLng: lng || null,
-    }));
-    setIsMapModalOpen(false);
+  const confirmRemoveStore = () => {
+    if (storeDeleteConfirmIdx == null) return;
+    const idx = storeDeleteConfirmIdx;
+    setStores((prev) => prev.filter((_, i) => i !== idx));
+    setExpandedStoreIdx((cur) => {
+      if (cur === idx) return null;
+      if (cur != null && cur > idx) return cur - 1;
+      return cur;
+    });
+    setStoreDeleteConfirmIdx(null);
   };
 
   const saveStoresToKyc = async () => {
     const token =
-      typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null;
+      typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null;
     if (!token) return;
 
     setSaving(true);
@@ -157,9 +167,12 @@ export default function VendorStoresPage() {
       const payload = new FormData();
       payload.append('step', '4');
       payload.append('finalSubmit', 'false');
-      payload.append('stores', JSON.stringify(stores || []));
+      payload.append('stores', storesJsonForPayload(stores));
       payload.append('slaAccepted', slaAccepted ? 'true' : 'false');
-      payload.append('commissionAccepted', commissionAccepted ? 'true' : 'false');
+      payload.append(
+        'commissionAccepted',
+        commissionAccepted ? 'true' : 'false',
+      );
 
       (stores || []).forEach((s, i) => {
         if (s.shopFrontPhotoFile instanceof File) {
@@ -179,148 +192,371 @@ export default function VendorStoresPage() {
     }
   };
 
+  const renderStoreShopPngIcon = () =>
+    storeShopIconFailed ? (
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-600"
+        aria-hidden
+      >
+        <Store className="h-5 w-5 text-white" strokeWidth={1.75} />
+      </span>
+    ) : (
+      <img
+        src={iconSrc(shopHeadingIcon)}
+        alt=""
+        width={36}
+        height={36}
+        loading="lazy"
+        decoding="async"
+        className="h-9 w-9 shrink-0 rounded-xl object-cover"
+        onError={() => setStoreShopIconFailed(true)}
+      />
+    );
+
+  const renderStoreServiceModePngIcon = () =>
+    storeServiceModeIconFailed ? (
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center"
+        aria-hidden
+      >
+        <FileText className="h-4 w-4 text-slate-600" strokeWidth={1.75} />
+      </span>
+    ) : (
+      <img
+        src={iconSrc(serviceModeHeadingIcon)}
+        alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        decoding="async"
+        className="h-5 w-5 shrink-0 object-contain"
+        onError={() => setStoreServiceModeIconFailed(true)}
+      />
+    );
+
+  const renderStoreWalkinPngIcon = () =>
+    storeWalkinIconFailed ? (
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center"
+        aria-hidden
+      >
+        <Home className="h-4 w-4 text-slate-600" strokeWidth={1.75} />
+      </span>
+    ) : (
+      <img
+        src={iconSrc(walkInHeadingIcon)}
+        alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        decoding="async"
+        className="h-5 w-5 shrink-0 object-contain"
+        onError={() => setStoreWalkinIconFailed(true)}
+      />
+    );
+
+  const renderTermsCommissionPngIcon = () =>
+    storeTermsIconFailed ? (
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50"
+        aria-hidden
+      >
+        <Shield className="h-4 w-4 text-rose-500" strokeWidth={1.75} />
+      </span>
+    ) : (
+      <img
+        src={iconSrc(termsHeadingIcon)}
+        alt=""
+        width={32}
+        height={32}
+        loading="lazy"
+        decoding="async"
+        className="h-8 w-8 shrink-0 object-contain"
+        onError={() => setStoreTermsIconFailed(true)}
+      />
+    );
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       <VendorSidebar />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <VendorTopBar />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#f3f5f9]">
-          <div className="max-w-5xl mx-auto space-y-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">My Active Stores</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Configure your physical outlets and delivery zones.
-              </p>
+        <main className="flex-1 overflow-y-auto bg-[#f3f5f9] p-4 sm:p-6">
+          <div className="mx-auto max-w-5xl space-y-5">
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm ring-1 ring-violet-500/30"
+                aria-hidden
+              >
+                <Store className="h-6 w-6 text-white" strokeWidth={1.75} />
+              </span>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                My Active Stores
+              </h1>
             </div>
 
             {error ? (
-              <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {error}
               </div>
             ) : null}
             {success ? (
-              <div className="p-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                 {success}
               </div>
             ) : null}
 
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Manage Stores</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Configure your physical outlets and delivery zones.
-                  </p>
+            <section className="space-y-5">
+              <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      Manage Stores
+                    </h2>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      Configure your physical outlets and delivery zones.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAddStore}
+                    className="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    + Add New Store
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={openAddStore}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm hover:bg-blue-700"
-                >
-                  + Add New Store
-                </button>
+                <div className="border-t border-gray-100" />
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:gap-4 sm:p-5">
+                  <div className="rounded-xl border border-blue-200/80 bg-blue-50 p-4">
+                    <p className="text-[11px] font-medium text-gray-500">
+                      Total Stores
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                      {totalStores}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200/80 bg-emerald-50 p-4">
+                    <p className="text-[11px] font-medium text-gray-500">
+                      Active Stores
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-emerald-700">
+                      {activeStores}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-purple-200/80 bg-purple-50 p-4">
+                    <p className="text-[11px] font-medium text-gray-500">
+                      Physical Stores
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                      {physicalStores}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 border-b border-gray-100">
-                <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
-                  <p className="text-[11px] text-gray-500">Total Stores</p>
-                  <p className="text-xl font-semibold text-gray-900">{totalStores}</p>
-                </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                  <p className="text-[11px] text-emerald-700">Active Stores</p>
-                  <p className="text-xl font-semibold text-emerald-700">{activeStores}</p>
-                </div>
-                <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
-                  <p className="text-[11px] text-violet-700">Physical Stores</p>
-                  <p className="text-xl font-semibold text-violet-700">{totalStores}</p>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3">
+              <div className="space-y-3">
                 {loading ? (
                   <div className="flex justify-center py-10">
-                    <div className="w-9 h-9 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="h-9 w-9 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
                   </div>
                 ) : stores.length === 0 ? (
                   <p className="text-sm text-gray-500">No stores added yet.</p>
                 ) : (
                   stores.map((s, i) => {
-                    const open = i === openIdx;
+                    const isExpanded = expandedStoreIdx === i;
+                    const walkInNoPublic =
+                      !s.allowsWalkIn ||
+                      String(s.walkInAccessLabel || '')
+                        .toLowerCase()
+                        .includes('no public');
                     return (
                       <div
-                        key={`${s.storeName || 'store'}-${i}`}
-                        className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden"
+                        key={`store-${i}-${s.storeName || 'unnamed'}`}
+                        className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
                       >
                         <button
                           type="button"
-                          className="w-full px-4 py-3 flex items-center justify-between gap-3"
-                          onClick={() => setOpenIdx(open ? -1 : i)}
+                          onClick={() =>
+                            setExpandedStoreIdx((cur) => (cur === i ? null : i))
+                          }
+                          className="flex w-full items-start gap-3 p-4 text-left transition hover:bg-gray-50/80"
                         >
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {s.storeName || `Store ${i + 1}`}
-                            </p>
-                            <p className="text-[11px] text-gray-500 mt-0.5">
-                              {s.completeAddress || s.mapAddress || 'No address'}
+                          {renderStoreShopPngIcon()}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-gray-900">
+                                {s.storeName || `Store ${i + 1}`}
+                              </span>
+                              {s.isDefault ? (
+                                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+                                  DEFAULT
+                                </span>
+                              ) : null}
+                              {s.isActive !== false ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                  <span
+                                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                                    aria-hidden
+                                  />
+                                  ACTIVE
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                                  <span
+                                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400"
+                                    aria-hidden
+                                  />
+                                  INACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-500">
+                              <MapPin
+                                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400"
+                                strokeWidth={2}
+                                aria-hidden
+                              />
+                              <span>{s.completeAddress || '—'}</span>
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                                s.isActive !== false
-                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                  : 'bg-gray-50 border-gray-200 text-gray-600'
-                              }`}
-                            >
-                              {s.isActive !== false ? 'ACTIVE' : 'INACTIVE'}
-                            </span>
-                            <span className="text-gray-500">{open ? '▴' : '▾'}</span>
-                          </div>
+                          <span className="shrink-0 text-gray-400" aria-hidden>
+                            {isExpanded ? (
+                              <ChevronUp className="h-5 w-5" strokeWidth={2} />
+                            ) : (
+                              <ChevronDown
+                                className="h-5 w-5"
+                                strokeWidth={2}
+                              />
+                            )}
+                          </span>
                         </button>
-
-                        {open ? (
-                          <div className="px-4 pb-4">
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div>
-                                <p className="text-xs text-gray-500">Service Mode</p>
-                                <div className="mt-2 space-y-1 text-sm text-gray-700">
-                                  <p>
-                                    <span className="font-medium">Local Delivery:</span>{' '}
-                                    {s.serviceModeLocalDelivery ? 'Yes' : 'No'}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Pan-India Shipping:</span>{' '}
-                                    {s.serviceModePanIndia ? 'Yes' : 'No'}
+                        {isExpanded ? (
+                          <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                              Configuration:
+                            </p>
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
+                              <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
+                                <div className="mb-3 flex items-center gap-2">
+                                  {renderStoreServiceModePngIcon()}
+                                  <p className="text-sm font-bold text-gray-900">
+                                    Service Mode:
                                   </p>
                                 </div>
+                                <div className="flex flex-col gap-2">
+                                  <div
+                                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
+                                      s.serviceModePanIndia
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-200 bg-white'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                                        s.serviceModePanIndia
+                                          ? 'border-blue-600 bg-blue-600 text-white'
+                                          : 'border-gray-300 bg-white'
+                                      }`}
+                                      aria-hidden
+                                    >
+                                      {s.serviceModePanIndia ? (
+                                        <Check
+                                          className="h-3.5 w-3.5"
+                                          strokeWidth={3}
+                                        />
+                                      ) : null}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Pan-India Shipping
+                                    </span>
+                                  </div>
+                                  <div
+                                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
+                                      s.serviceModeLocalDelivery
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-200 bg-white'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                                        s.serviceModeLocalDelivery
+                                          ? 'border-blue-600 bg-blue-600 text-white'
+                                          : 'border-gray-300 bg-white'
+                                      }`}
+                                      aria-hidden
+                                    >
+                                      {s.serviceModeLocalDelivery ? (
+                                        <Check
+                                          className="h-3.5 w-3.5"
+                                          strokeWidth={3}
+                                        />
+                                      ) : null}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Local Delivery
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-xs text-gray-500">Walk-in Access</p>
-                                <p className="mt-2 text-sm text-gray-700">
-                                  {s.walkInAccessLabel || (s.allowsWalkIn ? 'Allowed' : 'No Public Access')}
-                                </p>
+                              <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
+                                <div className="mb-3 flex items-center gap-2">
+                                  {renderStoreWalkinPngIcon()}
+                                  <p className="text-sm font-bold text-gray-900">
+                                    Walk-in Access:
+                                  </p>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 ${
+                                    walkInNoPublic
+                                      ? 'border-blue-500 bg-blue-50'
+                                      : 'border-gray-200 bg-white'
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                                      walkInNoPublic
+                                        ? 'border-blue-600 bg-blue-600 text-white'
+                                        : 'border-gray-300 bg-white'
+                                    }`}
+                                    aria-hidden
+                                  >
+                                    {walkInNoPublic ? (
+                                      <Check
+                                        className="h-3.5 w-3.5"
+                                        strokeWidth={3}
+                                      />
+                                    ) : null}
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {walkInNoPublic
+                                      ? 'No Public Access'
+                                      : s.walkInAccessLabel || 'Public Access'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-
-                            <div className="mt-3 grid grid-cols-3 gap-2">
+                            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-stretch">
                               <button
                                 type="button"
                                 onClick={() => openEditStore(i)}
-                                className="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm hover:bg-blue-100"
+                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-4 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 sm:px-5"
                               >
+                                <Pencil className="h-4 w-4" strokeWidth={2} />
                                 Edit
                               </button>
                               <button
                                 type="button"
-                                className="px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 text-sm hover:bg-purple-100"
+                                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-purple-300 bg-purple-100 px-4 py-2.5 text-sm font-semibold text-purple-900 hover:bg-purple-200/80"
                               >
+                                <Package className="h-4 w-4" strokeWidth={2} />
                                 Manage Inventory
                               </button>
                               <button
                                 type="button"
-                                onClick={() => removeStore(i)}
-                                className="px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-sm hover:bg-rose-100"
+                                onClick={() => setStoreDeleteConfirmIdx(i)}
+                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 sm:px-5"
                               >
+                                <Trash2 className="h-4 w-4" strokeWidth={2} />
                                 Delete
                               </button>
                             </div>
@@ -331,32 +567,80 @@ export default function VendorStoresPage() {
                   })
                 )}
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={slaAccepted}
-                  onChange={(e) => setSlaAccepted(e.target.checked)}
-                />
-                SLA accepted
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={commissionAccepted}
-                  onChange={(e) => setCommissionAccepted(e.target.checked)}
-                />
-                Commission accepted
-              </label>
-            </div>
+              {/* <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-4 sm:p-5">
+                <div className="mb-1 flex items-start gap-2.5">
+                  {renderTermsCommissionPngIcon()}
+                  <div>
+                    <p className="text-base font-bold text-gray-900">
+                      Terms &amp; Commission
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Review and accept our partner agreement
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3 rounded-xl border border-blue-200 bg-white/90 p-3 sm:p-4">
+                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={slaAccepted}
+                      onChange={(e) => setSlaAccepted(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
+                    />
+                    <span>
+                      I agree to the Rentnpay{' '}
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-0.5 font-medium text-blue-600 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        Service Level Agreement (SLA)
+                        <ExternalLink
+                          className="h-3.5 w-3.5 shrink-0"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                      </button>
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={commissionAccepted}
+                      onChange={(e) => setCommissionAccepted(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300"
+                    />
+                    <span>
+                      I accept the{' '}
+                      <strong className="font-semibold text-gray-900">
+                        Platform Commission
+                      </strong>{' '}
+                      on all rentals.{' '}
+                      <button
+                        type="button"
+                        className="font-medium text-blue-600 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        Read Commission Policy
+                      </button>
+                    </span>
+                  </label>
+                </div>
+              </div> */}
+            </section>
 
             <button
               type="button"
               onClick={saveStoresToKyc}
               disabled={saving}
-              className="w-full py-3 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-60"
+              className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-60"
             >
               {saving ? 'Updating Stores...' : 'Update Stores'}
             </button>
@@ -364,327 +648,40 @@ export default function VendorStoresPage() {
         </main>
       </div>
 
-      {isStoreModalOpen ? (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl p-4 space-y-4">
-            <h3 className="text-lg font-semibold">
-              {editingStoreIdx >= 0 ? 'Edit Store Settings' : 'Configure Store Settings'}
+      <VendorStoreSettingsModal
+        open={isStoreModalOpen}
+        draftStore={draftStore}
+        setDraftStore={setDraftStore}
+        onClose={closeStoreModal}
+        onSave={saveStoreDraft}
+        editingStoreIdx={editingStoreIdx}
+      />
+
+      {storeDeleteConfirmIdx != null ? (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Delete store?
             </h3>
-            <div className="rounded-xl border p-3 space-y-2">
-              <p className="text-sm font-medium">Basic Information</p>
-              <input
-                value={draftStore.storeName}
-                onChange={(e) =>
-                  setDraftStore((p) => ({ ...p, storeName: e.target.value }))
-                }
-                placeholder="Store Name"
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-              />
-              <textarea
-                value={draftStore.completeAddress}
-                onChange={(e) =>
-                  setDraftStore((p) => ({ ...p, completeAddress: e.target.value }))
-                }
-                placeholder="Complete Address"
-                className="w-full px-3 py-2 border rounded-lg text-sm min-h-20"
-              />
-              <input
-                value={draftStore.pincode}
-                onChange={(e) =>
-                  setDraftStore((p) => ({ ...p, pincode: e.target.value }))
-                }
-                placeholder="Pincode"
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-              />
-              <div className="border rounded-xl p-3 bg-slate-50">
-                <p className="text-xs font-medium text-gray-700 mb-2">Pin Location on Map</p>
-                <div className="border rounded-xl bg-white h-36 flex flex-col items-center justify-center text-center px-3">
-                  <p className="text-sm text-gray-500">Interactive Map Widget</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMapQuery(draftStore.mapAddress || draftStore.completeAddress || '');
-                      setMapResults([]);
-                      setIsMapModalOpen(true);
-                    }}
-                    className="mt-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm"
-                  >
-                    Open Map Selector
-                  </button>
-                </div>
-                {draftStore.mapAddress ? (
-                  <p className="text-[11px] text-gray-600 mt-2 truncate">
-                    Selected: {draftStore.mapAddress}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="rounded-xl border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Store Photos</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  For Verified Badge
-                </span>
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] || null;
-                  setDraftStore((p) => ({
-                    ...p,
-                    shopFrontPhotoName: f?.name || '',
-                    shopFrontPhotoFile: f,
-                  }));
-                }}
-                className="w-full text-sm"
-              />
-              {draftStore.shopFrontPhotoName ? (
-                <p className="text-[11px] text-gray-600">
-                  Front photo: {draftStore.shopFrontPhotoName}
-                </p>
-              ) : null}
-              <input
-                type="file"
-                multiple
-                onChange={(e) =>
-                  setDraftStore((p) => ({
-                    ...p,
-                    additionalPhotoNames: Array.from(e.target.files || []).map(
-                      (f) => f.name,
-                    ),
-                  }))
-                }
-                className="w-full text-sm"
-              />
-              {draftStore.additionalPhotoNames?.length ? (
-                <p className="text-[11px] text-gray-600">
-                  Extra photos: {draftStore.additionalPhotoNames.length}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="rounded-xl border p-3 space-y-2">
-              <p className="text-sm font-medium">Delivery Zone</p>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="deliveryZoneType"
-                  checked={draftStore.deliveryZoneType === 'pan-india'}
-                  onChange={() =>
-                    setDraftStore((p) => ({ ...p, deliveryZoneType: 'pan-india' }))
-                  }
-                />
-                Pan-India (Standard Shipping)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="deliveryZoneType"
-                  checked={draftStore.deliveryZoneType === 'hyper-local'}
-                  onChange={() =>
-                    setDraftStore((p) => ({ ...p, deliveryZoneType: 'hyper-local' }))
-                  }
-                />
-                Hyper-local (Define Radius)
-              </label>
-              <div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Service Radius</span>
-                  <span className="font-semibold text-purple-700">
-                    {draftStore.serviceRadiusKm} km
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={50}
-                  value={draftStore.serviceRadiusKm}
-                  onChange={(e) =>
-                    setDraftStore((p) => ({
-                      ...p,
-                      serviceRadiusKm: Number(e.target.value),
-                    }))
-                  }
-                  className="w-full"
-                />
-                <div className="mt-2 rounded-xl bg-purple-50 border border-purple-100 h-32 flex items-center justify-center text-xs text-purple-700 text-center px-3">
-                  Coverage map preview
-                  {draftStore.deliveryZoneType === 'hyper-local' ? (
-                    <span className="ml-1">({draftStore.serviceRadiusKm} km radius)</span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-emerald-200 p-3">
-              <p className="text-sm font-semibold text-gray-900 mb-2">Customer Walk-in</p>
-              <div className="rounded-xl border border-emerald-100 p-3 space-y-2 bg-white">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Allow Walk-in Customers?
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      If ON, this location will show up on the &quot;Find Store&quot; map
-                      for users.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftStore((p) => {
-                        const nextWalkIn = !p.allowsWalkIn;
-                        return {
-                          ...p,
-                          allowsWalkIn: nextWalkIn,
-                          walkInAccessLabel: nextWalkIn
-                            ? 'Public Access'
-                            : 'No Public Access',
-                        };
-                      })
-                    }
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-                      draftStore.allowsWalkIn ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
-                    aria-label="Toggle walk-in customers"
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-                        draftStore.allowsWalkIn ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1">Store Timings</p>
-                  <input
-                    value={draftStore.storeTimings}
-                    onChange={(e) =>
-                      setDraftStore((p) => ({ ...p, storeTimings: e.target.value }))
-                    }
-                    placeholder="Mon-Sat, 10 AM - 9 PM"
-                    disabled={!draftStore.allowsWalkIn}
-                    className="w-full px-3 py-2 border rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-400"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={draftStore.isDefault}
-                  onChange={(e) =>
-                    setDraftStore((p) => ({
-                      ...p,
-                      isDefault: e.target.checked,
-                    }))
-                  }
-                />
-                Mark as Default Store
-              </label>
-              <label className="flex items-center gap-2 text-sm justify-self-end">
-                <input
-                  type="checkbox"
-                  checked={draftStore.isActive}
-                  onChange={(e) =>
-                    setDraftStore((p) => ({
-                      ...p,
-                      isActive: e.target.checked,
-                    }))
-                  }
-                />
-                Active Store
-              </label>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
+            <p className="mt-2 text-sm text-gray-600">
+              This removes the store from your list. You can add it again later
+              from &quot;Add New Store&quot;.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setIsStoreModalOpen(false);
-                  setEditingStoreIdx(-1);
-                  setDraftStore(emptyStore);
-                }}
-                className="px-4 py-2 rounded-lg border text-sm"
+                onClick={() => setStoreDeleteConfirmIdx(null)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={saveStoreDraft}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                onClick={confirmRemoveStore}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
-                Save Store
+                Delete
               </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {isMapModalOpen ? (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white rounded-2xl p-4 space-y-3 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-semibold text-gray-900">Select Store Location</h4>
-              <button
-                type="button"
-                onClick={() => setIsMapModalOpen(false)}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={mapQuery}
-                onChange={(e) => setMapQuery(e.target.value)}
-                placeholder="Search place, address, landmark..."
-                className="flex-1 px-3 py-2 border rounded-lg text-sm"
-              />
-              <button
-                type="button"
-                onClick={searchMapLocations}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm"
-              >
-                {mapSearching ? 'Searching...' : 'Search'}
-              </button>
-            </div>
-
-            <div className="border rounded-xl overflow-hidden">
-              <iframe
-                title="Map Preview"
-                className="w-full h-64"
-                src={
-                  draftStore.mapLat && draftStore.mapLng
-                    ? `https://www.openstreetmap.org/export/embed.html?bbox=${draftStore.mapLng - 0.02}%2C${draftStore.mapLat - 0.02}%2C${draftStore.mapLng + 0.02}%2C${draftStore.mapLat + 0.02}&layer=mapnik&marker=${draftStore.mapLat}%2C${draftStore.mapLng}`
-                    : 'https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.8%2C73.2%2C19.2&layer=mapnik'
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              {mapResults.length === 0 ? (
-                <p className="text-sm text-gray-500">Search and choose a location.</p>
-              ) : (
-                mapResults.map((place) => (
-                  <button
-                    type="button"
-                    key={`${place.place_id}`}
-                    onClick={() => selectMapLocation(place)}
-                    className="w-full text-left p-3 rounded-xl border hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {place.display_name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Lat: {Number(place.lat).toFixed(5)}, Lng:{' '}
-                      {Number(place.lon).toFixed(5)}
-                    </p>
-                  </button>
-                ))
-              )}
             </div>
           </div>
         </div>
@@ -692,4 +689,3 @@ export default function VendorStoresPage() {
     </div>
   );
 }
-
