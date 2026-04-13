@@ -1,6 +1,6 @@
 import Vendor from '../../models/vendorAuthModel.js';
 import bcrypt from 'bcryptjs';
-import { sendOTPEmail } from '../../utils/sendMail.js';
+import { sendBrevoVendorOtpEmail } from '../../utils/sendBrevoMail.js';
 import jwt from 'jsonwebtoken';
 import Product from '../../models/Product.js';
 import Offer from '../../models/Offer.js';
@@ -53,7 +53,7 @@ export const signupVendor = async (req, res) => {
 
     await vendor.save();
 
-    await sendOTPEmail(emailAddress, otp);
+    await sendBrevoVendorOtpEmail(emailAddress, otp);
 
     res.status(201).json({
       message: 'Signup successful, OTP sent to email',
@@ -170,7 +170,7 @@ export const forgotVendorPassword = async (req, res) => {
     vendor.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     await vendor.save();
 
-    await sendOTPEmail(vendor.emailAddress, otp);
+    await sendBrevoVendorOtpEmail(vendor.emailAddress, otp);
 
     return res.json({
       message: 'If this email exists, an OTP has been sent.',

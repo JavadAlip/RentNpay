@@ -81,3 +81,35 @@ export const sendBrevoTestOtpEmail = async (toEmail, otp) => {
     throw error;
   }
 };
+
+export const sendBrevoVendorOtpEmail = async (toEmail, otp) => {
+  ensureBrevoEnv();
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: {
+        email: BREVO_FROM_EMAIL,
+        name: 'RentNPay',
+      },
+      to: [{ email: toEmail }],
+      subject: 'Your OTP Code',
+      htmlContent: `
+        <div style="font-family:Arial,sans-serif;line-height:1.5">
+          <h2 style="margin:0 0 8px">Your OTP Code</h2>
+          <p style="margin:0 0 10px">Use this OTP to continue:</p>
+          <p style="font-size:28px;font-weight:700;letter-spacing:3px;margin:0 0 10px">${otp}</p>
+          <p style="margin:0;color:#666">This OTP expires in a few minutes.</p>
+        </div>
+      `,
+    }),
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    throw new Error(`Brevo API error ${response.status}: ${raw || 'Unknown error'}`);
+  }
+};
