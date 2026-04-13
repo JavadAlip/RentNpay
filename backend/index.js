@@ -12,6 +12,7 @@ import categoryRoutes from './routes/categories.js';
 import cartRoutes from './routes/cart.js';
 import orderRoutes from './routes/orders.js';
 import userRoutes from './routes/users.js';
+import brevoTestRoutes from './routes/brevoTest.js';
 import ensureUserCustomerNumbers from './utils/ensureUserCustomerNumbers.js';
 
 const app = express();
@@ -105,6 +106,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/brevo-test', brevoTestRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
