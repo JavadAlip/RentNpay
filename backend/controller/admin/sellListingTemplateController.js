@@ -48,14 +48,14 @@ function splitFiles(files) {
   const byVariant = {};
   for (const f of files || []) {
     if (f.fieldname === 'images') {
-      if (main.length < 5) main.push(f);
+      if (main.length < 10) main.push(f);
       continue;
     }
     const m = /^variantImages_(\d+)$/.exec(f.fieldname);
     if (!m) continue;
     const idx = Number(m[1]);
     if (!byVariant[idx]) byVariant[idx] = [];
-    if (byVariant[idx].length < 5) byVariant[idx].push(f);
+    if (byVariant[idx].length < 10) byVariant[idx].push(f);
   }
   return { mainFiles: main, variantFilesByIndex: byVariant };
 }
@@ -74,7 +74,7 @@ async function mergeVariantImages(variant, files) {
   const kept = Array.isArray(variant.existingVariantImages)
     ? variant.existingVariantImages.filter(Boolean)
     : [];
-  variant.images = [...kept, ...uploaded].slice(0, 5);
+  variant.images = [...kept, ...uploaded].slice(0, 10);
   delete variant.existingVariantImages;
 }
 
@@ -139,9 +139,9 @@ export const createSellListingTemplate = async (req, res) => {
     const mainUploaded = await uploadMany(mainFiles, 'sell-listing-templates');
     data.images =
       mainUploaded.length > 0
-        ? mainUploaded.slice(0, 5)
+        ? mainUploaded.slice(0, 10)
         : Array.isArray(data.existingImages)
-          ? data.existingImages.filter(Boolean).slice(0, 5)
+          ? data.existingImages.filter(Boolean).slice(0, 10)
           : [];
 
     for (let i = 0; i < data.variants.length; i++) {
@@ -181,7 +181,7 @@ export const updateSellListingTemplate = async (req, res) => {
       : Array.isArray(existing.images)
         ? existing.images
         : [];
-    data.images = [...keptExistingImages, ...mainUploaded].slice(0, 5);
+    data.images = [...keptExistingImages, ...mainUploaded].slice(0, 10);
 
     for (let i = 0; i < data.variants.length; i++) {
       const incoming = data.variants[i];

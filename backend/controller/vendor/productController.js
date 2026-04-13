@@ -124,7 +124,7 @@ export const createProduct = async (req, res) => {
     const uploadedImages = [];
 
     if (Array.isArray(req.files) && req.files.length > 0) {
-      for (const file of req.files.slice(0, 5)) {
+      for (const file of req.files.slice(0, 10)) {
         const imgRes = await uploadImageToCloudinary(file.buffer, 'products');
         uploadedImages.push(imgRes.secure_url);
       }
@@ -135,11 +135,11 @@ export const createProduct = async (req, res) => {
 
     const keptExisting =
       Array.isArray(data.existingImages) && data.existingImages.length > 0
-        ? data.existingImages.filter(Boolean).slice(0, 5)
+        ? data.existingImages.filter(Boolean).slice(0, 10)
         : [];
 
     if (uploadedImages.length > 0) {
-      data.images = [...keptExisting, ...uploadedImages].slice(0, 5);
+      data.images = [...keptExisting, ...uploadedImages].slice(0, 10);
       data.image = data.images[0];
     } else if (keptExisting.length > 0) {
       data.images = keptExisting;
@@ -201,7 +201,7 @@ export const updateProduct = async (req, res) => {
 
     const uploadedImages = [];
     if (Array.isArray(req.files) && req.files.length > 0) {
-      for (const file of req.files.slice(0, 5)) {
+      for (const file of req.files.slice(0, 10)) {
         const imgRes = await uploadImageToCloudinary(file.buffer, 'products');
         uploadedImages.push(imgRes.secure_url);
       }
@@ -217,7 +217,7 @@ export const updateProduct = async (req, res) => {
         : existing.image
           ? [existing.image]
           : [];
-    const mergedImages = [...keptExistingImages, ...uploadedImages].slice(0, 5);
+    const mergedImages = [...keptExistingImages, ...uploadedImages].slice(0, 10);
     data.images = mergedImages;
     data.image = mergedImages[0];
 

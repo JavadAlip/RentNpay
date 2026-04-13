@@ -91,14 +91,14 @@ function splitListingTemplateFiles(files) {
   const byVariant = {};
   for (const f of files || []) {
     if (f.fieldname === 'images') {
-      if (main.length < 5) main.push(f);
+      if (main.length < 10) main.push(f);
       continue;
     }
     const m = /^variantImages_(\d+)$/.exec(f.fieldname);
     if (m) {
       const idx = Number(m[1]);
       if (!byVariant[idx]) byVariant[idx] = [];
-      if (byVariant[idx].length < 5) byVariant[idx].push(f);
+      if (byVariant[idx].length < 10) byVariant[idx].push(f);
     }
   }
   return { mainFiles: main, variantFilesByIndex: byVariant };
@@ -118,7 +118,7 @@ async function mergeVariantImages(variant, files) {
   const kept = Array.isArray(variant.existingVariantImages)
     ? variant.existingVariantImages.filter(Boolean)
     : [];
-  const merged = [...kept, ...uploaded].slice(0, 5);
+  const merged = [...kept, ...uploaded].slice(0, 10);
   delete variant.existingVariantImages;
   variant.images = merged;
 }
@@ -209,9 +209,9 @@ export const createListingTemplate = async (req, res) => {
 
     const mainUploaded = await uploadMany(mainFiles, 'listing-templates');
     if (mainUploaded.length > 0) {
-      data.images = mainUploaded.slice(0, 5);
+      data.images = mainUploaded.slice(0, 10);
     } else if (Array.isArray(data.existingImages) && data.existingImages.length) {
-      data.images = data.existingImages.filter(Boolean).slice(0, 5);
+      data.images = data.existingImages.filter(Boolean).slice(0, 10);
     } else {
       data.images = [];
     }
@@ -273,7 +273,7 @@ export const updateListingTemplate = async (req, res) => {
         : existing.image
           ? [existing.image]
           : [];
-    data.images = [...keptExistingImages, ...mainUploaded].slice(0, 5);
+    data.images = [...keptExistingImages, ...mainUploaded].slice(0, 10);
 
     for (let i = 0; i < data.variants.length; i++) {
       const incoming = data.variants[i];
