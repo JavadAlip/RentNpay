@@ -273,7 +273,7 @@ function mapVariantFromApi(v) {
     stock: v.stock === undefined || v.stock === null ? '' : String(v.stock),
     images: [],
     existingVariantImages: Array.isArray(v.images)
-      ? v.images.filter(Boolean).slice(0, 5)
+      ? v.images.filter(Boolean).slice(0, 10)
       : [],
     specRows,
     rentalPricingModel,
@@ -308,7 +308,7 @@ function rentalConfigsFromStandardProduct(product) {
 
 function existingImagesFromStandardProduct(product) {
   if (Array.isArray(product?.images) && product.images.length) {
-    return product.images.filter(Boolean).slice(0, 5);
+    return product.images.filter(Boolean).slice(0, 10);
   }
   if (product?.image) return [product.image];
   return [];
@@ -466,7 +466,7 @@ function serializeFormForDraft(form) {
         (x) => typeof x === 'string' && String(x).trim(),
       );
       const existing = (v.existingVariantImages || []).filter(Boolean);
-      const mergedUrls = [...existing, ...stringUrlsFromImages].slice(0, 5);
+      const mergedUrls = [...existing, ...stringUrlsFromImages].slice(0, 10);
       const { images: _ignored, ...rest } = v;
       void filePicks;
       return {
@@ -577,11 +577,11 @@ function normalizeVariantFromDraftSnapshot(v) {
       const ex = Array.isArray(v.existingVariantImages)
         ? v.existingVariantImages.filter(Boolean)
         : [];
-      if (ex.length) return ex.slice(0, 5);
+      if (ex.length) return ex.slice(0, 10);
       const legacy = Array.isArray(v.images)
         ? v.images.filter((u) => typeof u === 'string' && u.trim())
         : [];
-      return legacy.slice(0, 5);
+      return legacy.slice(0, 10);
     })(),
     specRows:
       Array.isArray(v.specRows) && v.specRows.length
@@ -653,11 +653,11 @@ function flexibleListingFormFromSerializedDraft(f) {
       const ex = Array.isArray(f.existingImages)
         ? f.existingImages.filter(Boolean)
         : [];
-      if (ex.length) return ex.slice(0, 5);
+      if (ex.length) return ex.slice(0, 10);
       const legacy = Array.isArray(f.images)
         ? f.images.filter((u) => typeof u === 'string' && u.trim())
         : [];
-      return legacy.slice(0, 5);
+      return legacy.slice(0, 10);
     })(),
     salesConfiguration: {
       allowVendorEditSalePrice:
@@ -806,7 +806,7 @@ function buildVendorFormStateFromListingTemplate(template) {
       if (top.length) return top;
       const v0 = template?.variants?.[0];
       if (Array.isArray(v0?.images) && v0.images.length) {
-        return v0.images.filter(Boolean).slice(0, 5);
+        return v0.images.filter(Boolean).slice(0, 10);
       }
       return [];
     })(),
@@ -972,7 +972,7 @@ const AdminProductAddModal = ({
           isActive: initialData.isActive !== false,
           images: [],
           existingImages: Array.isArray(initialData.images)
-            ? initialData.images.filter(Boolean).slice(0, 5)
+            ? initialData.images.filter(Boolean).slice(0, 10)
             : initialData.image
               ? [initialData.image]
               : [],
@@ -1059,7 +1059,7 @@ const AdminProductAddModal = ({
           isActive: initialData.isActive !== false,
           images: [],
           existingImages: Array.isArray(initialData.images)
-            ? initialData.images.filter(Boolean).slice(0, 5)
+            ? initialData.images.filter(Boolean).slice(0, 10)
             : initialData.image
               ? [initialData.image]
               : [],
@@ -1179,7 +1179,7 @@ const AdminProductAddModal = ({
       setForm((prev) => {
         const remainingSlots = Math.max(
           0,
-          5 - (prev.existingImages?.length || 0) - prev.images.length,
+          10 - (prev.existingImages?.length || 0) - prev.images.length,
         );
         const selected = Array.from(files || []).slice(0, remainingSlots);
         return { ...prev, images: [...prev.images, ...selected] };
@@ -1524,7 +1524,7 @@ const AdminProductAddModal = ({
         if (i !== vIdx) return v;
         const existing = (v.existingVariantImages || []).length;
         const current = (v.images || []).length;
-        const room = Math.max(0, 5 - existing - current);
+        const room = Math.max(0, 10 - existing - current);
         const selected = picked.slice(0, room);
         if (!selected.length) return v;
         return {
@@ -2395,7 +2395,7 @@ const AdminProductAddModal = ({
                       .length;
                     const newCount = (variant.images || []).length;
                     const mediaTotal = existingCount + newCount;
-                    const mediaRoom = Math.max(0, 5 - mediaTotal);
+                    const mediaRoom = Math.max(0, 10 - mediaTotal);
                     return (
                       <div
                         key={variant._clientKey || `flex-${index}`}
@@ -2447,7 +2447,7 @@ const AdminProductAddModal = ({
                             </h3>
                           </div>
                           <p className="text-xs text-gray-500 leading-relaxed">
-                            Upload up to 5 high-quality media. The first image
+                            Upload up to 10 high-quality media. The first image
                             will be the cover photo.
                           </p>
                           {(variant.existingVariantImages || []).length > 0 ? (
@@ -2518,7 +2518,7 @@ const AdminProductAddModal = ({
                                 Click to upload or drag and drop
                               </span>
                               <span className="mt-1 text-xs text-gray-500">
-                                {mediaTotal}/5 uploaded
+                                {mediaTotal}/10 uploaded
                               </span>
                               <input
                                 id={mediaInputId}
@@ -2531,7 +2531,7 @@ const AdminProductAddModal = ({
                             </label>
                           ) : (
                             <p className="text-center text-xs text-gray-500 py-2">
-                              Maximum 5 images ({mediaTotal}/5 uploaded)
+                              Maximum 10 images ({mediaTotal}/10 uploaded)
                             </p>
                           )}
                         </div>

@@ -177,7 +177,7 @@ function collectCustomListingImageUrls(variants) {
       if (url) u.push(String(url));
     }
   }
-  return Array.from(new Set(u)).slice(0, 5);
+  return Array.from(new Set(u)).slice(0, 10);
 }
 
 function collectCustomListingImageFiles(variants) {
@@ -185,7 +185,7 @@ function collectCustomListingImageFiles(variants) {
   for (const mv of variants || []) {
     if (Array.isArray(mv.newImages)) f.push(...mv.newImages);
   }
-  return f.slice(0, 5);
+  return f.slice(0, 10);
 }
 
 function toNum(v, fallback = 0) {
@@ -355,7 +355,7 @@ function galleryFromTemplate(t) {
   // De-duplicate while preserving order (important for templates
   // that store the same image at multiple levels).
   const uniq = Array.from(new Set(urls));
-  return uniq.slice(0, 5);
+  return uniq.slice(0, 10);
 }
 
 function defaultMonthTiers() {
@@ -945,7 +945,7 @@ export default function VendorProductAddModal({
     setSpecRowList(specRows.length ? specRows : [{ label: '', value: '' }]);
     setExistingImages(
       Array.isArray(p.images) && p.images.length
-        ? p.images.filter(Boolean).slice(0, 5)
+        ? p.images.filter(Boolean).slice(0, 10)
         : p.image
           ? [p.image]
           : [],
@@ -1679,7 +1679,7 @@ export default function VendorProductAddModal({
         deliveryTimelineValue: toNum(logistics.deliveryTimelineValue, 0),
         deliveryTimelineUnit: logistics.deliveryTimelineUnit || 'Days',
       },
-      existingImages: imgs.filter(Boolean).slice(0, 5),
+      existingImages: imgs.filter(Boolean).slice(0, 10),
       images: imageFiles,
       price: listingType === 'sell' ? sellPriceLabel : rentalPriceLabel,
       stock: toNum(stock, 0),
@@ -2526,7 +2526,7 @@ export default function VendorProductAddModal({
                                     0,
                                     Math.max(
                                       0,
-                                      5 -
+                                      10 -
                                         existingImages.length -
                                         newImages.length,
                                     ),
@@ -2952,7 +2952,7 @@ export default function VendorProductAddModal({
                                     Product Media
                                   </p>
                                   <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                                    Upload up to 5 high-quality Media . First
+                                    Upload up to 10 high-quality Media . First
                                     image will be the cover photo.
                                   </p>
                                 </div>
@@ -3057,7 +3057,7 @@ export default function VendorProductAddModal({
                                     (expandedVariant.newImages?.length || 0);
                                   const next = files.slice(
                                     0,
-                                    Math.max(0, 5 - used),
+                                    Math.max(0, 10 - used),
                                   );
                                   if (!next.length) return;
                                   setManualVariants((prev) =>
@@ -3090,7 +3090,7 @@ export default function VendorProductAddModal({
                                     {(expandedVariant.existingImages?.length ||
                                       0) +
                                       (expandedVariant.newImages?.length || 0)}
-                                    /5 uploaded
+                                    /10 uploaded
                                   </span>
                                   <input
                                     type="file"
@@ -3105,7 +3105,7 @@ export default function VendorProductAddModal({
                                         0,
                                         Math.max(
                                           0,
-                                          5 -
+                                          10 -
                                             (expandedVariant.existingImages
                                               ?.length || 0) -
                                             (expandedVariant.newImages

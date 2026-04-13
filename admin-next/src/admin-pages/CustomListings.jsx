@@ -106,10 +106,10 @@ function buildListingFormData(form) {
   payload.append('status', autoStatus);
   payload.append('isActive', String(form.isActive !== false));
   if (Array.isArray(form.images) && form.images.length) {
-    form.images.slice(0, 5).forEach((img) => payload.append('images', img));
+    form.images.slice(0, 10).forEach((img) => payload.append('images', img));
   }
   variants.forEach((v, i) => {
-    (v.images || []).slice(0, 5).forEach((file) => {
+    (v.images || []).slice(0, 10).forEach((file) => {
       payload.append(`variantImages_${i}`, file);
     });
   });
