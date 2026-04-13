@@ -1,26 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/axios';
 
 export default function BrevoTestVerifyOtpPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [emailAddress, setEmailAddress] = useState(
-    searchParams.get('email') || '',
-  );
+  const [emailAddress, setEmailAddress] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (emailAddress) return;
     if (typeof window === 'undefined') return;
+    const fromQuery =
+      new URLSearchParams(window.location.search).get('email') || '';
     const stored = sessionStorage.getItem('brevoTestEmail') || '';
-    if (stored) setEmailAddress(stored);
-  }, [emailAddress]);
+    setEmailAddress(fromQuery || stored);
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
