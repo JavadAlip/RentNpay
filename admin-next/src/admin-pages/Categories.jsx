@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { ChevronDown, ChevronRight, ImageIcon, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ImageIcon,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import { apiGetMasterCategories } from '@/service/api';
 import {
@@ -28,7 +36,14 @@ const TABS = [
   { id: 'services', label: 'Services', platform: 'services' },
 ];
 
-function MediaDropZone({ label, hint, file, onFile, accept = 'image/*' }) {
+function MediaDropZone({
+  label,
+  hint,
+  file,
+  onFile,
+  requiredMark,
+  accept = 'image/*',
+}) {
   const [preview, setPreview] = useState('');
   useEffect(() => {
     if (!file) {
@@ -41,10 +56,17 @@ function MediaDropZone({ label, hint, file, onFile, accept = 'image/*' }) {
   }, [file]);
 
   return (
-    <div>
-      <p className="text-sm font-medium text-gray-800 mb-1">{label}</p>
-      <p className="text-xs text-gray-500 mb-2">{hint}</p>
-      <label className="flex flex-col items-center justify-center min-h-[140px] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 hover:border-orange-300 cursor-pointer transition-colors">
+    <div className="min-w-0">
+      <p className="text-sm font-medium text-gray-900 mb-3">
+        {label}
+        {requiredMark ? (
+          <span className="text-orange-500" aria-hidden>
+            {' '}
+            *
+          </span>
+        ) : null}
+      </p>
+      <label className="flex flex-col items-center justify-center min-h-[168px] rounded-xl border border-gray-200 bg-gray-50/80 hover:border-orange-200 hover:bg-orange-50/20 cursor-pointer transition-colors">
         <input
           type="file"
           accept={accept}
@@ -67,20 +89,23 @@ function MediaDropZone({ label, hint, file, onFile, accept = 'image/*' }) {
             <img
               src={preview}
               alt=""
-              className="mx-auto max-h-28 object-contain rounded-lg"
+              className="mx-auto max-h-32 object-contain rounded-lg"
             />
             <p className="text-xs text-center text-gray-600 mt-2 truncate px-2">
               {file.name}
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 py-8 text-gray-500">
-            <ImageIcon className="w-10 h-10 text-gray-400" />
-            <span className="text-sm">Click to upload</span>
+          <div className="flex flex-col items-center gap-2 py-10 px-4">
+            <ImageIcon className="w-9 h-9 text-orange-500" strokeWidth={1.75} />
+            <span className="text-sm font-medium text-orange-500">
+              Select from Media Library
+            </span>
             <span className="text-xs text-gray-400">PNG, JPG, WebP</span>
           </div>
         )}
       </label>
+      {hint ? <p className="text-xs text-gray-500 mt-2">{hint}</p> : null}
     </div>
   );
 }
@@ -192,7 +217,10 @@ const Categories = () => {
     setModalOpen(true);
   };
 
-  const parentOptions = useMemo(() => tree.map((c) => ({ id: c._id, name: c.name })), [tree]);
+  const parentOptions = useMemo(
+    () => tree.map((c) => ({ id: c._id, name: c.name })),
+    [tree],
+  );
 
   const toggleExpand = (id) => {
     setExpanded((prev) => {
@@ -261,16 +289,16 @@ const Categories = () => {
   };
 
   const addOperationRow = () => {
-    setOperations((prev) => [
-      ...prev,
-      { commissionRate: 15, otherTax: 15 },
-    ]);
+    setOperations((prev) => [...prev, { commissionRate: 15, otherTax: 15 }]);
   };
 
   const updateOperation = (index, field, value) => {
     setOperations((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value === '' ? '' : Number(value) };
+      next[index] = {
+        ...next[index],
+        [field]: value === '' ? '' : Number(value),
+      };
       return next;
     });
   };
@@ -432,7 +460,9 @@ const Categories = () => {
                     ) : (
                       <span className="w-7" />
                     )}
-                    <span className="font-medium text-gray-900">{cat.name}</span>
+                    <span className="font-medium text-gray-900">
+                      {cat.name}
+                    </span>
                     <span className="text-sm text-gray-500">
                       {displaySlug(cat.slug)}
                     </span>
@@ -492,7 +522,7 @@ const Categories = () => {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/40">
           <div
             className="absolute inset-0"
             role="presentation"
@@ -500,189 +530,258 @@ const Categories = () => {
           />
           <form
             onSubmit={handleSubmit}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl border border-gray-200"
+            className="relative flex w-full max-w-4xl flex-col max-h-[min(90vh,880px)] overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-gray-200"
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Add New Category
-              </h3>
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-8 py-5">
+              <div className="min-w-0 pr-2">
+                <h3 className="text-xl font-semibold tracking-tight text-gray-900">
+                  Add New Category
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Configure category details, assets, and operational rules
+                </p>
+              </div>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => setModalOpen(false)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                className="shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-6">
-              <section>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-                  Basic information
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Category
-                    </label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Laptop Rental"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Parent category
-                    </label>
-                    <select
-                      value={parentId}
-                      onChange={(e) => setParentId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 outline-none"
-                    >
-                      <option value="">None (top-level category)</option>
-                      {parentOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Slug (auto)
-                    </label>
-                    <input
-                      value={slug}
-                      onChange={(e) => {
-                        setSlugManual(true);
-                        setSlug(e.target.value);
-                      }}
-                      placeholder="auto from name"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-gray-50 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Platform assignment
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        ['Rent', availableInRent, () => setAvailableInRent((v) => !v)],
-                        ['Buy', availableInBuy, () => setAvailableInBuy((v) => !v)],
-                        [
-                          'Services',
-                          availableInServices,
-                          () => setAvailableInServices((v) => !v),
-                        ],
-                      ].map(([label, on, toggle]) => (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={toggle}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                            on
-                              ? 'bg-orange-50 border-orange-200 text-orange-800'
-                              : 'bg-gray-50 border-gray-200 text-gray-600'
-                          }`}
-                        >
-                          Available in {label}
-                        </button>
-                      ))}
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+              <div className="space-y-8 px-8 py-6">
+                <section>
+                  <h4 className="mb-5 text-base font-semibold text-gray-900">
+                    Basic Information
+                  </h4>
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <div className="lg:col-span-2">
+                      <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                        Category
+                      </label>
+                      <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="e.g., Electronics"
+                        className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                        Parent Category
+                      </label>
+                      <select
+                        value={parentId}
+                        onChange={(e) => setParentId(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25"
+                      >
+                        <option value="">None (top-level category)</option>
+                        {parentOptions.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                        Slug (Auto-generated)
+                      </label>
+                      <input
+                        value={slug}
+                        onChange={(e) => {
+                          setSlugManual(true);
+                          setSlug(e.target.value);
+                        }}
+                        placeholder="auto-generated-slug"
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50/80 px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/25"
+                      />
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        URL:{' '}
+                        <span className="font-medium text-gray-700">
+                          {displaySlug(slug)}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <p className="mb-2 text-sm font-medium text-gray-800">
+                        Platform Assignment
+                        <span className="text-orange-500" aria-hidden>
+                          {' '}
+                          *
+                        </span>
+                      </p>
+                      <div className="flex flex-wrap gap-2.5">
+                        {[
+                          [
+                            'Rent',
+                            availableInRent,
+                            () => setAvailableInRent((v) => !v),
+                          ],
+                          [
+                            'Buy',
+                            availableInBuy,
+                            () => setAvailableInBuy((v) => !v),
+                          ],
+                          [
+                            'Services',
+                            availableInServices,
+                            () => setAvailableInServices((v) => !v),
+                          ],
+                        ].map(([label, on, toggle]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={toggle}
+                            className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
+                              on
+                                ? 'border-orange-200 bg-orange-50 text-orange-800'
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+                            }`}
+                          >
+                            Available in {label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Select where this category will be visible on the
+                        platform
+                      </p>
                     </div>
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-                  Assets
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <MediaDropZone
-                    label="Category icon (1:1)"
-                    hint="Recommended 512×512"
-                    file={iconFile}
-                    onFile={setIconFile}
-                  />
-                  <MediaDropZone
-                    label="Category image (1:1)"
-                    hint="Recommended 512×512"
-                    file={imageFile}
-                    onFile={setImageFile}
-                  />
-                </div>
-              </section>
+                <section>
+                  <h4 className="mb-5 text-base font-semibold text-gray-900">
+                    Asset Selection
+                  </h4>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <MediaDropZone
+                      label="Category Icon (1:1)"
+                      hint="512x512px recommended for app grids"
+                      requiredMark
+                      file={iconFile}
+                      onFile={setIconFile}
+                    />
+                    <MediaDropZone
+                      label="Category Image (1:1)"
+                      hint="512x512px recommended for app grids"
+                      requiredMark
+                      file={imageFile}
+                      onFile={setImageFile}
+                    />
+                  </div>
+                </section>
 
-              <section>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-                  Operational rules
-                </h4>
-                <div className="space-y-3">
-                  {operations.map((row, i) => (
-                    <div
-                      key={i}
-                      className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
+                <section className="pb-1">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="text-base font-semibold text-gray-900">
+                      Operational Rules
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={addOperationRow}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-orange-600"
                     >
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">
-                          Commission rate %
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={row.commissionRate}
-                          onChange={(e) =>
-                            updateOperation(i, 'commissionRate', e.target.value)
-                          }
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-                        />
+                      <Plus className="h-4 w-4" strokeWidth={2.5} />
+                      Add New Operations
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {operations.map((row, i) => (
+                      <div
+                        key={i}
+                        className="grid grid-cols-1 gap-5 rounded-xl border border-gray-100 bg-gray-50/80 p-4 sm:grid-cols-2"
+                      >
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                            Commission Rate
+                            <span className="text-orange-500" aria-hidden>
+                              {' '}
+                              *
+                            </span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              value={row.commissionRate}
+                              onChange={(e) =>
+                                updateOperation(
+                                  i,
+                                  'commissionRate',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-3.5 pr-9 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25"
+                            />
+                            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                              %
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-xs text-gray-500">
+                            Platform&apos;s percentage share for this category
+                          </p>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                            Other Tax
+                            <span className="text-orange-500" aria-hidden>
+                              {' '}
+                              *
+                            </span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              value={row.otherTax}
+                              onChange={(e) =>
+                                updateOperation(i, 'otherTax', e.target.value)
+                              }
+                              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-3.5 pr-9 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25"
+                            />
+                            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                              %
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-xs text-gray-500">
+                            Platform&apos;s percentage share for this category
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">
-                          Other tax %
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={row.otherTax}
-                          onChange={(e) =>
-                            updateOperation(i, 'otherTax', e.target.value)
-                          }
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addOperationRow}
-                    className="w-full py-2 rounded-lg border border-dashed border-orange-300 text-sm font-medium text-orange-600 hover:bg-orange-50"
-                  >
-                    + Add new operations
-                  </button>
-                </div>
-              </section>
+                    ))}
+                  </div>
+                </section>
+              </div>
             </div>
 
-            <div className="sticky bottom-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-gray-100 bg-white px-8 py-4">
               <button
                 type="button"
                 disabled={submitting}
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg"
+                className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-orange-600 disabled:opacity-60"
               >
-                {submitting ? 'Saving…' : 'Create category & sync'}
+                {submitting ? (
+                  'Saving…'
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" strokeWidth={2.5} />
+                    Create Category &amp; Sync
+                  </>
+                )}
               </button>
             </div>
           </form>

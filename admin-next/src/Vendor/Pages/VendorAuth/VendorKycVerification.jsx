@@ -2812,614 +2812,631 @@ export default function VendorKycVerification() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
               <div className="space-y-4">
-              <div className="space-y-3 rounded-xl border-2 border-sky-200 bg-sky-50/40 p-4">
-                <div className="flex items-center gap-2.5">
-                  {renderStoreCfgBasicInfoIcon()}
-                  <p className="text-sm font-bold text-gray-900">
-                    Basic Information
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="kyc-modal-store-name"
-                    className="block text-sm font-semibold text-gray-900"
-                  >
-                    Store Name{' '}
-                    <span className="text-red-500" aria-hidden>
-                      *
-                    </span>
-                  </label>
-                  <input
-                    id="kyc-modal-store-name"
-                    value={draftStore.storeName}
-                    onChange={(e) =>
-                      setDraftStore((p) => ({
-                        ...p,
-                        storeName: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Baner Branch"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="kyc-modal-store-address"
-                    className="block text-sm font-semibold text-gray-900"
-                  >
-                    Complete Address{' '}
-                    <span className="text-red-500" aria-hidden>
-                      *
-                    </span>
-                  </label>
-                  <textarea
-                    id="kyc-modal-store-address"
-                    value={draftStore.completeAddress}
-                    onChange={(e) =>
-                      setDraftStore((p) => ({
-                        ...p,
-                        completeAddress: e.target.value,
-                      }))
-                    }
-                    placeholder="Enter full address with landmarks"
-                    className="min-h-24 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="kyc-modal-store-pincode"
-                    className="block text-sm font-semibold text-gray-900"
-                  >
-                    Pincode{' '}
-                    <span className="text-red-500" aria-hidden>
-                      *
-                    </span>
-                  </label>
-                  <input
-                    id="kyc-modal-store-pincode"
-                    value={draftStore.pincode}
-                    onChange={(e) =>
-                      setDraftStore((p) => ({ ...p, pincode: e.target.value }))
-                    }
-                    placeholder="e.g., 411038"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
-                  />
-                </div>
-                <div className="rounded-xl border border-sky-200 bg-white/90 p-3">
-                  <p className="mb-2 text-xs font-semibold text-gray-600">
-                    Pin Location on Map
-                  </p>
-                  <div className="flex min-h-[148px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-5 text-center">
-                    {renderStoreCfgMapIcon()}
-                    <p className="mt-2 text-sm font-semibold text-gray-800">
-                      Interactive Map Widget
+                <div className="space-y-3 rounded-xl border-2 border-sky-200 bg-sky-50/40 p-4">
+                  <div className="flex items-center gap-2.5">
+                    {renderStoreCfgBasicInfoIcon()}
+                    <p className="text-sm font-bold text-gray-900">
+                      Basic Information
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapQuery(
-                          draftStore.mapAddress ||
-                            draftStore.completeAddress ||
-                            '',
-                        );
-                        setMapResults([]);
-                        setIsMapModalOpen(true);
-                      }}
-                      className="mt-3 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="kyc-modal-store-name"
+                      className="block text-sm font-semibold text-gray-900"
                     >
-                      Open Map Selector
-                    </button>
-                  </div>
-                  {draftStore.mapAddress ? (
-                    <p className="mt-2 truncate text-[11px] text-gray-600">
-                      Selected: {draftStore.mapAddress}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-2xl border-2 border-sky-200 bg-white/70 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 gap-2.5">
-                    {renderStoreCfgStorePhotoIcon()}
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900">
-                        Store Photos
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Upload clear photos of your store for verification
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold  tracking-wide text-emerald-700">
-                    {renderStoreCfgVerifiedShieldIcon()}
-                    For Verified Badge
-                  </span>
-                </div>
-                <div className="mt-5 space-y-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-900">
-                      Shop Frontage with Signboard{' '}
+                      Store Name{' '}
                       <span className="text-red-500" aria-hidden>
                         *
                       </span>
                     </label>
                     <input
-                      id="kyc-modal-shop-front-file"
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
+                      id="kyc-modal-store-name"
+                      value={draftStore.storeName}
+                      onChange={(e) =>
                         setDraftStore((p) => ({
                           ...p,
-                          shopFrontPhotoName: f?.name || '',
-                          shopFrontPhotoFile: f,
-                        }));
-                      }}
+                          storeName: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g., Baner Branch"
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
                     />
+                  </div>
+                  <div className="space-y-1.5">
                     <label
-                      htmlFor="kyc-modal-shop-front-file"
-                      className="flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-orange-300 bg-orange-50/90 px-4 py-8 text-center transition hover:border-orange-400"
+                      htmlFor="kyc-modal-store-address"
+                      className="block text-sm font-semibold text-gray-900"
                     >
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
-                        <Camera className="h-7 w-7" strokeWidth={1.75} />
-                      </span>
-                      <span className="text-sm font-bold text-gray-900">
-                        {draftStore.shopFrontPhotoFile instanceof File ||
-                        String(draftStore.shopFrontPhotoUrl || '').trim() ||
-                        String(draftStore.shopFrontPhotoName || '').trim()
-                          ? 'Reupload Store Front Photo'
-                          : 'Upload Store Front Photo'}
-                      </span>
-                      <span className="text-xs text-gray-600">
-                        Clear photo showing shop name board
-                      </span>
-                      <span className="text-[11px] font-semibold text-orange-600">
-                        Required for &apos;Physically Verified&apos; badge
+                      Complete Address{' '}
+                      <span className="text-red-500" aria-hidden>
+                        *
                       </span>
                     </label>
-                    {draftStore.shopFrontPhotoName ? (
-                      <p
-                        className="truncate text-center text-xs font-medium text-emerald-600"
-                        title={draftStore.shopFrontPhotoName}
+                    <textarea
+                      id="kyc-modal-store-address"
+                      value={draftStore.completeAddress}
+                      onChange={(e) =>
+                        setDraftStore((p) => ({
+                          ...p,
+                          completeAddress: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter full address with landmarks"
+                      className="min-h-24 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="kyc-modal-store-pincode"
+                      className="block text-sm font-semibold text-gray-900"
+                    >
+                      Pincode{' '}
+                      <span className="text-red-500" aria-hidden>
+                        *
+                      </span>
+                    </label>
+                    <input
+                      id="kyc-modal-store-pincode"
+                      value={draftStore.pincode}
+                      onChange={(e) =>
+                        setDraftStore((p) => ({
+                          ...p,
+                          pincode: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g., 411038"
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-200 transition focus:border-sky-400 focus:ring-2"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-sky-200 bg-white/90 p-3">
+                    <p className="mb-2 text-xs font-semibold text-gray-600">
+                      Pin Location on Map
+                    </p>
+                    <div className="flex min-h-[148px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-5 text-center">
+                      {renderStoreCfgMapIcon()}
+                      <p className="mt-2 text-sm font-semibold text-gray-800">
+                        Interactive Map Widget
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMapQuery(
+                            draftStore.mapAddress ||
+                              draftStore.completeAddress ||
+                              '',
+                          );
+                          setMapResults([]);
+                          setIsMapModalOpen(true);
+                        }}
+                        className="mt-3 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                       >
-                        {draftStore.shopFrontPhotoName}
+                        Open Map Selector
+                      </button>
+                    </div>
+                    {draftStore.mapAddress ? (
+                      <p className="mt-2 truncate text-[11px] text-gray-600">
+                        Selected: {draftStore.mapAddress}
                       </p>
                     ) : null}
                   </div>
-                  <div className="border-t border-sky-100 pt-6">
-                    <label className="block text-sm font-semibold text-gray-900">
-                      Additional Store Photos (Optional)
-                    </label>
-                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
-                      <div
-                        className={`w-full shrink-0 sm:w-1/2 sm:max-w-[50%] ${
-                          (draftStore.additionalPhotoNames || []).length >= 4
-                            ? 'opacity-60'
-                            : ''
-                        }`}
-                      >
-                        <input
-                          id="kyc-modal-additional-photos-file"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          disabled={
-                            (draftStore.additionalPhotoNames || []).length >= 4
-                          }
-                          className="sr-only"
-                          onChange={(e) => {
-                            const picked = Array.from(e.target.files || []);
-                            setDraftStore((p) => {
-                              const names = [...(p.additionalPhotoNames || [])];
-                              const urls = [...(p.additionalPhotoUrls || [])];
-                              const files = [...(p.additionalPhotoFiles || [])];
-                              const L = Math.max(
-                                names.length,
-                                urls.length,
-                                files.length,
-                              );
-                              while (names.length < L) names.push('');
-                              while (urls.length < L) urls.push('');
-                              while (files.length < L) files.push(null);
-                              for (const file of picked) {
-                                if (names.length >= 4) break;
-                                names.push(file.name);
-                                urls.push('');
-                                files.push(file);
-                              }
-                              return {
-                                ...p,
-                                additionalPhotoNames: names,
-                                additionalPhotoUrls: urls,
-                                additionalPhotoFiles: files,
-                              };
-                            });
-                            e.target.value = '';
-                          }}
-                        />
-                        {(draftStore.additionalPhotoNames || []).length >= 4 ? (
-                          <div className="mt-0 flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center">
-                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
-                              <Upload className="h-6 w-6" strokeWidth={1.75} />
-                            </span>
-                            <span className="text-sm font-bold text-gray-700">
-                              Maximum 4 photos
-                            </span>
-                          </div>
-                        ) : (
-                          <label
-                            htmlFor="kyc-modal-additional-photos-file"
-                            className="mt-0 flex min-h-[140px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center transition hover:border-slate-400 hover:bg-slate-50"
-                          >
-                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
-                              <Upload className="h-6 w-6" strokeWidth={1.75} />
-                            </span>
-                            <span className="text-sm font-bold text-gray-900">
-                              Add photo
-                            </span>
-                          </label>
-                        )}
-                      </div>
-                      <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-                        {(draftStore.additionalPhotoNames || []).map(
-                          (name, i) => {
-                            const file = draftStore.additionalPhotoFiles?.[i];
-                            const url = draftStore.additionalPhotoUrls?.[i];
-                            const blob = additionalPhotoBlobUrls[i];
-                            const src =
-                              file instanceof File && blob
-                                ? blob
-                                : String(url || '').trim()
-                                  ? url
-                                  : '';
-                            return (
-                              <div
-                                key={`additional-ph-${i}-${name}`}
-                                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 shadow-sm"
-                              >
-                                {src ? (
-                                  <img
-                                    src={src}
-                                    alt={`Additional store photo ${i + 1}`}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center p-1 text-center text-[10px] leading-tight text-gray-500">
-                                    {name || 'Photo'}
-                                  </div>
-                                )}
-                                <button
-                                  type="button"
-                                  aria-label={`Remove photo ${i + 1}`}
-                                  onClick={() => removeDraftAdditionalPhoto(i)}
-                                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-md ring-1 ring-white/90 hover:bg-black/70"
-                                >
-                                  <Trash2
-                                    className="h-3.5 w-3.5"
-                                    strokeWidth={2.25}
-                                  />
-                                </button>
-                              </div>
-                            );
-                          },
-                        )}
+                </div>
+                <div className="rounded-2xl border-2 border-sky-200 bg-white/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 gap-2.5">
+                      {renderStoreCfgStorePhotoIcon()}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900">
+                          Store Photos
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Upload clear photos of your store for verification
+                        </p>
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-gray-500">
-                      Upload interior shots, product displays, etc. Up to 4
-                      photos.
-                      {(draftStore.additionalPhotoNames || []).length ? (
-                        <span className="ml-1 font-semibold text-emerald-600">
-                          ({(draftStore.additionalPhotoNames || []).length}
-                          /4)
-                        </span>
-                      ) : null}
-                    </p>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold  tracking-wide text-emerald-700">
+                      {renderStoreCfgVerifiedShieldIcon()}
+                      For Verified Badge
+                    </span>
                   </div>
-                </div>
-              </div>
-              <div className="rounded-2xl border-2 border-violet-200 bg-violet-50/40 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  {renderStoreCfgDeliveryZoneIcon()}
-                  <p className="text-base font-bold text-violet-900">
-                    Delivery Zone
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftStore((p) => ({
-                        ...p,
-                        deliveryZoneType: 'pan-india',
-                      }))
-                    }
-                    className={`w-full rounded-xl border-2 p-3 text-left transition ${
-                      draftStore.deliveryZoneType === 'pan-india'
-                        ? 'border-violet-600 bg-violet-50 shadow-md ring-1 ring-violet-200'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                          draftStore.deliveryZoneType === 'pan-india'
-                            ? 'border-violet-600'
-                            : 'border-gray-300'
-                        }`}
-                        aria-hidden
-                      >
-                        {draftStore.deliveryZoneType === 'pan-india' ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
-                        ) : null}
-                      </span>
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                        <Globe
-                          className="h-5 w-5 text-slate-700"
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900">
-                          Pan-India (Standard Shipping)
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Ship to any location across India
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftStore((p) => ({
-                        ...p,
-                        deliveryZoneType: 'hyper-local',
-                      }))
-                    }
-                    className={`w-full rounded-xl border-2 p-3 text-left transition ${
-                      draftStore.deliveryZoneType === 'hyper-local'
-                        ? 'border-violet-600 bg-violet-50 shadow-md ring-1 ring-violet-200'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                          draftStore.deliveryZoneType === 'hyper-local'
-                            ? 'border-violet-600'
-                            : 'border-gray-300'
-                        }`}
-                        aria-hidden
-                      >
-                        {draftStore.deliveryZoneType === 'hyper-local' ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
-                        ) : null}
-                      </span>
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                          draftStore.deliveryZoneType === 'hyper-local'
-                            ? 'bg-violet-100'
-                            : 'bg-slate-100'
-                        }`}
-                      >
-                        <MapPinned
-                          className={`h-5 w-5 ${
-                            draftStore.deliveryZoneType === 'hyper-local'
-                              ? 'text-violet-700'
-                              : 'text-slate-700'
-                          }`}
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900">
-                          Hyper-local (Define Radius)
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Deliver within a specific radius from this store
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                  {draftStore.deliveryZoneType === 'hyper-local' ? (
-                    <div className="rounded-xl border border-violet-200 bg-white p-3">
-                      <div className="flex items-center justify-between text-xs font-medium text-gray-600">
-                        <span>Service Radius:</span>
-                        <span className="text-sm font-bold text-violet-700">
-                          {draftStore.serviceRadiusKm} km
+                  <div className="mt-5 space-y-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-900">
+                        Shop Frontage with Signboard{' '}
+                        <span className="text-red-500" aria-hidden>
+                          *
                         </span>
-                      </div>
+                      </label>
                       <input
-                        type="range"
-                        min={1}
-                        max={50}
-                        value={draftStore.serviceRadiusKm}
-                        onChange={(e) =>
+                        id="kyc-modal-shop-front-file"
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
                           setDraftStore((p) => ({
                             ...p,
-                            serviceRadiusKm: Number(e.target.value),
-                          }))
-                        }
-                        className="mt-2 w-full accent-violet-600"
+                            shopFrontPhotoName: f?.name || '',
+                            shopFrontPhotoFile: f,
+                          }));
+                        }}
                       />
-                      <div className="mt-1 flex justify-between text-[10px] text-gray-400">
-                        <span>0 km</span>
-                        <span>25 km</span>
-                        <span>50 km</span>
-                      </div>
-                      <div className="relative mt-3 overflow-hidden rounded-xl border border-violet-200 bg-gradient-to-b from-violet-50 to-white px-3 py-8 text-center">
+                      <label
+                        htmlFor="kyc-modal-shop-front-file"
+                        className="flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-orange-300 bg-orange-50/90 px-4 py-8 text-center transition hover:border-orange-400"
+                      >
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
+                          <Camera className="h-7 w-7" strokeWidth={1.75} />
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {draftStore.shopFrontPhotoFile instanceof File ||
+                          String(draftStore.shopFrontPhotoUrl || '').trim() ||
+                          String(draftStore.shopFrontPhotoName || '').trim()
+                            ? 'Reupload Store Front Photo'
+                            : 'Upload Store Front Photo'}
+                        </span>
+                        <span className="text-xs text-gray-600">
+                          Clear photo showing shop name board
+                        </span>
+                        <span className="text-[11px] font-semibold text-orange-600">
+                          Required for &apos;Physically Verified&apos; badge
+                        </span>
+                      </label>
+                      {draftStore.shopFrontPhotoName ? (
+                        <p
+                          className="truncate text-center text-xs font-medium text-emerald-600"
+                          title={draftStore.shopFrontPhotoName}
+                        >
+                          {draftStore.shopFrontPhotoName}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="border-t border-sky-100 pt-6">
+                      <label className="block text-sm font-semibold text-gray-900">
+                        Additional Store Photos (Optional)
+                      </label>
+                      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
                         <div
-                          className="pointer-events-none absolute inset-0 opacity-40"
-                          style={{
-                            backgroundImage:
-                              'linear-gradient(#e9d5ff 1px, transparent 1px), linear-gradient(90deg, #e9d5ff 1px, transparent 1px)',
-                            backgroundSize: '18px 18px',
-                          }}
-                          aria-hidden
-                        />
-                        <MapPin
-                          className="relative mx-auto h-8 w-8 text-violet-600"
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                        <p className="relative mt-2 text-xs font-medium text-gray-600">
-                          Coverage Map Preview
-                        </p>
-                        <p className="relative mt-1 text-xs text-gray-700">
-                          This store will deliver within{' '}
-                          {draftStore.serviceRadiusKm} km radius
-                        </p>
+                          className={`w-full shrink-0 sm:w-1/2 sm:max-w-[50%] ${
+                            (draftStore.additionalPhotoNames || []).length >= 4
+                              ? 'opacity-60'
+                              : ''
+                          }`}
+                        >
+                          <input
+                            id="kyc-modal-additional-photos-file"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            disabled={
+                              (draftStore.additionalPhotoNames || []).length >=
+                              4
+                            }
+                            className="sr-only"
+                            onChange={(e) => {
+                              const picked = Array.from(e.target.files || []);
+                              setDraftStore((p) => {
+                                const names = [
+                                  ...(p.additionalPhotoNames || []),
+                                ];
+                                const urls = [...(p.additionalPhotoUrls || [])];
+                                const files = [
+                                  ...(p.additionalPhotoFiles || []),
+                                ];
+                                const L = Math.max(
+                                  names.length,
+                                  urls.length,
+                                  files.length,
+                                );
+                                while (names.length < L) names.push('');
+                                while (urls.length < L) urls.push('');
+                                while (files.length < L) files.push(null);
+                                for (const file of picked) {
+                                  if (names.length >= 4) break;
+                                  names.push(file.name);
+                                  urls.push('');
+                                  files.push(file);
+                                }
+                                return {
+                                  ...p,
+                                  additionalPhotoNames: names,
+                                  additionalPhotoUrls: urls,
+                                  additionalPhotoFiles: files,
+                                };
+                              });
+                              e.target.value = '';
+                            }}
+                          />
+                          {(draftStore.additionalPhotoNames || []).length >=
+                          4 ? (
+                            <div className="mt-0 flex min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center">
+                              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
+                                <Upload
+                                  className="h-6 w-6"
+                                  strokeWidth={1.75}
+                                />
+                              </span>
+                              <span className="text-sm font-bold text-gray-700">
+                                Maximum 4 photos
+                              </span>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor="kyc-modal-additional-photos-file"
+                              className="mt-0 flex min-h-[140px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/90 px-3 py-6 text-center transition hover:border-slate-400 hover:bg-slate-50"
+                            >
+                              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-600 shadow-sm">
+                                <Upload
+                                  className="h-6 w-6"
+                                  strokeWidth={1.75}
+                                />
+                              </span>
+                              <span className="text-sm font-bold text-gray-900">
+                                Add photo
+                              </span>
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                          {(draftStore.additionalPhotoNames || []).map(
+                            (name, i) => {
+                              const file = draftStore.additionalPhotoFiles?.[i];
+                              const url = draftStore.additionalPhotoUrls?.[i];
+                              const blob = additionalPhotoBlobUrls[i];
+                              const src =
+                                file instanceof File && blob
+                                  ? blob
+                                  : String(url || '').trim()
+                                    ? url
+                                    : '';
+                              return (
+                                <div
+                                  key={`additional-ph-${i}-${name}`}
+                                  className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 shadow-sm"
+                                >
+                                  {src ? (
+                                    <img
+                                      src={src}
+                                      alt={`Additional store photo ${i + 1}`}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center p-1 text-center text-[10px] leading-tight text-gray-500">
+                                      {name || 'Photo'}
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove photo ${i + 1}`}
+                                    onClick={() =>
+                                      removeDraftAdditionalPhoto(i)
+                                    }
+                                    className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-md ring-1 ring-white/90 hover:bg-black/70"
+                                  >
+                                    <Trash2
+                                      className="h-3.5 w-3.5"
+                                      strokeWidth={2.25}
+                                    />
+                                  </button>
+                                </div>
+                              );
+                            },
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-2xl border-2 border-emerald-200 bg-white p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  {renderStoreCfgCustomerWalkIcon()}
-                  <p className="text-sm font-bold text-gray-900">
-                    Customer Walk-in
-                  </p>
-                </div>
-                <div className="space-y-3 rounded-xl border border-emerald-100 bg-white p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        Allow Walk-in Customers?
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        If ON, this location will show up on the &quot;Find
-                        Store&quot; map for users.
+                      <p className="mt-3 text-xs text-gray-500">
+                        Upload interior shots, product displays, etc. Up to 4
+                        photos.
+                        {(draftStore.additionalPhotoNames || []).length ? (
+                          <span className="ml-1 font-semibold text-emerald-600">
+                            ({(draftStore.additionalPhotoNames || []).length}
+                            /4)
+                          </span>
+                        ) : null}
                       </p>
                     </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border-2 border-violet-200 bg-violet-50/40 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    {renderStoreCfgDeliveryZoneIcon()}
+                    <p className="text-base font-bold text-violet-900">
+                      Delivery Zone
+                    </p>
+                  </div>
+                  <div className="space-y-3">
                     <button
                       type="button"
                       onClick={() =>
-                        setDraftStore((p) => {
-                          const nextWalkIn = !p.allowsWalkIn;
-                          return {
-                            ...p,
-                            allowsWalkIn: nextWalkIn,
-                            walkInAccessLabel: nextWalkIn
-                              ? 'Public Access'
-                              : 'No Public Access',
-                          };
-                        })
+                        setDraftStore((p) => ({
+                          ...p,
+                          deliveryZoneType: 'pan-india',
+                        }))
                       }
-                      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
-                        draftStore.allowsWalkIn
-                          ? 'bg-emerald-500'
-                          : 'bg-gray-300'
+                      className={`w-full rounded-xl border-2 p-3 text-left transition ${
+                        draftStore.deliveryZoneType === 'pan-india'
+                          ? 'border-violet-600 bg-violet-50 shadow-md ring-1 ring-violet-200'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
-                      aria-label="Toggle walk-in customers"
                     >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-                          draftStore.allowsWalkIn
-                            ? 'translate-x-6'
-                            : 'translate-x-1'
-                        }`}
-                      />
+                      <div className="flex gap-3">
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                            draftStore.deliveryZoneType === 'pan-india'
+                              ? 'border-violet-600'
+                              : 'border-gray-300'
+                          }`}
+                          aria-hidden
+                        >
+                          {draftStore.deliveryZoneType === 'pan-india' ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
+                          ) : null}
+                        </span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                          <Globe
+                            className="h-5 w-5 text-slate-700"
+                            strokeWidth={1.75}
+                            aria-hidden
+                          />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900">
+                            Pan-India (Standard Shipping)
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Ship to any location across India
+                          </p>
+                        </div>
+                      </div>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraftStore((p) => ({
+                          ...p,
+                          deliveryZoneType: 'hyper-local',
+                        }))
+                      }
+                      className={`w-full rounded-xl border-2 p-3 text-left transition ${
+                        draftStore.deliveryZoneType === 'hyper-local'
+                          ? 'border-violet-600 bg-violet-50 shadow-md ring-1 ring-violet-200'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex gap-3">
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                            draftStore.deliveryZoneType === 'hyper-local'
+                              ? 'border-violet-600'
+                              : 'border-gray-300'
+                          }`}
+                          aria-hidden
+                        >
+                          {draftStore.deliveryZoneType === 'hyper-local' ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
+                          ) : null}
+                        </span>
+                        <span
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                            draftStore.deliveryZoneType === 'hyper-local'
+                              ? 'bg-violet-100'
+                              : 'bg-slate-100'
+                          }`}
+                        >
+                          <MapPinned
+                            className={`h-5 w-5 ${
+                              draftStore.deliveryZoneType === 'hyper-local'
+                                ? 'text-violet-700'
+                                : 'text-slate-700'
+                            }`}
+                            strokeWidth={1.75}
+                            aria-hidden
+                          />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900">
+                            Hyper-local (Define Radius)
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Deliver within a specific radius from this store
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                    {draftStore.deliveryZoneType === 'hyper-local' ? (
+                      <div className="rounded-xl border border-violet-200 bg-white p-3">
+                        <div className="flex items-center justify-between text-xs font-medium text-gray-600">
+                          <span>Service Radius:</span>
+                          <span className="text-sm font-bold text-violet-700">
+                            {draftStore.serviceRadiusKm} km
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={1}
+                          max={50}
+                          value={draftStore.serviceRadiusKm}
+                          onChange={(e) =>
+                            setDraftStore((p) => ({
+                              ...p,
+                              serviceRadiusKm: Number(e.target.value),
+                            }))
+                          }
+                          className="mt-2 w-full accent-violet-600"
+                        />
+                        <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+                          <span>0 km</span>
+                          <span>25 km</span>
+                          <span>50 km</span>
+                        </div>
+                        <div className="relative mt-3 overflow-hidden rounded-xl border border-violet-200 bg-gradient-to-b from-violet-50 to-white px-3 py-8 text-center">
+                          <div
+                            className="pointer-events-none absolute inset-0 opacity-40"
+                            style={{
+                              backgroundImage:
+                                'linear-gradient(#e9d5ff 1px, transparent 1px), linear-gradient(90deg, #e9d5ff 1px, transparent 1px)',
+                              backgroundSize: '18px 18px',
+                            }}
+                            aria-hidden
+                          />
+                          <MapPin
+                            className="relative mx-auto h-8 w-8 text-violet-600"
+                            strokeWidth={1.75}
+                            aria-hidden
+                          />
+                          <p className="relative mt-2 text-xs font-medium text-gray-600">
+                            Coverage Map Preview
+                          </p>
+                          <p className="relative mt-1 text-xs text-gray-700">
+                            This store will deliver within{' '}
+                            {draftStore.serviceRadiusKm} km radius
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                  <div>
-                    <p className="mb-1 text-sm font-semibold text-gray-900">
-                      Store Timings
+                </div>
+                <div className="rounded-2xl border-2 border-emerald-200 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    {renderStoreCfgCustomerWalkIcon()}
+                    <p className="text-sm font-bold text-gray-900">
+                      Customer Walk-in
                     </p>
-                    <input
-                      value={draftStore.storeTimings}
-                      onChange={(e) =>
-                        setDraftStore((p) => ({
-                          ...p,
-                          storeTimings: e.target.value,
-                        }))
-                      }
-                      placeholder="Mon-Sat, 10 AM - 9 PM"
-                      disabled={!draftStore.allowsWalkIn}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-gray-100 disabled:text-gray-400"
-                    />
+                  </div>
+                  <div className="space-y-3 rounded-xl border border-emerald-100 bg-white p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Allow Walk-in Customers?
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          If ON, this location will show up on the &quot;Find
+                          Store&quot; map for users.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDraftStore((p) => {
+                            const nextWalkIn = !p.allowsWalkIn;
+                            return {
+                              ...p,
+                              allowsWalkIn: nextWalkIn,
+                              walkInAccessLabel: nextWalkIn
+                                ? 'Public Access'
+                                : 'No Public Access',
+                            };
+                          })
+                        }
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+                          draftStore.allowsWalkIn
+                            ? 'bg-emerald-500'
+                            : 'bg-gray-300'
+                        }`}
+                        aria-label="Toggle walk-in customers"
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                            draftStore.allowsWalkIn
+                              ? 'translate-x-6'
+                              : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-semibold text-gray-900">
+                        Store Timings
+                      </p>
+                      <input
+                        value={draftStore.storeTimings}
+                        onChange={(e) =>
+                          setDraftStore((p) => ({
+                            ...p,
+                            storeTimings: e.target.value,
+                          }))
+                        }
+                        placeholder="Mon-Sat, 10 AM - 9 PM"
+                        disabled={!draftStore.allowsWalkIn}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-gray-100 disabled:text-gray-400"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
-                    <input
-                      type="checkbox"
-                      checked={draftStore.isDefault}
-                      onChange={(e) =>
-                        setDraftStore((p) => ({
-                          ...p,
-                          isDefault: e.target.checked,
-                        }))
+                <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={draftStore.isDefault}
+                        onChange={(e) =>
+                          setDraftStore((p) => ({
+                            ...p,
+                            isDefault: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      Mark as Default Store
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800 sm:justify-self-end">
+                      <input
+                        type="checkbox"
+                        checked={draftStore.isActive}
+                        onChange={(e) =>
+                          setDraftStore((p) => ({
+                            ...p,
+                            isActive: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      Active Store
+                    </label>
+                  </div>
+                </div>
+                {!storeModalSaveCheck.ok ? (
+                  <p
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                    role="alert"
+                  >
+                    {storeModalSaveCheck.message}
+                  </p>
+                ) : null}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={addStore}
+                    disabled={!storeModalSaveCheck.ok}
+                    title={
+                      storeModalSaveCheck.ok
+                        ? undefined
+                        : storeModalSaveCheck.message
+                    }
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
+                  >
+                    <img
+                      src={
+                        typeof saveStoreIcon === 'string'
+                          ? saveStoreIcon
+                          : saveStoreIcon.src
                       }
-                      className="h-4 w-4 rounded border-gray-300"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="h-5 w-5 shrink-0 object-contain"
+                      aria-hidden
                     />
-                    Mark as Default Store
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800 sm:justify-self-end">
-                    <input
-                      type="checkbox"
-                      checked={draftStore.isActive}
-                      onChange={(e) =>
-                        setDraftStore((p) => ({
-                          ...p,
-                          isActive: e.target.checked,
-                        }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    Active Store
-                  </label>
+                    Save Store
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeStoreModal}
+                    className="shrink-0 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-900 shadow-sm hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
-              {!storeModalSaveCheck.ok ? (
-                <p
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
-                  role="alert"
-                >
-                  {storeModalSaveCheck.message}
-                </p>
-              ) : null}
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={addStore}
-                  disabled={!storeModalSaveCheck.ok}
-                  title={
-                    storeModalSaveCheck.ok
-                      ? undefined
-                      : storeModalSaveCheck.message
-                  }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
-                >
-                  <img
-                    src={
-                      typeof saveStoreIcon === 'string'
-                        ? saveStoreIcon
-                        : saveStoreIcon.src
-                    }
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="h-5 w-5 shrink-0 object-contain"
-                    aria-hidden
-                  />
-                  Save Store
-                </button>
-                <button
-                  type="button"
-                  onClick={closeStoreModal}
-                  className="shrink-0 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-900 shadow-sm hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
             </div>
           </div>
         </div>
