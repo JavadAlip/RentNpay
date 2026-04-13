@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  FolderTree,
   ImageIcon,
   Plus,
   Trash2,
@@ -346,74 +347,95 @@ const Categories = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-            Master Categories
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Organize product hierarchy and manage category settings.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openModal}
-          className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 shadow-sm"
-        >
-          + Add New Category
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          {
-            title: 'Total Categories',
-            value: stats.totalMain,
-            sub: 'Main',
-            accent: 'bg-orange-50 text-orange-700 border-orange-100',
-          },
-          {
-            title: 'Total Sub-Categories',
-            value: stats.totalSubs,
-            sub: 'Niche',
-            accent: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-          },
-          {
-            title: 'Active Products',
-            value: stats.activeProducts,
-            sub: 'Listed',
-            accent: 'bg-violet-50 text-violet-700 border-violet-100',
-          },
-        ].map((card) => (
-          <div
-            key={card.title}
-            className={`rounded-2xl border p-5 ${card.accent}`}
-          >
-            <p className="text-sm font-medium opacity-90">{card.title}</p>
-            <p className="text-3xl font-semibold mt-2 tabular-nums">
-              {Number(card.value).toLocaleString()}
-            </p>
-            <p className="text-xs mt-1 opacity-80">{card.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-8" aria-label="Platform">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTab(t.id)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.id
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.06)] sm:rounded-3xl sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#00B050] text-white shadow-sm"
+              aria-hidden
             >
-              {t.label}
-            </button>
+              <FolderTree className="h-6 w-6" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-[26px]">
+                Master Categories
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Organize product hierarchy and manage category settings
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openModal}
+            className="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-[#F26522] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#dc5a1f] sm:w-auto"
+          >
+            + Add New Category
+          </button>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            {
+              title: 'Total Categories',
+              value: stats.totalMain,
+              sub: 'Main',
+              wrap: 'border-sky-100 bg-sky-50/90',
+              valueClass: 'text-gray-900',
+            },
+            {
+              title: 'Total Sub-Categories',
+              value: stats.totalSubs,
+              sub: 'Niche',
+              wrap: 'border-fuchsia-100 bg-fuchsia-50/70',
+              valueClass: 'text-gray-900',
+            },
+            {
+              title: 'Active Products',
+              value: stats.activeProducts,
+              sub: 'Listed',
+              wrap: 'border-emerald-100 bg-emerald-50/90',
+              valueClass: 'text-emerald-700',
+            },
+          ].map((card) => (
+            <div
+              key={card.title}
+              className={`rounded-2xl border p-5 ${card.wrap}`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                {card.title}
+              </p>
+              <p
+                className={`mt-2 text-3xl font-bold tabular-nums ${card.valueClass}`}
+              >
+                {Number(card.value).toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">({card.sub})</p>
+            </div>
           ))}
+        </div>
+
+        <nav
+          className="mt-8 flex gap-1 rounded-xl bg-gray-100 p-1.5"
+          aria-label="Platform"
+        >
+          {TABS.map((t) => {
+            const selected = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className={`min-h-[40px] flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                  selected
+                    ? 'bg-white font-semibold text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
@@ -422,10 +444,6 @@ const Categories = () => {
           <h2 className="text-base font-semibold text-gray-900">
             Category Hierarchy
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Expand rows to see sub-categories. Sub-categories are created by
-            choosing a parent in the add form.
-          </p>
         </div>
 
         {loading ? (
