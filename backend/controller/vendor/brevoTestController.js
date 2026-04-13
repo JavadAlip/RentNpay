@@ -7,6 +7,12 @@ const BREVO_TEST_JWT_SECRET =
   process.env.BREVO_TEST_JWT_SECRET || process.env.JWT_SECRET || 'brevo-test-dev';
 
 const makeOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+const maskEmail = (email = '') => {
+  const e = String(email || '').trim();
+  const at = e.indexOf('@');
+  if (at <= 1) return e;
+  return `${e[0]}***${e.slice(at - 1)}`;
+};
 
 const signBrevoToken = (vendor) =>
   jwt.sign(
@@ -21,6 +27,7 @@ const signBrevoToken = (vendor) =>
   );
 
 export const brevoTestRegister = async (req, res) => {
+  const startedAt = Date.now();
   try {
     const { fullName, emailAddress, password } = req.body;
     if (!fullName || !emailAddress || !password) {
@@ -29,12 +36,20 @@ export const brevoTestRegister = async (req, res) => {
         .json({ message: 'fullName, emailAddress and password are required.' });
     }
     const email = String(emailAddress).trim().toLowerCase();
+    console.log('[BrevoTestRegister] start', {
+      email: maskEmail(email),
+      hasName: Boolean(fullName),
+      hasPassword: Boolean(password),
+    });
     const existing = await BrevoTestVendor.findOne({ emailAddress: email });
     const otp = makeOtp();
     const otpExpire = new Date(Date.now() + 5 * 60 * 1000);
     const passwordHash = await bcrypt.hash(String(password), 10);
 
     if (existing) {
+      console.log('[BrevoTestRegister] existing user found, refreshing OTP', {
+        email: maskEmail(email),
+      });
       existing.fullName = String(fullName).trim();
       existing.password = passwordHash;
       existing.otp = otp;
@@ -42,6 +57,9 @@ export const brevoTestRegister = async (req, res) => {
       existing.isVerified = false;
       await existing.save();
     } else {
+      console.log('[BrevoTestRegister] creating new test vendor', {
+        email: maskEmail(email),
+      });
       await BrevoTestVendor.create({
         fullName: String(fullName).trim(),
         emailAddress: email,
@@ -53,11 +71,21 @@ export const brevoTestRegister = async (req, res) => {
     }
 
     await sendBrevoTestOtpEmail(email, otp);
+    console.log('[BrevoTestRegister] done', {
+      email: maskEmail(email),
+      elapsedMs: Date.now() - startedAt,
+    });
     return res.status(200).json({
       message: 'OTP sent via Brevo. Check inbox/spam.',
       emailAddress: email,
     });
   } catch (error) {
+    console.error('[BrevoTestRegister] failed', {
+      elapsedMs: Date.now() - startedAt,
+      code: error?.code,
+      responseCode: error?.responseCode,
+      message: error?.message,
+    });
     return res.status(500).json({ message: error.message || 'Register failed' });
   }
 };
