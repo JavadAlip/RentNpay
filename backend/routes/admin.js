@@ -23,11 +23,13 @@ import {
   getCategories,
   deleteCategory,
   getMasterCategories,
+  updateCategory,
 } from '../controller/admin/categoryController.js';
 import {
   createSubCategory,
   getSubCategories,
   deleteSubCategory,
+  updateSubCategory,
 } from '../controller/admin/subCategoryController.js';
 import {
   listListingTemplates,
@@ -66,6 +68,16 @@ router.get('/get-categories', getCategories);
 router.get('/master-categories', adminAuth, getMasterCategories);
 router.delete('/delete-category/:id', adminAuth, deleteCategory);
 
+router.put(
+  '/update-category/:id',
+  adminAuth,
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),
+  updateCategory,
+);
+
 router.post(
   '/create-sub-category',
   adminAuth,
@@ -78,6 +90,16 @@ router.post(
 // Public read (same as get-categories) so vendor storefront can load subcategories without admin login.
 router.get('/get-sub-categories/:categoryId', getSubCategories);
 router.delete('/delete-sub-category/:id', adminAuth, deleteSubCategory);
+
+router.put(
+  '/update-sub-category/:id',
+  adminAuth,
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'icon', maxCount: 1 },
+  ]),
+  updateSubCategory,
+);
 
 router.get('/listing-templates', adminAuth, listListingTemplates);
 router.get('/listing-templates/:id', adminAuth, getListingTemplate);

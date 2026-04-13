@@ -216,6 +216,14 @@ export const apiDeleteCategory = (id, token) =>
     },
   });
 
+// Update Category (FormData; omit file fields to keep existing assets)
+export const apiUpdateCategory = (id, data, token) =>
+  API.put(`/admin/update-category/${id}`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // ── SUBCATEGORY APIs ─────────────────────────
 
 // Create SubCategory
@@ -235,6 +243,14 @@ export const apiGetSubCategories = (categoryId, token) =>
 // Delete SubCategory
 export const apiDeleteSubCategory = (id, token) =>
   API.delete(`/admin/delete-sub-category/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+// Update SubCategory (FormData)
+export const apiUpdateSubCategory = (id, data, token) =>
+  API.put(`/admin/update-sub-category/${id}`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

@@ -8,6 +8,7 @@ import {
   ChevronRight,
   FolderTree,
   ImageIcon,
+  Pencil,
   Plus,
   Trash2,
   X,
@@ -20,6 +21,8 @@ import {
   createSubCategory,
   deleteCategory,
   deleteSubCategory,
+  updateCategory,
+  updateSubCategory,
 } from '@/redux/slices/categorySlice';
 
 const slugify = (text) =>
@@ -43,6 +46,7 @@ function MediaDropZone({
   file,
   onFile,
   requiredMark,
+  existingUrl,
   accept = 'image/*',
 }) {
   const [preview, setPreview] = useState('');
@@ -96,6 +100,18 @@ function MediaDropZone({
               {file.name}
             </p>
           </div>
+        ) : existingUrl ? (
+          <div className="relative flex flex-col items-center gap-2 py-8 px-4">
+            <img
+              src={existingUrl}
+              alt=""
+              className="mx-auto max-h-32 object-contain rounded-lg"
+            />
+            <span className="text-sm font-medium text-orange-500">
+              Click to replace
+            </span>
+            <span className="text-xs text-gray-400">PNG, JPG, WebP</span>
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-10 px-4">
             <ImageIcon className="w-9 h-9 text-orange-500" strokeWidth={1.75} />
@@ -138,6 +154,10 @@ const Categories = () => {
   const [availableInServices, setAvailableInServices] = useState(false);
   const [iconFile, setIconFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [existingIconUrl, setExistingIconUrl] = useState('');
+  const [existingImageUrl, setExistingImageUrl] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingSubId, setEditingSubId] = useState(null);
   const [operations, setOperations] = useState([
     { commissionRate: 15, otherTax: 15 },
   ]);
@@ -207,7 +227,17 @@ const Categories = () => {
     setAvailableInServices(false);
     setIconFile(null);
     setImageFile(null);
+    setExistingIconUrl('');
+    setExistingImageUrl('');
+    setEditingCategoryId(null);
+    setEditingSubId(null);
     setOperations([{ commissionRate: 15, otherTax: 15 }]);
+  };
+
+  const closeModal = () => {
+    if (submitting) return;
+    setModalOpen(false);
+    resetModal();
   };
 
   const openModal = () => {
@@ -215,6 +245,53 @@ const Categories = () => {
     if (activeTab === 'rentals') setAvailableInRent(true);
     if (activeTab === 'selling') setAvailableInBuy(true);
     if (activeTab === 'services') setAvailableInServices(true);
+    setModalOpen(true);
+  };
+
+  const mapOperationsFromDoc = (doc) => {
+    const ops = doc?.operations;
+    if (Array.isArray(ops) && ops.length) {
+      return ops.map((o) => ({
+        commissionRate: o.commissionRate ?? 0,
+        otherTax: o.otherTax ?? 0,
+      }));
+    }
+    return [
+      {
+        commissionRate: doc?.commissionRate ?? 15,
+        otherTax: doc?.otherTax ?? 15,
+      },
+    ];
+  };
+
+  const openEditCategory = (cat) => {
+    resetModal();
+    setEditingCategoryId(cat._id);
+    setName(cat.name || '');
+    setSlug(cat.slug || slugify(cat.name));
+    setSlugManual(true);
+    setAvailableInRent(cat.availableInRent !== false);
+    setAvailableInBuy(!!cat.availableInBuy);
+    setAvailableInServices(!!cat.availableInServices);
+    setOperations(mapOperationsFromDoc(cat));
+    setExistingIconUrl(cat.icon || '');
+    setExistingImageUrl(cat.image || '');
+    setModalOpen(true);
+  };
+
+  const openEditSub = (sub, parentCat) => {
+    resetModal();
+    setEditingSubId(sub._id);
+    setParentId(parentCat._id);
+    setName(sub.name || '');
+    setSlug(sub.slug || slugify(sub.name));
+    setSlugManual(true);
+    setAvailableInRent(sub.availableInRent !== false);
+    setAvailableInBuy(!!sub.availableInBuy);
+    setAvailableInServices(!!sub.availableInServices);
+    setOperations(mapOperationsFromDoc(sub));
+    setExistingIconUrl(sub.icon || '');
+    setExistingImageUrl(sub.image || '');
     setModalOpen(true);
   };
 
@@ -262,29 +339,82 @@ const Categories = () => {
       return;
     }
     const isSub = Boolean(parentId);
-    if (isSub && !imageFile && !iconFile) {
-      toast.error('Add a category image or icon for the sub-category');
-      return;
-    }
-    if (!isSub && !imageFile && !iconFile) {
-      toast.error('Add a category image or icon');
+    const isEdit = Boolean(editingCategoryId || editingSubId);
+    const hasAsset = Boolean(
+      iconFile ||
+        imageFile ||
+        (isEdit && (existingIconUrl || existingImageUrl)),
+    );
+    if (!hasAsset) {
+      toast.error(
+        isSub
+          ? 'Add a category image or icon for the sub-category'
+          : 'Add a category image or icon',
+      );
       return;
     }
 
     setSubmitting(true);
     const fd = buildFormData(isSub);
-    const result = await dispatch(
-      isSub ? createSubCategory(fd) : createCategory(fd),
-    );
+    let result;
+    if (isEdit && editingSubId) {
+      result = await dispatch(updateSubCategory({ id: editingSubId, data: fd }));
+    } else if (isEdit && editingCategoryId) {
+      result = await dispatch(
+        updateCategory({ id: editingCategoryId, data: fd }),
+      );
+    } else {
+      result = await dispatch(
+        isSub ? createSubCategory(fd) : createCategory(fd),
+      );
+    }
     setSubmitting(false);
 
     if (
-      createCategory.fulfilled.match(result) ||
-      createSubCategory.fulfilled.match(result)
+      createCategory.rejected.match(result) ||
+      createSubCategory.rejected.match(result) ||
+      updateCategory.rejected.match(result) ||
+      updateSubCategory.rejected.match(result)
     ) {
-      toast.success(isSub ? 'Sub-category created' : 'Category created');
-      setModalOpen(false);
-      resetModal();
+      toast.error(
+        typeof result.payload === 'string'
+          ? result.payload
+          : 'Something went wrong',
+      );
+      return;
+    }
+
+    const ok =
+      createCategory.fulfilled.match(result) ||
+      createSubCategory.fulfilled.match(result) ||
+      updateCategory.fulfilled.match(result) ||
+      updateSubCategory.fulfilled.match(result);
+    if (ok) {
+      const pu = Number(result.payload?.productsUpdated) || 0;
+      const clu = Number(result.payload?.customListingsUpdated) || 0;
+      if (isEdit && (pu > 0 || clu > 0)) {
+        const parts = [];
+        if (pu > 0) {
+          parts.push(`${pu} product listing${pu === 1 ? '' : 's'}`);
+        }
+        if (clu > 0) {
+          parts.push(`${clu} custom listing row${clu === 1 ? '' : 's'}`);
+        }
+        toast.success(
+          `Saved. Updated ${parts.join(' and ')} to match new names.`,
+        );
+      } else {
+        toast.success(
+          isEdit
+            ? isSub
+              ? 'Sub-category updated'
+              : 'Category updated'
+            : isSub
+              ? 'Sub-category created'
+              : 'Category created',
+        );
+      }
+      closeModal();
       loadTree();
     }
   };
@@ -490,6 +620,15 @@ const Categories = () => {
                       </span>
                       <button
                         type="button"
+                        disabled={deleting || submitting}
+                        onClick={() => openEditCategory(cat)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 disabled:opacity-40"
+                        title="Edit category"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         disabled={deleting}
                         onClick={() => handleDeleteCategory(cat)}
                         className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
@@ -518,6 +657,15 @@ const Categories = () => {
                             </span>
                             <button
                               type="button"
+                              disabled={deleting || submitting}
+                              onClick={() => openEditSub(sub, cat)}
+                              className="p-2 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 disabled:opacity-40"
+                              title="Edit sub-category"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               disabled={deleting}
                               onClick={() =>
                                 handleDeleteSubCategory(sub, cat.name)
@@ -544,7 +692,7 @@ const Categories = () => {
           <div
             className="absolute inset-0"
             role="presentation"
-            onClick={() => !submitting && setModalOpen(false)}
+            onClick={() => !submitting && closeModal()}
           />
           <form
             onSubmit={handleSubmit}
@@ -553,7 +701,11 @@ const Categories = () => {
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-8 py-5">
               <div className="min-w-0 pr-2">
                 <h3 className="text-xl font-semibold tracking-tight text-gray-900">
-                  Add New Category
+                  {editingSubId
+                    ? 'Edit Sub-category'
+                    : editingCategoryId
+                      ? 'Edit Category'
+                      : 'Add New Category'}
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Configure category details, assets, and operational rules
@@ -562,7 +714,7 @@ const Categories = () => {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={() => setModalOpen(false)}
+                onClick={closeModal}
                 className="shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                 aria-label="Close"
               >
@@ -579,7 +731,7 @@ const Categories = () => {
                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <div className="lg:col-span-2">
                       <label className="mb-1.5 block text-sm font-medium text-gray-800">
-                        Category
+                        {editingSubId ? 'Sub-category' : 'Category'}
                       </label>
                       <input
                         value={name}
@@ -595,7 +747,8 @@ const Categories = () => {
                       <select
                         value={parentId}
                         onChange={(e) => setParentId(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25"
+                        disabled={Boolean(editingCategoryId)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-orange-500 focus:ring-2 focus:ring-orange-500/25 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
                       >
                         <option value="">None (top-level category)</option>
                         {parentOptions.map((p) => (
@@ -681,14 +834,20 @@ const Categories = () => {
                     <MediaDropZone
                       label="Category Icon (1:1)"
                       hint="512x512px recommended for app grids"
-                      requiredMark
+                      requiredMark={!editingCategoryId && !editingSubId}
+                      existingUrl={
+                        iconFile ? undefined : existingIconUrl || undefined
+                      }
                       file={iconFile}
                       onFile={setIconFile}
                     />
                     <MediaDropZone
                       label="Category Image (1:1)"
                       hint="512x512px recommended for app grids"
-                      requiredMark
+                      requiredMark={!editingCategoryId && !editingSubId}
+                      existingUrl={
+                        imageFile ? undefined : existingImageUrl || undefined
+                      }
                       file={imageFile}
                       onFile={setImageFile}
                     />
@@ -782,7 +941,7 @@ const Categories = () => {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={() => setModalOpen(false)}
+                onClick={closeModal}
                 className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
@@ -794,6 +953,11 @@ const Categories = () => {
               >
                 {submitting ? (
                   'Saving…'
+                ) : editingCategoryId || editingSubId ? (
+                  <>
+                    <Check className="h-4 w-4" strokeWidth={2.5} />
+                    Save changes
+                  </>
                 ) : (
                   <>
                     <Check className="h-4 w-4" strokeWidth={2.5} />

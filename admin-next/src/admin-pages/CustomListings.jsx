@@ -655,6 +655,15 @@ const CustomListings = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      dispatch(fetchListingTemplates());
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [dispatch]);
+
+  useEffect(() => {
     if (!modalOpen) return;
     dispatch(fetchListingTemplates());
   }, [modalOpen, dispatch]);

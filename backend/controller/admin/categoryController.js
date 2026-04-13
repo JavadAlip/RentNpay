@@ -2,6 +2,8 @@ import Category from '../../models/Category.js';
 import SubCategory from '../../models/SubCategory.js';
 import Product from '../../models/Product.js';
 import Offer from '../../models/Offer.js';
+import ListingTemplate from '../../models/ListingTemplate.js';
+import SellListingTemplate from '../../models/SellListingTemplate.js';
 
 import { uploadImageToCloudinary } from '../../config/cloudinaryUpload.js';
 
@@ -179,6 +181,134 @@ export const getCategories = async (req, res) => {
 };
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Main category name is denormalized on products and admin custom listing templates.
+ */
+async function syncDenormalizedMainCategoryName(oldName, newName) {
+  const o = String(oldName || '').trim();
+  const n = String(newName || '').trim();
+  if (!o || !n || o.toLowerCase() === n.toLowerCase()) {
+    return { products: 0, rentalTemplates: 0, sellTemplates: 0 };
+  }
+  const filter = { category: new RegExp(`^${escapeRegex(o)}$`, 'i') };
+  const [p, r, s] = await Promise.all([
+    Product.updateMany(filter, { $set: { category: n } }),
+    ListingTemplate.updateMany(filter, { $set: { category: n } }),
+    SellListingTemplate.updateMany(filter, { $set: { category: n } }),
+  ]);
+  return {
+    products: p.modifiedCount ?? 0,
+    rentalTemplates: r.modifiedCount ?? 0,
+    sellTemplates: s.modifiedCount ?? 0,
+  };
+}
+
+export const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const oldName = String(category.name || '').trim();
+
+    const {
+      name: nameIn,
+      slug: slugIn,
+      commissionRate,
+      otherTax,
+      operations: opsRaw,
+    } = req.body;
+
+    if (!nameIn?.trim()) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const availableInRent = parseBool(req.body.availableInRent, true);
+    const availableInBuy = parseBool(req.body.availableInBuy, false);
+    const availableInServices = parseBool(
+      req.body.availableInServices,
+      false,
+    );
+
+    let operations = parseOperations(opsRaw);
+    const cr = Number(commissionRate) || 0;
+    const ot = Number(otherTax) || 0;
+    if (!operations.length) {
+      operations = [{ commissionRate: cr, otherTax: ot }];
+    }
+
+    const newName = nameIn.trim();
+    const slug =
+      (slugIn && String(slugIn).trim()) || slugify(newName) || category.slug;
+    if (!slug) {
+      return res.status(400).json({ message: 'Valid slug is required' });
+    }
+
+    const slugTaken = await Category.findOne({
+      slug,
+      _id: { $ne: category._id },
+    });
+    if (slugTaken) {
+      return res.status(400).json({ message: 'Slug is already in use' });
+    }
+
+    let image = category.image || '';
+    let icon = category.icon || '';
+
+    const imageFile = req.files?.image?.[0];
+    const iconFile = req.files?.icon?.[0];
+
+    if (imageFile) {
+      const imgRes = await uploadImageToCloudinary(
+        imageFile.buffer,
+        'categories',
+      );
+      image = imgRes.secure_url;
+    }
+    if (iconFile) {
+      const iconRes = await uploadImageToCloudinary(
+        iconFile.buffer,
+        'categories/icons',
+      );
+      icon = iconRes.secure_url;
+    }
+
+    if (!image && !icon) {
+      return res
+        .status(400)
+        .json({ message: 'Category must have an image and/or icon' });
+    }
+    if (!image) image = icon;
+    if (!icon) icon = image;
+
+    category.name = newName;
+    category.slug = slug;
+    category.image = image;
+    category.icon = icon;
+    category.availableInRent = availableInRent;
+    category.availableInBuy = availableInBuy;
+    category.availableInServices = availableInServices;
+    category.commissionRate = cr;
+    category.otherTax = ot;
+    category.operations = operations;
+
+    await category.save();
+
+    const sync = await syncDenormalizedMainCategoryName(oldName, newName);
+
+    res.json({
+      message: 'Category updated',
+      category,
+      productsUpdated: sync.products,
+      customListingsUpdated: sync.rentalTemplates + sync.sellTemplates,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 /** Products store category / subCategory as strings (vendor UI names); match case-insensitively. */
 async function deleteProductsAndOffersByFilter(filter) {

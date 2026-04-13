@@ -3,9 +3,11 @@ import {
   apiCreateCategory,
   apiGetCategories,
   apiDeleteCategory,
+  apiUpdateCategory,
   apiCreateSubCategory,
   apiGetSubCategories,
   apiDeleteSubCategory,
+  apiUpdateSubCategory,
 } from '../../service/api';
 
 // ── CATEGORY ─────────────────────────
@@ -41,6 +43,27 @@ export const getCategories = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to get categories',
+      );
+    }
+  },
+);
+
+// Update Category
+export const updateCategory = createAsyncThunk(
+  'category/update',
+  async ({ id, data }, { getState, rejectWithValue }) => {
+    try {
+      const token =
+        getState().admin.token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem('adminToken')
+          : null);
+      if (!token) return rejectWithValue('Please login again to continue.');
+      const res = await apiUpdateCategory(id, data, token);
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update category',
       );
     }
   },
@@ -114,6 +137,27 @@ export const getSubCategories = createAsyncThunk(
   },
 );
 
+// Update SubCategory
+export const updateSubCategory = createAsyncThunk(
+  'subcategory/update',
+  async ({ id, data }, { getState, rejectWithValue }) => {
+    try {
+      const token =
+        getState().admin.token ||
+        (typeof window !== 'undefined'
+          ? localStorage.getItem('adminToken')
+          : null);
+      if (!token) return rejectWithValue('Please login again to continue.');
+      const res = await apiUpdateSubCategory(id, data, token);
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update sub-category',
+      );
+    }
+  },
+);
+
 // Delete SubCategory
 export const deleteSubCategory = createAsyncThunk(
   'subcategory/delete',
@@ -167,6 +211,12 @@ const categorySlice = createSlice({
       .addCase(createCategory.fulfilled, (state, action) => {
         state.categories.unshift(action.payload);
       })
+      .addCase(updateCategory.fulfilled, (state, action) => {
+        const cat = action.payload?.category;
+        if (!cat?._id) return;
+        const i = state.categories.findIndex((c) => c._id === cat._id);
+        if (i !== -1) state.categories[i] = cat;
+      })
 
       .addCase(getCategories.fulfilled, (state, action) => {
         state.categoriesLoading = false;
@@ -186,6 +236,12 @@ const categorySlice = createSlice({
       // SUBCATEGORY
       .addCase(createSubCategory.fulfilled, (state, action) => {
         state.subCategories.unshift(action.payload);
+      })
+      .addCase(updateSubCategory.fulfilled, (state, action) => {
+        const sub = action.payload?.subCategory;
+        if (!sub?._id) return;
+        const i = state.subCategories.findIndex((s) => s._id === sub._id);
+        if (i !== -1) state.subCategories[i] = sub;
       })
 
       .addCase(getSubCategories.pending, (state) => {
