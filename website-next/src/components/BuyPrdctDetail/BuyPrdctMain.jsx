@@ -1,8 +1,16 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, ShieldCheck, Truck, BadgeCheck, Star } from 'lucide-react';
+import {
+  Heart,
+  ShieldCheck,
+  Truck,
+  BadgeCheck,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '@/store/slices/cartSlice';
 
@@ -17,7 +25,9 @@ function parseSellPrice(product) {
     const n = Number(product.salesConfiguration.salePrice);
     if (Number.isFinite(n) && n > 0) return n;
   }
-  const s = String(product?.price || '').replace(/[^\d.]/g, '').trim();
+  const s = String(product?.price || '')
+    .replace(/[^\d.]/g, '')
+    .trim();
   const n = Number(s);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
@@ -32,15 +42,24 @@ const BuyPrdctMain = ({ product }) => {
     if (product?.image) return product.image;
     return FALLBACK_IMAGES[0];
   });
+  const [thumbStart, setThumbStart] = useState(0);
+  const THUMBS_PER_VIEW = 5;
 
   const gallery = useMemo(() => {
     const imgs = Array.isArray(product?.images)
       ? product.images.filter(Boolean)
       : [];
-    if (imgs.length) return imgs.slice(0, 5);
+    if (imgs.length) return imgs.slice(0, 10);
     if (product?.image) return [product.image, ...FALLBACK_IMAGES.slice(0, 3)];
     return FALLBACK_IMAGES;
   }, [product?.images, product?.image]);
+
+  const maxThumbStart = Math.max(0, gallery.length - THUMBS_PER_VIEW);
+  const visibleThumbs = gallery.slice(thumbStart, thumbStart + THUMBS_PER_VIEW);
+  useEffect(() => {
+    setThumbStart(0);
+    if (gallery.length) setMainImg(gallery[0]);
+  }, [gallery]);
 
   const conditionLabel = useMemo(() => {
     const raw = String(product?.condition || '').trim();
@@ -72,7 +91,10 @@ const BuyPrdctMain = ({ product }) => {
       return `${n} ${unit}`;
     }
     return 'Tomorrow, 4 PM';
-  }, [product?.logisticsVerification?.deliveryTimelineValue, product?.logisticsVerification?.deliveryTimelineUnit]);
+  }, [
+    product?.logisticsVerification?.deliveryTimelineValue,
+    product?.logisticsVerification?.deliveryTimelineUnit,
+  ]);
 
   const goToCheckout = () => {
     dispatch(
@@ -112,8 +134,9 @@ const BuyPrdctMain = ({ product }) => {
     <section className="w-full bg-gray-50 px-3 sm:px-4 py-5 sm:py-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-[11px] sm:text-xs text-gray-500 mb-3 sm:mb-4">
-          Home <span className="mx-1">›</span> {product?.category || 'Electronics'}{' '}
-          <span className="mx-1">›</span> {product?.subCategory || 'Mobiles'}
+          Home <span className="mx-1">›</span>{' '}
+          {product?.category || 'Electronics'} <span className="mx-1">›</span>{' '}
+          {product?.subCategory || 'Mobiles'}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.05fr] gap-5 lg:gap-7">
@@ -121,7 +144,9 @@ const BuyPrdctMain = ({ product }) => {
           <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="inline-flex items-center rounded-full bg-blue-500 text-white px-3 py-1 text-[10px] sm:text-xs font-semibold">
-                {conditionLabel === 'Brand New' ? '+ New Product' : '+ Refurbished'}
+                {conditionLabel === 'Brand New'
+                  ? '+ New Product'
+                  : '+ Refurbished'}
               </span>
               <button className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white">
                 <Heart className="h-4 w-4 text-gray-500" />
@@ -136,19 +161,47 @@ const BuyPrdctMain = ({ product }) => {
               />
             </div>
 
-            <div className="mt-3 grid grid-cols-4 sm:grid-cols-5 gap-2">
-              {gallery.slice(0, 5).map((src, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setMainImg(src)}
-                  className={`h-14 sm:h-16 rounded-lg overflow-hidden border ${
-                    mainImg === src ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200'
-                  }`}
-                >
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                </button>
-              ))}
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setThumbStart((p) => Math.max(0, p - 1))}
+                disabled={thumbStart === 0}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:bg-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Previous images"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="grid flex-1 grid-cols-4 gap-2 sm:grid-cols-5">
+                {visibleThumbs.map((src, idx) => (
+                  <button
+                    key={`${src}-${thumbStart + idx}`}
+                    type="button"
+                    onClick={() => setMainImg(src)}
+                    className={`h-14 sm:h-16 rounded-lg overflow-hidden border ${
+                      mainImg === src
+                        ? 'border-blue-500 ring-1 ring-blue-200'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setThumbStart((p) => Math.min(maxThumbStart, p + 1))
+                }
+                disabled={thumbStart >= maxThumbStart}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:bg-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next images"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -175,7 +228,9 @@ const BuyPrdctMain = ({ product }) => {
                   ₹{price || 0}
                 </span>
                 {mrp > price ? (
-                  <span className="text-sm text-gray-400 line-through pb-1">₹{mrp}</span>
+                  <span className="text-sm text-gray-400 line-through pb-1">
+                    ₹{mrp}
+                  </span>
                 ) : null}
                 {discountPct > 0 ? (
                   <span className="text-sm sm:text-base font-semibold text-emerald-600 pb-1">
@@ -183,7 +238,9 @@ const BuyPrdctMain = ({ product }) => {
                   </span>
                 ) : null}
               </div>
-              <p className="text-xs text-gray-500 mt-1">inclusive of all taxes</p>
+              <p className="text-xs text-gray-500 mt-1">
+                inclusive of all taxes
+              </p>
             </div>
 
             <div className="rounded-xl border border-blue-100 bg-white px-4 py-4">
@@ -195,16 +252,23 @@ const BuyPrdctMain = ({ product }) => {
                   <BadgeCheck className="h-4 w-4 text-blue-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-900">
-                      Condition: <span className="font-medium">{conditionLabel}</span>
+                      Condition:{' '}
+                      <span className="font-medium">{conditionLabel}</span>
                     </p>
-                    <p className="text-xs text-gray-500">Quality checked by seller</p>
+                    <p className="text-xs text-gray-500">
+                      Quality checked by seller
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <ShieldCheck className="h-4 w-4 text-emerald-500 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-900">1-Year Brand Warranty</p>
-                    <p className="text-xs text-gray-500">Official seller warranty</p>
+                    <p className="text-sm text-gray-900">
+                      1-Year Brand Warranty
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Official seller warranty
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
@@ -213,7 +277,9 @@ const BuyPrdctMain = ({ product }) => {
                     <p className="text-sm text-gray-900">
                       Delivered in {deliveryText}
                     </p>
-                    <p className="text-xs text-gray-500">Express delivery within city</p>
+                    <p className="text-xs text-gray-500">
+                      Express delivery within city
+                    </p>
                   </div>
                 </div>
               </div>
@@ -241,4 +307,3 @@ const BuyPrdctMain = ({ product }) => {
 };
 
 export default BuyPrdctMain;
-

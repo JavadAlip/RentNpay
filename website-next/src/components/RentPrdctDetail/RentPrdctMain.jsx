@@ -414,15 +414,23 @@ const RentPrdctMain = ({ product, offer }) => {
     const fromDb = Array.isArray(product?.images)
       ? product.images.filter(Boolean)
       : [];
-    if (fromDb.length > 0) return fromDb.slice(0, 5);
+    if (fromDb.length > 0) return fromDb.slice(0, 10);
     if (product?.image) return [product.image, ...FALLBACK_IMAGES.slice(0, 3)];
     return FALLBACK_IMAGES;
   }, [product?.images, product?.image]);
 
   const [mainImg, setMainImg] = useState(images[0]);
+  const [thumbStart, setThumbStart] = useState(0);
+  const THUMBS_PER_VIEW = 5;
   useEffect(() => {
     setMainImg(images[0]);
   }, [images]);
+  useEffect(() => {
+    setThumbStart(0);
+  }, [images]);
+
+  const maxThumbStart = Math.max(0, images.length - THUMBS_PER_VIEW);
+  const visibleThumbs = images.slice(thumbStart, thumbStart + THUMBS_PER_VIEW);
 
   const plans = useMemo(() => {
     const fromVendor = normalizeRentalPlansFromProduct(product);
@@ -592,7 +600,10 @@ const RentPrdctMain = ({ product, offer }) => {
     }
     const end = addLocalDays(start, requiredDaysForPlan - 1);
     const maxD = parseLocalIso(maxDateIso);
-    if (!maxD || startOfLocalDay(end).getTime() > startOfLocalDay(maxD).getTime()) {
+    if (
+      !maxD ||
+      startOfLocalDay(end).getTime() > startOfLocalDay(maxD).getTime()
+    ) {
       pushToast(
         'Choose an earlier start date so the full rental fits within the booking window.',
         'error',
@@ -746,21 +757,40 @@ const RentPrdctMain = ({ product, offer }) => {
         </div>
 
         {/* Thumbnails */}
-        <div className="flex gap-2 sm:gap-4 mt-3 sm:mt-4 overflow-x-auto pb-1">
-          {images.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`view-${i + 1}`}
-              onClick={() => setMainImg(img)}
-              className={`w-16 h-14 sm:w-24 sm:h-20 object-cover rounded-lg border cursor-pointer shrink-0 transition-all
-                ${
+        <div className="mt-3 sm:mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setThumbStart((p) => Math.max(0, p - 1))}
+            disabled={thumbStart === 0}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:bg-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Previous images"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="grid flex-1 grid-cols-5 gap-2 sm:gap-4">
+            {visibleThumbs.map((img, i) => (
+              <img
+                key={`${img}-${thumbStart + i}`}
+                src={img}
+                alt={`view-${thumbStart + i + 1}`}
+                onClick={() => setMainImg(img)}
+                className={`w-full h-14 sm:h-20 object-cover rounded-lg border cursor-pointer transition-all ${
                   mainImg === img
                     ? 'border-orange-500 ring-1 ring-orange-400'
                     : 'hover:border-orange-400'
                 }`}
-            />
-          ))}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setThumbStart((p) => Math.min(maxThumbStart, p + 1))}
+            disabled={thumbStart >= maxThumbStart}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 transition hover:bg-orange-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Next images"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -974,11 +1004,18 @@ const RentPrdctMain = ({ product, offer }) => {
 
                 {startDate && endDate ? (
                   <div className="px-3 pb-2 text-center text-xs sm:text-sm text-gray-800">
-                    <span className="font-medium">{formatRangeLine(startDate)}</span>
-                    <span className="mx-2 font-semibold" style={{ color: ORANGE }}>
+                    <span className="font-medium">
+                      {formatRangeLine(startDate)}
+                    </span>
+                    <span
+                      className="mx-2 font-semibold"
+                      style={{ color: ORANGE }}
+                    >
                       to
                     </span>
-                    <span className="font-medium">{formatRangeLine(endDate)}</span>
+                    <span className="font-medium">
+                      {formatRangeLine(endDate)}
+                    </span>
                   </div>
                 ) : (
                   <div className="px-3 pb-2 text-center text-[11px] text-gray-400">
@@ -1051,7 +1088,8 @@ const RentPrdctMain = ({ product, offer }) => {
               {(
                 (plan?.periodUnit === 'day'
                   ? totalRentalForTenure
-                  : effectivePlanPrice) + Number(product?.refundableDeposit || 0)
+                  : effectivePlanPrice) +
+                Number(product?.refundableDeposit || 0)
               ).toLocaleString('en-IN')}
             </span>
           </div>
