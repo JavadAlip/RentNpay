@@ -9,6 +9,7 @@ import {
   Clock,
   DollarSign,
   Filter,
+  Key,
   Package,
   Save,
   Search,
@@ -26,6 +27,28 @@ function categoryOrSubAssetUrl(item) {
   if (icon) return icon;
   const img = String(item?.image || '').trim();
   return img || '';
+}
+
+/** `public/rent-out.png` — Key fallback matches vendor modal sizing. */
+function RentOutListingIcon({ className }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <Key
+        className="h-6 w-6 shrink-0 text-gray-500"
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <img
+      src="/rent-out.png"
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 const SPEC_FIELDS_BY_CATEGORY = {
@@ -1757,14 +1780,29 @@ const AdminProductAddModal = ({
                       return next;
                     })
                   }
-                  className={`rounded-xl border px-4 py-3 text-left ${
+                  className={`flex flex-row items-center justify-center gap-3 rounded-xl border-2 px-4 py-3.5 transition ${
                     form.type === 'Sell'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
+                      ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
+                      : 'border-gray-200 bg-white opacity-60'
+                  } cursor-pointer opacity-100`}
                 >
-                  <p className="text-sm font-semibold">Sell Product</p>
-                  <p className="text-xs text-gray-500">One-time purchase</p>
+                  <Tag
+                    className="h-6 w-6 shrink-0 text-gray-600"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <div className="min-w-0 text-left">
+                    <p
+                      className={`text-sm font-semibold leading-tight ${
+                        form.type === 'Sell' ? 'text-blue-600' : 'text-gray-900'
+                      }`}
+                    >
+                      Sell Product
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500">
+                      One-time purchase
+                    </p>
+                  </div>
                 </button>
                 <button
                   type="button"
@@ -1787,22 +1825,39 @@ const AdminProductAddModal = ({
                       return next;
                     })
                   }
-                  className={`rounded-xl border px-4 py-3 text-left ${
+                  className={`flex flex-row items-center justify-center gap-3 rounded-xl border-2 px-4 py-3.5 transition ${
                     form.type !== 'Sell'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
+                      ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
+                      : 'border-gray-200 bg-white opacity-60'
+                  } cursor-pointer opacity-100`}
                 >
-                  <p className="text-sm font-semibold">Rent Out</p>
-                  <p className="text-xs text-gray-500">Monthly rental</p>
+                  <RentOutListingIcon className="h-6 w-6 shrink-0 object-contain" />
+                  <div className="min-w-0 text-left">
+                    <p
+                      className={`text-sm font-semibold leading-tight ${
+                        form.type !== 'Sell'
+                          ? 'text-blue-600'
+                          : 'text-gray-900'
+                      }`}
+                    >
+                      Rent Out
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500">
+                      Monthly rental
+                    </p>
+                  </div>
                 </button>
                 <button
                   type="button"
                   disabled
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left opacity-60"
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-gray-200 bg-gray-50 px-3 py-4 text-center opacity-60 cursor-not-allowed"
                 >
-                  <p className="text-sm font-semibold">Offer Service</p>
-                  <p className="text-xs text-gray-500">Coming soon</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Offer Service
+                  </p>
+                  <p className="text-[11px] leading-snug text-gray-500">
+                    Coming soon
+                  </p>
                 </button>
               </div>
             ) : (

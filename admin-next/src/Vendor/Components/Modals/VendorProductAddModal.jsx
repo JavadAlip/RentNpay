@@ -17,6 +17,7 @@ import {
   DollarSign,
   Filter,
   Image as ImageIcon,
+  Key,
   Lock,
   Package,
   Plus,
@@ -43,6 +44,28 @@ import {
 } from '@/service/api';
 
 const PLACEHOLDER_IMG = 'https://placehold.co/56x56/e5e7eb/6b7280?text=IMG';
+
+/** `public/rent-out.png` — shows Key icon until the asset exists. */
+function RentOutListingIcon({ className }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <Key
+        className="h-6 w-6 shrink-0 text-gray-500"
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <img
+      src="/rent-out.png"
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 /** Admin Custom Listings toggle off → must not appear in vendor “Add from catalog”. */
 function adminTemplateAllowedForVendor(t) {
@@ -401,7 +424,7 @@ function defaultDayTiers() {
 
 const DEFAULT_MARKET_MONTH_TENURES = [3, 6, 12];
 const DEFAULT_MARKET_DAY_TENURES = [3, 5, 7];
-const TIER_BAND_LABELS = ['SHORT TERM', 'STANDARD', 'LONG TERM'];
+// const TIER_BAND_LABELS = ['SHORT TERM', 'STANDARD', 'LONG TERM'];
 
 function formatInrCompact(n) {
   if (!Number.isFinite(n) || n <= 0) return '';
@@ -445,8 +468,8 @@ function synthesizeRentalTiersFromMarket(monthMap, dayMap, model, prevTiers) {
       months: isDay ? 0 : len,
       days: isDay ? len : 0,
       label: isDay ? `${len} Days` : `${len} Months`,
-      tierLabel:
-        TIER_BAND_LABELS[i] ?? TIER_BAND_LABELS[TIER_BAND_LABELS.length - 1],
+      // tierLabel:
+      //   TIER_BAND_LABELS[i] ?? TIER_BAND_LABELS[TIER_BAND_LABELS.length - 1],
       monthlyRent: prev?.monthlyRent != null ? String(prev.monthlyRent) : '',
       shippingCharges: '',
       bestValue,
@@ -637,6 +660,8 @@ function SectionCard({
   headerRight,
   className = '',
   showLock = false,
+  /** When true, no gray header row — only the card shell + padded body. */
+  hideHeader = false,
 }) {
   const hasTitle = title != null && String(title).trim() !== '';
   const headerLeftStart = Boolean(subtitle || headerIconBoxed);
@@ -653,66 +678,68 @@ function SectionCard({
     <div
       className={`rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden ${className}`}
     >
-      <div
-        className={`flex ${barAlign} justify-between gap-2 border-b border-gray-100 bg-gray-50/90 px-4 py-3`}
-      >
-        <div className={`flex min-w-0 flex-1 ${leftIconTextAlign}`}>
-          {Icon ? (
-            headerIconBoxed ? (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
+      {!hideHeader ? (
+        <div
+          className={`flex ${barAlign} justify-between gap-2 border-b border-gray-100 bg-gray-50/90 px-4 py-3`}
+        >
+          <div className={`flex min-w-0 flex-1 ${leftIconTextAlign}`}>
+            {Icon ? (
+              headerIconBoxed ? (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
+                </div>
+              ) : (
+                <Icon
+                  className={
+                    headerIconClassName ?? 'h-5 w-5 shrink-0 text-emerald-600'
+                  }
+                  strokeWidth={2}
+                />
+              )
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                {hasTitle ? (
+                  <h3 className="truncate text-sm font-semibold text-gray-900 sm:text-base">
+                    {title}
+                  </h3>
+                ) : null}
+                {showLock ? (
+                  lockOnlyHeader ? (
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
+                      role="img"
+                      aria-label="Catalog images are locked"
+                    >
+                      <Lock className="h-4 w-4" strokeWidth={2} aria-hidden />
+                    </div>
+                  ) : (
+                    <Lock
+                      className="h-3.5 w-3.5 shrink-0 text-gray-400"
+                      aria-hidden
+                    />
+                  )
+                ) : null}
               </div>
-            ) : (
-              <Icon
-                className={
-                  headerIconClassName ?? 'h-5 w-5 shrink-0 text-emerald-600'
-                }
-                strokeWidth={2}
-              />
-            )
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              {hasTitle ? (
-                <h3 className="truncate text-sm font-semibold text-gray-900 sm:text-base">
-                  {title}
-                </h3>
-              ) : null}
-              {showLock ? (
-                lockOnlyHeader ? (
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
-                    role="img"
-                    aria-label="Catalog images are locked"
-                  >
-                    <Lock className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  </div>
-                ) : (
-                  <Lock
-                    className="h-3.5 w-3.5 shrink-0 text-gray-400"
-                    aria-hidden
-                  />
-                )
+              {subtitle ? (
+                <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
               ) : null}
             </div>
-            {subtitle ? (
-              <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {badge != null && badge !== false ? (
+              typeof badge === 'string' || typeof badge === 'number' ? (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                  {badge}
+                </span>
+              ) : (
+                badge
+              )
             ) : null}
+            {headerRight}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {badge != null && badge !== false ? (
-            typeof badge === 'string' || typeof badge === 'number' ? (
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
-                {badge}
-              </span>
-            ) : (
-              badge
-            )
-          ) : null}
-          {headerRight}
-        </div>
-      </div>
+      ) : null}
       <div className="p-4">{children}</div>
     </div>
   );
@@ -1894,6 +1921,9 @@ export default function VendorProductAddModal({
         : '—'
       : (formatFirstTierRentLabel(rentalTiers, rentalPricingModel) ?? '—');
 
+  /** Own sell prices when not applying an admin listing template from catalog. */
+  const manualSellSalesConfiguration = listingType === 'sell' && !fullTemplate;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
       <div className="flex min-h-0 w-full max-w-3xl sm:max-w-4xl lg:max-w-5xl max-h-[95vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-2xl">
@@ -1921,61 +1951,115 @@ export default function VendorProductAddModal({
             {/* Listing type */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
-                { id: 'sell', label: 'Sell Product', sub: 'One-time purchase' },
-                { id: 'rent', label: 'Rent Out', sub: 'Monthly rental' },
+                {
+                  id: 'sell',
+                  label: 'Sell Product',
+                  sub: 'One-time purchase',
+                  rowIcon: 'tag',
+                },
+                {
+                  id: 'rent',
+                  label: 'Rent Out',
+                  sub: 'Monthly rental',
+                  rowIcon: 'rent',
+                },
                 {
                   id: 'service',
                   label: 'Offer Service',
                   sub: 'Hourly / fixed',
+                  rowIcon: null,
                 },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={opt.id === 'service'}
-                  onClick={() =>
-                    opt.id !== 'service' &&
-                    (() => {
-                      const nextKind = opt.id;
-                      setListingType(nextKind);
-                      setCondition((prev) =>
-                        nextKind === 'sell'
-                          ? normalizeConditionForListingType(prev, 'Sell')
-                          : normalizeConditionForListingType(
-                              prev,
-                              'Rental',
-                              true,
-                            ),
-                      );
-                      setCustomListing(false);
-                      setExpandedVariantId(null);
-                      setFullTemplate(null);
-                      setSelectedTemplateId(null);
-                      setSearchQuery('');
-                      setListedSearchQuery('');
-                      setListedCategoryFilter('');
-                      setListedFilterPanelOpen(false);
-                      setProductName('');
-                      setBrand('');
-                      setDescription('');
-                      setSpecs({});
-                      setExistingImages([]);
-                      setNewImages([]);
-                      setManualVariants([]);
-                    })()
-                  }
-                  className={`rounded-xl border-2 px-3 py-3 text-left transition ${
-                    listingType === opt.id
-                      ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
-                      : 'border-gray-200 bg-white opacity-60'
-                  } ${opt.id === 'service' ? 'cursor-not-allowed' : 'cursor-pointer opacity-100'}`}
-                >
-                  <p className="text-sm font-semibold text-gray-900">
-                    {opt.label}
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">{opt.sub}</p>
-                </button>
-              ))}
+              ].map((opt) => {
+                const selected = listingType === opt.id;
+                const isRowLayout =
+                  opt.rowIcon === 'rent' || opt.rowIcon === 'tag';
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={opt.id === 'service'}
+                    onClick={() =>
+                      opt.id !== 'service' &&
+                      (() => {
+                        const nextKind = opt.id;
+                        setListingType(nextKind);
+                        setCondition((prev) =>
+                          nextKind === 'sell'
+                            ? normalizeConditionForListingType(prev, 'Sell')
+                            : normalizeConditionForListingType(
+                                prev,
+                                'Rental',
+                                true,
+                              ),
+                        );
+                        setCustomListing(false);
+                        setExpandedVariantId(null);
+                        setFullTemplate(null);
+                        setSelectedTemplateId(null);
+                        setSearchQuery('');
+                        setListedSearchQuery('');
+                        setListedCategoryFilter('');
+                        setListedFilterPanelOpen(false);
+                        setProductName('');
+                        setBrand('');
+                        setDescription('');
+                        setSpecs({});
+                        setExistingImages([]);
+                        setNewImages([]);
+                        setManualVariants([]);
+                      })()
+                    }
+                    className={`rounded-xl border-2 transition ${
+                      isRowLayout
+                        ? 'flex flex-row items-center justify-center gap-3 px-4 py-3.5'
+                        : 'flex flex-col items-center justify-center gap-1.5 px-3 py-4 text-center'
+                    } ${
+                      selected
+                        ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
+                        : 'border-gray-200 bg-white opacity-60'
+                    } ${opt.id === 'service' ? 'cursor-not-allowed' : 'cursor-pointer opacity-100'}`}
+                  >
+                    {isRowLayout ? (
+                      <>
+                        {opt.rowIcon === 'rent' ? (
+                          <RentOutListingIcon className="h-6 w-6 shrink-0 object-contain" />
+                        ) : (
+                          <Tag
+                            className="h-6 w-6 shrink-0 text-gray-600"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                        )}
+                        <div className="min-w-0 text-left">
+                          <p
+                            className={`text-sm font-semibold leading-tight ${
+                              selected ? 'text-blue-600' : 'text-gray-900'
+                            }`}
+                          >
+                            {opt.label}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-snug text-gray-500">
+                            {opt.sub}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p
+                          className={`text-sm font-semibold ${
+                            selected ? 'text-blue-600' : 'text-gray-900'
+                          }`}
+                        >
+                          {opt.label}
+                        </p>
+                        <p className="text-[11px] leading-snug text-gray-500">
+                          {opt.sub}
+                        </p>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Category / subcategory (from template or manual) */}
@@ -2370,7 +2454,11 @@ export default function VendorProductAddModal({
                       <SectionCard
                         title="Product Media"
                         icon={detailsLocked ? null : ImageIcon}
-                        badge={<GreenVerifiedBadge>Catalog Images</GreenVerifiedBadge>}
+                        badge={
+                          <GreenVerifiedBadge>
+                            Catalog Images
+                          </GreenVerifiedBadge>
+                        }
                         showLock={false}
                       >
                         {detailsLocked ? (
@@ -2463,7 +2551,9 @@ export default function VendorProductAddModal({
                       icon={null}
                       badge={
                         mode === 'create' && customListing ? null : (
-                          <GreenVerifiedBadge>Verified Specs</GreenVerifiedBadge>
+                          <GreenVerifiedBadge>
+                            Verified Specs
+                          </GreenVerifiedBadge>
                         )
                       }
                       showLock={detailsLocked}
@@ -2739,12 +2829,12 @@ export default function VendorProductAddModal({
                                   )}
                                   <div className="flex-1 min-w-0 flex items-center justify-between gap-2 sm:gap-4">
                                     <div className="min-w-0 flex-1 text-left">
-                                      <p className="text-sm font-semibold text-gray-900">
-                                        {customListingPricePreview}
-                                      </p>
-                                      <p className="text-sm text-gray-500 truncate mt-0.5">
+                                      <p className="truncate text-sm font-semibold text-gray-900">
                                         {mv.variantName?.trim() ||
                                           'Untitled variant'}
+                                      </p>
+                                      <p className="mt-0.5 truncate text-sm text-gray-500">
+                                        {customListingPricePreview}
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-3 sm:gap-8 shrink-0">
@@ -2795,43 +2885,7 @@ export default function VendorProductAddModal({
                       </SectionCard>
 
                       {expandedVariant ? (
-                        <SectionCard
-                          title={
-                            <span className="flex items-center gap-2.5 min-w-0">
-                              {(() => {
-                                const v = variantPrimaryVisual(expandedVariant);
-                                if (v.kind === 'url') {
-                                  return (
-                                    <img
-                                      src={v.url}
-                                      alt=""
-                                      className="h-10 w-10 shrink-0 rounded-lg border border-gray-200 object-cover"
-                                    />
-                                  );
-                                }
-                                if (v.kind === 'file') {
-                                  return (
-                                    <VariantLocalImagePreview
-                                      file={v.file}
-                                      className="h-10 w-10 shrink-0 rounded-lg border border-gray-200 object-cover"
-                                    />
-                                  );
-                                }
-                                return (
-                                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50">
-                                    <ImageIcon className="h-5 w-5 text-gray-400" />
-                                  </span>
-                                );
-                              })()}
-                              <span className="min-w-0 truncate">
-                                {expandedVariant.variantName?.trim()
-                                  ? expandedVariant.variantName.trim()
-                                  : 'Variant details'}
-                              </span>
-                            </span>
-                          }
-                          icon={null}
-                        >
+                        <SectionCard hideHeader title={null} icon={null}>
                           <div className="space-y-5">
                             <div className="rounded-xl border border-gray-200 bg-white p-4">
                               <label className="text-sm font-medium text-gray-900">
@@ -2998,8 +3052,8 @@ export default function VendorProductAddModal({
                                     String(f.type || '').startsWith('image/'),
                                   );
                                   const used =
-                                    (expandedVariant.existingImages
-                                      ?.length || 0) +
+                                    (expandedVariant.existingImages?.length ||
+                                      0) +
                                     (expandedVariant.newImages?.length || 0);
                                   const next = files.slice(
                                     0,
@@ -3035,8 +3089,7 @@ export default function VendorProductAddModal({
                                   <span className="mt-1 text-xs text-gray-500">
                                     {(expandedVariant.existingImages?.length ||
                                       0) +
-                                      (expandedVariant.newImages?.length ||
-                                        0)}
+                                      (expandedVariant.newImages?.length || 0)}
                                     /5 uploaded
                                   </span>
                                   <input
@@ -3119,7 +3172,10 @@ export default function VendorProductAddModal({
                                   }}
                                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
                                 >
-                                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                                  <Plus
+                                    className="h-3.5 w-3.5"
+                                    strokeWidth={2}
+                                  />
                                   Add Custom Specification
                                 </button>
                               </div>
@@ -3225,7 +3281,10 @@ export default function VendorProductAddModal({
                                           }}
                                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-100 text-rose-600 transition hover:bg-rose-200"
                                         >
-                                          <X className="h-4 w-4" strokeWidth={2} />
+                                          <X
+                                            className="h-4 w-4"
+                                            strokeWidth={2}
+                                          />
                                         </button>
                                       ) : null}
                                     </div>
@@ -3276,7 +3335,23 @@ export default function VendorProductAddModal({
                             : null;
                         const priceLine =
                           listingType === 'sell'
-                            ? String(v.price || '').trim()
+                            ? (() => {
+                                const fromV = String(v.price ?? '').trim();
+                                if (fromV) {
+                                  const n = Number(fromV.replace(/,/g, ''));
+                                  return Number.isFinite(n)
+                                    ? `₹${n.toLocaleString('en-IN')}`
+                                    : `₹${fromV}`;
+                                }
+                                const fromForm = String(sellPrice ?? '').trim();
+                                if (fromForm) {
+                                  const n = Number(fromForm.replace(/,/g, ''));
+                                  return Number.isFinite(n)
+                                    ? `₹${n.toLocaleString('en-IN')}`
+                                    : `₹${fromForm}`;
+                                }
+                                return '';
+                              })()
                             : rentalPreview || String(v.price || '').trim();
                         return (
                           <li
@@ -3506,9 +3581,9 @@ export default function VendorProductAddModal({
                                   </div>
                                 ) : null}
                                 <div className="pr-14">
-                                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                  {/* <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                                     {tier.tierLabel || 'Term'}
-                                  </p>
+                                  </p> */}
                                   <p className="text-sm font-semibold text-gray-900">
                                     {String(tier.label || '').trim() ||
                                       (isDayModel
@@ -3703,6 +3778,62 @@ export default function VendorProductAddModal({
                       </>
                     )}
                   </SectionCard>
+                ) : manualSellSalesConfiguration ? (
+                  <SectionCard
+                    title="Sales Configuration"
+                    subtitle="Set pricing and inventory details"
+                    icon={Tag}
+                    headerIconBoxed
+                    showLock={saleFieldsLocked}
+                  >
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium text-gray-800">
+                          Selling Price (₹){' '}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <div className="mt-2 flex overflow-hidden rounded-xl border border-gray-200 bg-white">
+                          <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+                            ₹
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={sellPrice}
+                            onChange={(e) => setSellPrice(e.target.value)}
+                            disabled={saleFieldsLocked}
+                            className="w-full py-2.5 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                            placeholder="e.g., 54999"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-800">
+                          MRP{' '}
+                          <span className="font-normal text-gray-500">
+                            (Optional)
+                          </span>
+                        </label>
+                        <div className="mt-2 flex overflow-hidden rounded-xl border border-gray-200 bg-white">
+                          <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+                            ₹
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={mrpPrice}
+                            onChange={(e) => setMrpPrice(e.target.value)}
+                            disabled={saleFieldsLocked}
+                            className="w-full py-2.5 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                            placeholder="e.g., 70000"
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-gray-500">
+                          Original price (for discount calculation)
+                        </p>
+                      </div>
+                    </div>
+                  </SectionCard>
                 ) : (
                   <SectionCard
                     title="Sales Configuration"
@@ -3723,16 +3854,23 @@ export default function VendorProductAddModal({
                         />
                       </div>
 
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-gray-800">
-                            Market Insights
-                          </p>
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      <div className="rounded-xl border border-orange-300 bg-orange-50 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <TrendingDown
+                              className="h-5 w-5 shrink-0 text-emerald-600"
+                              strokeWidth={2.25}
+                              aria-hidden
+                            />
+                            <p className="truncate text-base font-bold text-gray-900">
+                              Market Insights
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                             LIVE DATA
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <div className="rounded-lg border bg-white p-2.5">
                             <p className="text-[10px] text-gray-500">
                               MRP / Market Price
@@ -3766,13 +3904,21 @@ export default function VendorProductAddModal({
                               setSellPrice(String(mrpPrice));
                             }
                           }}
-                          className="mt-2 w-full rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
+                          <Zap
+                            className="h-4 w-4 shrink-0 text-white"
+                            strokeWidth={2.25}
+                            aria-hidden
+                          />
                           Match Lowest Price
                         </button>
+                        <p className="mt-2 text-center text-xs text-gray-500">
+                          Auto-fill with the most competitive price online
+                        </p>
                       </div>
 
-                      <div>
+                      {/* <div>
                         <label className="text-xs text-gray-600">
                           MRP (optional)
                         </label>
@@ -3783,7 +3929,7 @@ export default function VendorProductAddModal({
                           className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
                           placeholder="MRP"
                         />
-                      </div>
+                      </div> */}
                     </div>
                   </SectionCard>
                 )}
