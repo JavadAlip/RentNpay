@@ -1418,7 +1418,7 @@ export default function RentalCommandCenter() {
                       Security Deposit Refund
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Choose where you'd like to receive your refund
+                      Choose where you&apos;d like to receive your refund
                     </p>
                   </div>
 
