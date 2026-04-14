@@ -114,14 +114,14 @@ const FeaturedCategories = () => {
             <div className="flex items-center justify-center gap-3 mt-6">
               <button
                 onClick={scrollLeft}
-                className="p-2 border rounded-full hover:bg-gray-100"
+                className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
 
               <button
                 onClick={scrollRight}
-                className="p-2 bg-black text-white rounded-full"
+                className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
               >
                 <ChevronRight size={18} />
               </button>
