@@ -65,6 +65,12 @@ export const apiGetMyOrderById = (id) => api.get(`/orders/my/${id}`);
 export const apiCancelMyOrder = (id) => api.put(`/orders/my/${id}/cancel`);
 export const apiExtendMyOrderTenure = (id, data) =>
   api.put(`/orders/my/${id}/extend`, data);
+export const apiSubmitMyReturnRequest = (id, data) => {
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+  return api.put(`/orders/my/${id}/return-request`, data, isFormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined);
+};
 
 // ── USER NOTIFICATIONS ───────────────────────
 export const apiGetUserNotifications = () => api.get('/users/notifications');

@@ -13,8 +13,18 @@ import {
   X,
   ArrowRight,
   CheckCircle2,
+  AlertTriangle,
+  CreditCard,
+  Landmark,
+  IndianRupee,
+  Star,
+  Camera,
 } from 'lucide-react';
-import { apiExtendMyOrderTenure, apiGetMyOrders } from '@/lib/api';
+import {
+  apiExtendMyOrderTenure,
+  apiGetMyOrders,
+  apiSubmitMyReturnRequest,
+} from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import {
   formatMoney,
@@ -99,6 +109,20 @@ function formatShortDate(d) {
   return d.toLocaleString('en-IN', { month: 'short', day: 'numeric' });
 }
 
+function formatShortWeekday(d) {
+  return d.toLocaleString('en-IN', { weekday: 'short' });
+}
+
+function toLocalDateOnly(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function daysBetween(startDate, endDate) {
+  const ms =
+    toLocalDateOnly(endDate).getTime() - toLocalDateOnly(startDate).getTime();
+  return Math.floor(ms / 86400000);
+}
+
 function normalizeExtensionPlans(product, tenureUnit) {
   const cfgs = Array.isArray(product?.rentalConfigurations)
     ? product.rentalConfigurations
@@ -137,6 +161,23 @@ export default function RentalCommandCenter() {
     selectedPlanId: '',
   });
   const [confirmingExtend, setConfirmingExtend] = useState(false);
+  const [returnState, setReturnState] = useState({
+    open: false,
+    row: null,
+    pickupDateIso: '',
+    step: 1,
+    refundMethod: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
+    bankIfsc: '',
+    upiId: '',
+    reviewRating: 0,
+    reviewText: '',
+    mediaNames: [],
+    mediaPreviews: [],
+    mediaFiles: [],
+  });
+  const [submittingReturn, setSubmittingReturn] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -185,6 +226,202 @@ export default function RentalCommandCenter() {
   const closeExtendModal = () =>
     setExtendState({ open: false, row: null, selectedPlanId: '' });
 
+  const closeReturnModal = () =>
+    setReturnState((prev) => {
+      (prev.mediaPreviews || []).forEach((item) => {
+        if (item?.url) URL.revokeObjectURL(item.url);
+      });
+      return {
+        open: false,
+        row: null,
+        pickupDateIso: '',
+        step: 1,
+        refundMethod: '',
+        bankAccountName: '',
+        bankAccountNumber: '',
+        bankIfsc: '',
+        upiId: '',
+        reviewRating: 0,
+        reviewText: '',
+        mediaNames: [],
+        mediaPreviews: [],
+        mediaFiles: [],
+      };
+    });
+
+  const applySelectedMedia = (incomingFiles) => {
+    const files = Array.from(incomingFiles || []).slice(0, 10);
+    setReturnState((prev) => {
+      (prev.mediaPreviews || []).forEach((item) => {
+        if (item?.url) URL.revokeObjectURL(item.url);
+      });
+      return {
+        ...prev,
+        mediaNames: files.map((f) => f.name),
+        mediaFiles: files,
+        mediaPreviews: files.map((file) => ({
+          name: file.name,
+          type: file.type || '',
+          url: URL.createObjectURL(file),
+        })),
+      };
+    });
+  };
+
+  const removeSelectedMediaAt = (index) => {
+    setReturnState((prev) => {
+      const existing = prev.mediaPreviews || [];
+      const target = existing[index];
+      if (target?.url) URL.revokeObjectURL(target.url);
+      const nextPreviews = existing.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        mediaPreviews: nextPreviews,
+        mediaNames: nextPreviews.map((item) => item.name),
+        mediaFiles: (prev.mediaFiles || []).filter((_, i) => i !== index),
+      };
+    });
+  };
+
+  const handleSubmitReturnRequest = async () => {
+    if (!returnState.row) return;
+    if (!returnState.refundMethod) {
+      pushToast('Please select payment plan', 'error');
+      return;
+    }
+    const orderId = String(returnState.row.order?._id || '');
+    const productId = String(returnState.row.product?._id || '');
+    if (!orderId || !productId) return;
+
+    const payload = new FormData();
+    payload.append('productId', productId);
+    payload.append('pickupDate', returnState.pickupDateIso || '');
+    payload.append('refundMethod', returnState.refundMethod || 'original');
+    payload.append('upiId', returnState.upiId || '');
+    payload.append('bankAccountName', returnState.bankAccountName || '');
+    payload.append('bankAccountNumber', returnState.bankAccountNumber || '');
+    payload.append('bankIfsc', returnState.bankIfsc || '');
+    if (returnState.reviewRating) {
+      payload.append('rating', String(returnState.reviewRating));
+    }
+    payload.append('reviewText', returnState.reviewText || '');
+    (returnState.mediaFiles || []).slice(0, 10).forEach((file) => {
+      payload.append('mediaFiles', file);
+    });
+
+    console.log('[return-review] submit clicked', {
+      orderId,
+      productId,
+      step: returnState.step,
+      payload,
+    });
+
+    try {
+      setSubmittingReturn(true);
+      const res = await apiSubmitMyReturnRequest(orderId, payload);
+      console.log('[return-review] API success', {
+        status: res?.status,
+        data: res?.data,
+      });
+      const updatedOrder = res.data;
+      setOrders((prev) =>
+        prev.map((o) =>
+          String(o?._id || '') === String(updatedOrder?._id || '')
+            ? updatedOrder
+            : o,
+        ),
+      );
+      pushToast('Return request submitted successfully.', 'success');
+      closeReturnModal();
+    } catch (err) {
+      console.log('[return-review] API error', {
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      pushToast(
+        err?.response?.data?.message || 'Failed to submit return request.',
+        'error',
+      );
+    } finally {
+      setSubmittingReturn(false);
+    }
+  };
+
+  const proceedToReviewStep = () => {
+    if (!returnState.refundMethod) {
+      pushToast('Please select payment plan', 'error');
+      return;
+    }
+    setReturnState((prev) => ({ ...prev, step: 3 }));
+  };
+
+  const returnDateOptions = useMemo(() => {
+    if (!returnState.row) return [];
+    const base = toLocalDateOnly(new Date());
+    return Array.from({ length: 7 }).map((_, i) => {
+      const dt = new Date(base);
+      dt.setDate(base.getDate() + i);
+      return dt;
+    });
+  }, [returnState.row]);
+
+  useEffect(() => {
+    if (!returnState.open || !returnState.row) return;
+    const initial = toLocalDateOnly(new Date());
+    setReturnState((prev) =>
+      prev.pickupDateIso
+        ? prev
+        : { ...prev, pickupDateIso: initial.toISOString() },
+    );
+  }, [returnState.open, returnState.row]);
+
+  const returnCalc = useMemo(() => {
+    if (!returnState.row || !returnState.pickupDateIso) return null;
+    const selected = new Date(returnState.pickupDateIso);
+    if (Number.isNaN(selected.getTime())) return null;
+
+    const endDate = toLocalDateOnly(returnState.row.end);
+    const pickupDate = toLocalDateOnly(selected);
+    const lateDays = Math.max(0, daysBetween(endDate, pickupDate));
+
+    const line = returnState.row.line;
+    const fineRatePerDay = 50;
+    const refundableDeposit = lineDeposit(line, returnState.row.product);
+
+    const hasExtension =
+      Number(returnState.row.order?.extendedDurationTotal || 0) > 0;
+
+    // Extension fine must come from extended tenure itself (not pickup-date changes).
+    const extendedDurationRaw = Math.max(
+      0,
+      Number(returnState.row.order?.extendedDurationTotal || 0),
+    );
+    const extensionUnit =
+      String(returnState.row.order?.tenureUnit || '').toLowerCase() === 'day'
+        ? 'day'
+        : 'month';
+    const extendedDays =
+      extensionUnit === 'day'
+        ? extendedDurationRaw
+        : Math.round(extendedDurationRaw * 30);
+
+    const extensionFine = hasExtension ? extendedDays * fineRatePerDay : 0;
+    const netBalance = refundableDeposit - extensionFine;
+
+    return {
+      pickupDate,
+      endDate,
+      hasExtension,
+      lateDays,
+      extendedDays,
+      fineRatePerDay,
+      extensionFine,
+      refundableDeposit,
+      netBalance,
+    };
+  }, [returnState]);
+
   const handleConfirmExtension = async () => {
     if (!extendState.row || !selectedExtensionPlan) return;
     const orderId = String(extendState.row.order?._id || '');
@@ -211,7 +448,8 @@ export default function RentalCommandCenter() {
       closeExtendModal();
     } catch (err) {
       pushToast(
-        err?.response?.data?.message || 'Failed to extend tenure. Please try again.',
+        err?.response?.data?.message ||
+          'Failed to extend tenure. Please try again.',
         'error',
       );
     } finally {
@@ -511,6 +749,39 @@ export default function RentalCommandCenter() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
                                 <button
                                   type="button"
+                                  onClick={() =>
+                                    setReturnState((prev) => {
+                                      (prev.mediaPreviews || []).forEach(
+                                        (item) => {
+                                          if (item?.url)
+                                            URL.revokeObjectURL(item.url);
+                                        },
+                                      );
+                                      return {
+                                        open: true,
+                                        row: {
+                                          order,
+                                          line,
+                                          product,
+                                          start,
+                                          end,
+                                          tenureUnit,
+                                        },
+                                        pickupDateIso: '',
+                                        step: 1,
+                                        refundMethod: '',
+                                        bankAccountName: '',
+                                        bankAccountNumber: '',
+                                        bankIfsc: '',
+                                        upiId: '',
+                                        reviewRating: 0,
+                                        reviewText: '',
+                                        mediaNames: [],
+                                        mediaPreviews: [],
+                                        mediaFiles: [],
+                                      };
+                                    })
+                                  }
                                   className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-50"
                                 >
                                   <Package className="w-4 h-4" />
@@ -761,6 +1032,785 @@ export default function RentalCommandCenter() {
                   No matching extension tenure options are available for this
                   product.
                 </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {returnState.open && returnState.row && returnCalc ? (
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+              <div>
+                <h2 className="text-[18px] leading-[1.2] font-bold text-gray-900">
+                  Return Request
+                </h2>
+                <div className="mt-4 flex items-center gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({
+                        ...prev,
+                        step: 1,
+                      }))
+                    }
+                    className="inline-flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full text-[11px] font-semibold flex items-center justify-center ${
+                        returnState.step >= 1
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      1
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${
+                        returnState.step === 1
+                          ? 'text-gray-900'
+                          : returnState.step > 1
+                            ? 'text-orange-600'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      Pickup
+                    </span>
+                  </button>
+                  <span
+                    className={`h-px w-12 sm:w-16 ${
+                      returnState.step >= 2 ? 'bg-orange-500' : 'bg-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({
+                        ...prev,
+                        step: 2,
+                      }))
+                    }
+                    className="inline-flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full text-[11px] font-semibold flex items-center justify-center ${
+                        returnState.step >= 2
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      2
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${
+                        returnState.step === 2
+                          ? 'text-gray-900'
+                          : returnState.step > 2
+                            ? 'text-orange-600'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      Refund
+                    </span>
+                  </button>
+                  <span
+                    className={`h-px w-12 sm:w-16 ${
+                      returnState.step >= 3 ? 'bg-orange-500' : 'bg-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={proceedToReviewStep}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full text-[11px] font-semibold flex items-center justify-center ${
+                        returnState.step >= 3
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      3
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${
+                        returnState.step === 3
+                          ? 'text-gray-900'
+                          : 'text-gray-500'
+                      }`}
+                    >
+                      Review
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeReturnModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                aria-label="Close return modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {returnState.step === 1 ? (
+                <>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <div className="rounded-xl border border-blue-200 bg-[#eef4ff] p-4 flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center shrink-0">
+                        <Package className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xl font-bold text-gray-900 truncate">
+                          {returnState.row.product?.productName ||
+                            'Rental item'}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Original End Date:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {formatShortDate(returnCalc.endDate)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      Select Pickup Date
+                      <Calendar className="w-4 h-4 text-amber-600" />
+                    </p>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                      {returnDateOptions.map((d, idx) => {
+                        const iso = d.toISOString();
+                        const active = returnState.pickupDateIso === iso;
+                        const isEndDate =
+                          toLocalDateOnly(d).getTime() ===
+                          toLocalDateOnly(returnCalc.endDate).getTime();
+                        const optionCharge =
+                          idx === 0 ? 0 : returnCalc.fineRatePerDay;
+                        return (
+                          <button
+                            key={iso}
+                            type="button"
+                            onClick={() =>
+                              setReturnState((prev) => ({
+                                ...prev,
+                                pickupDateIso: iso,
+                              }))
+                            }
+                            className={`rounded-xl border px-2 py-2 text-center transition-colors ${
+                              active
+                                ? 'border-orange-500 bg-orange-500 text-white'
+                                : isEndDate
+                                  ? 'border-red-300 ring-1 ring-red-200 bg-white'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <p
+                              className={`text-[9px] ${
+                                active ? 'text-orange-100' : 'text-gray-500'
+                              }`}
+                            >
+                              {formatShortWeekday(d)}
+                            </p>
+                            <p
+                              className={`text-sm font-semibold ${
+                                active ? 'text-white' : 'text-gray-900'
+                              }`}
+                            >
+                              {d.getDate()}
+                            </p>
+                            <p
+                              className={`text-[9px] ${
+                                active ? 'text-orange-100' : 'text-gray-500'
+                              }`}
+                            >
+                              {d.toLocaleString('en-IN', { month: 'short' })}
+                            </p>
+                            <p
+                              className={`text-[10px] mt-1 font-medium ${
+                                active ? 'text-white' : 'text-gray-700'
+                              }`}
+                            >
+                              ₹ {formatMoney(optionCharge)}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-gray-800 text-center font-medium">
+                    You will be charged ₹
+                    {formatMoney(returnCalc.fineRatePerDay)} per day, if you
+                    exceed End Date ({formatShortDate(returnCalc.endDate)})
+                  </div>
+
+                  {returnCalc.hasExtension ? (
+                    <div className="rounded-[24px] border border-red-300 bg-white p-4 sm:p-5 shadow-[0_8px_20px_rgba(239,68,68,0.12)]">
+                      <h4 className="text-[22px] leading-tight font-bold text-gray-900 flex items-center gap-3">
+                        <span className="w-9 h-9 rounded-xl bg-[#ff4d2d] flex items-center justify-center shrink-0">
+                          <AlertTriangle className="w-5 h-5 text-white" />
+                        </span>
+                        Extension Summary
+                      </h4>
+                      <div className="mt-4 rounded-2xl border border-amber-200 bg-[#fff8ef] p-4">
+                        <p className="text-[12px] font-semibold text-gray-800 mb-3">
+                          Timeline Breakdown:
+                        </p>
+
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-emerald-600 font-semibold">
+                              Grace Period (0-2 days)
+                            </span>
+                            <span className="text-emerald-600 font-semibold">
+                              FREE
+                            </span>
+                          </div>
+                          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-400 rounded-full"
+                              style={{ width: '3%' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-red-500 font-semibold">
+                              Daily Fine (3-30 days)
+                            </span>
+                            <span className="text-red-500 font-semibold">
+                              ₹{formatMoney(returnCalc.fineRatePerDay)}/day
+                            </span>
+                          </div>
+                          <div className="h-3 bg-red-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-400 rounded-full w-full" />
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-amber-200 bg-white p-3 sm:p-4 space-y-3">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                            <span className="text-gray-700 font-medium">
+                              Total Delay:
+                            </span>
+                            <span className="text-gray-900 font-semibold">
+                              {returnCalc.extendedDays} Days
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                            <span className="text-emerald-600 font-medium">
+                              Grace Period:
+                            </span>
+                            <span className="text-emerald-600 font-semibold">
+                              -2 Days (Free)
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                            <span className="text-red-500 font-medium">
+                              Chargeable:
+                            </span>
+                            <span className="text-red-500 font-semibold">
+                              {Math.max(0, returnCalc.extendedDays - 2)} Days x
+                              ₹{formatMoney(returnCalc.fineRatePerDay)}/day
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[18px] leading-none font-bold text-gray-900">
+                              Total Fine:
+                            </span>
+                            <span className="text-[28px] leading-none font-extrabold text-red-600">
+                              ₹ {formatMoney(returnCalc.extensionFine)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-3 text-xs text-gray-800 text-center font-medium">
+                        This amount will be deducted from your Security Deposit.
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-[24px] border border-gray-200 bg-white p-4 sm:p-5 shadow-[0_8px_20px_rgba(15,23,42,0.10)]">
+                    <h4 className="text-[22px] leading-tight font-bold text-gray-900">
+                      {returnCalc.netBalance >= 0
+                        ? 'Estimated Refund'
+                        : 'Pending Amount'}
+                    </h4>
+
+                    <div className="mt-4 space-y-0">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                        <span className="text-[15px] font-medium text-gray-600">
+                          Security Deposit Held:
+                        </span>
+                        <span className="text-[24px] font-bold text-gray-900">
+                          ₹ {formatMoney(returnCalc.refundableDeposit)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                        <span className="text-[15px] font-medium text-red-500">
+                          Less: Extension Fine
+                        </span>
+                        <span className="text-[24px] font-bold text-red-500">
+                          - ₹ {formatMoney(returnCalc.extensionFine)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`mt-4 rounded-2xl px-4 py-4 ${
+                        returnCalc.netBalance >= 0
+                          ? 'border border-emerald-200 bg-emerald-50'
+                          : 'border border-red-200 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[16px] font-bold text-gray-900">
+                          {returnCalc.netBalance >= 0
+                            ? 'Net Refund:'
+                            : 'Amount to Pay:'}
+                        </span>
+                        <span
+                          className={`text-[32px] leading-none font-extrabold ${
+                            returnCalc.netBalance >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          ₹ {formatMoney(Math.abs(returnCalc.netBalance))}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-2 text-[12px] ${
+                          returnCalc.netBalance >= 0
+                            ? 'text-gray-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {returnCalc.netBalance >= 0
+                          ? 'Will be credited within 5-7 business days'
+                          : 'This due amount must be paid before pickup confirmation'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({ ...prev, step: 2 }))
+                    }
+                    className="w-full rounded-xl bg-blue-600 text-white py-3 text-base font-semibold hover:bg-blue-700"
+                  >
+                    Confirm Pickup for {formatShortDate(returnCalc.pickupDate)}
+                  </button>
+                </>
+              ) : returnState.step === 2 ? (
+                <>
+                  <div className="space-y-1">
+                    <h3 className="text-[24px] font-bold text-gray-900">
+                      Security Deposit Refund
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Choose where you'd like to receive your refund
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center">
+                    <p className="text-sm text-gray-500">
+                      Total Refundable Amount
+                    </p>
+                    <p className="text-[44px] leading-none font-extrabold text-emerald-600 mt-1">
+                      ₹{formatMoney(Math.max(0, returnCalc.netBalance))}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({
+                        ...prev,
+                        refundMethod: 'original',
+                      }))
+                    }
+                    className={`w-full rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      returnState.refundMethod === 'original'
+                        ? 'border-orange-400 bg-orange-50 shadow-[0_4px_12px_rgba(249,115,22,0.15)]'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                      <CreditCard className="w-4 h-4 text-slate-500" />
+                      Original Payment Source
+                      <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+                        Recommended
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      HDFC Credit Card ending 1234
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Fastest refund method · 3-5 business days
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({
+                        ...prev,
+                        refundMethod: 'upi',
+                      }))
+                    }
+                    className={`w-full rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      returnState.refundMethod === 'upi'
+                        ? 'border-orange-400 bg-orange-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                      <IndianRupee className="w-4 h-4 text-violet-500" />
+                      UPI ID
+                    </div>
+                    {returnState.refundMethod === 'upi' ? (
+                      <input
+                        type="text"
+                        value={returnState.upiId}
+                        onChange={(e) =>
+                          setReturnState((prev) => ({
+                            ...prev,
+                            upiId: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter UPI ID"
+                        className="mt-3 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                      />
+                    ) : null}
+                  </button>
+
+                  <div
+                    className={`w-full rounded-2xl border px-4 py-4 transition-colors ${
+                      returnState.refundMethod === 'bank'
+                        ? 'border-orange-400 bg-orange-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReturnState((prev) => ({
+                          ...prev,
+                          refundMethod: 'bank',
+                        }))
+                      }
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                        <Landmark className="w-4 h-4 text-slate-500" />
+                        Bank Transfer
+                      </div>
+                    </button>
+                    {returnState.refundMethod === 'bank' ? (
+                      <div className="mt-3 space-y-2">
+                        <input
+                          type="text"
+                          value={returnState.bankAccountName}
+                          onChange={(e) =>
+                            setReturnState((prev) => ({
+                              ...prev,
+                              bankAccountName: e.target.value,
+                            }))
+                          }
+                          placeholder="Account Holder Name"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                        />
+                        <input
+                          type="text"
+                          value={returnState.bankAccountNumber}
+                          onChange={(e) =>
+                            setReturnState((prev) => ({
+                              ...prev,
+                              bankAccountNumber: e.target.value,
+                            }))
+                          }
+                          placeholder="Account Number"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                        />
+                        <input
+                          type="text"
+                          value={returnState.bankIfsc}
+                          onChange={(e) =>
+                            setReturnState((prev) => ({
+                              ...prev,
+                              bankIfsc: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          placeholder="IFSC CODE"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReturnState((prev) => ({ ...prev, step: 1 }))
+                      }
+                      className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={proceedToReviewStep}
+                      className="flex-1 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <h3 className="text-[24px] font-bold text-gray-900">
+                      Review & Confirm
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Please review your return request details
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+                    <div className="rounded-xl border border-gray-200 p-3">
+                      <p className="font-semibold text-gray-900">
+                        Pickup Details
+                      </p>
+                      <div className="mt-2 text-sm text-gray-600 space-y-1">
+                        <p className="flex justify-between">
+                          <span>Date:</span>
+                          <span className="font-medium text-gray-900">
+                            {formatShortDate(returnCalc.pickupDate)}
+                          </span>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>Time:</span>
+                          <span className="font-medium text-gray-900">
+                            1 PM - 4 PM
+                          </span>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>Location:</span>
+                          <span className="font-medium text-gray-900">
+                            Home
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 p-3">
+                      <p className="font-semibold text-gray-900">
+                        Refund Details
+                      </p>
+                      <div className="mt-2 text-sm text-gray-600 space-y-1">
+                        <p className="flex justify-between">
+                          <span>Amount:</span>
+                          <span className="font-semibold text-emerald-600">
+                            ₹{formatMoney(Math.max(0, returnCalc.netBalance))}
+                          </span>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>Destination:</span>
+                          <span className="font-medium text-gray-900">
+                            {returnState.refundMethod === 'bank'
+                              ? 'Bank Transfer'
+                              : returnState.refundMethod === 'upi'
+                                ? 'UPI ID'
+                                : 'Original Source'}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                    <p className="font-semibold text-gray-900">
+                      Overall Rating
+                    </p>
+                    <div className="mt-3 flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() =>
+                            setReturnState((prev) => ({
+                              ...prev,
+                              reviewRating: n,
+                            }))
+                          }
+                          className="p-1"
+                        >
+                          <Star
+                            className={`w-6 h-6 ${
+                              (returnState.reviewRating || 0) >= n
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="mt-4 font-semibold text-gray-900">
+                      Your Review
+                    </p>
+                    <textarea
+                      value={returnState.reviewText}
+                      onChange={(e) =>
+                        setReturnState((prev) => ({
+                          ...prev,
+                          reviewText: e.target.value.slice(0, 1000),
+                        }))
+                      }
+                      placeholder="How was your experience with this product? Mention the condition, delivery, and overall service..."
+                      className="mt-2 w-full min-h-[120px] rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                    />
+                    <div className="mt-1 flex justify-between text-[11px] text-gray-500">
+                      <span>
+                        Tip: Detailed reviews help others make better decisions
+                      </span>
+                      <span>{(returnState.reviewText || '').length}/1000</span>
+                    </div>
+
+                    <p className="mt-4 font-semibold text-gray-900">
+                      Add Photos or Videos (Optional)
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      You can upload up to 10 files.
+                    </p>
+                    <label
+                      className="mt-2 block rounded-xl border border-gray-200 bg-gray-50 p-6 text-center cursor-pointer"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        applySelectedMedia(e.dataTransfer.files);
+                      }}
+                    >
+                      <Camera className="w-8 h-8 text-gray-400 mx-auto" />
+                      <p className="mt-2 text-sm text-gray-700">
+                        Drag and drop photos or videos here
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        or click to browse your files
+                      </p>
+                      <span className="inline-block mt-3 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-sm">
+                        Choose Files
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          applySelectedMedia(e.target.files);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    {returnState.mediaPreviews?.length ? (
+                      <div className="mt-3">
+                        <p className="mb-2 text-xs text-gray-500">
+                          Selected: {returnState.mediaPreviews.length}/10
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {returnState.mediaPreviews.map((media, idx) => {
+                            const isVideo = String(media.type || '').startsWith(
+                              'video/',
+                            );
+                            return (
+                              <div
+                                key={`${media.name}-${idx}`}
+                                className="relative rounded-xl border border-gray-200 bg-white overflow-hidden"
+                              >
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${media.name || `file ${idx + 1}`}`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeSelectedMediaAt(idx);
+                                  }}
+                                  className="absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/70 text-white hover:bg-black"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                                {isVideo ? (
+                                  <video
+                                    src={media.url}
+                                    className="w-full h-28 object-cover bg-black"
+                                    controls
+                                  />
+                                ) : (
+                                  <img
+                                    src={media.url}
+                                    alt={
+                                      media.name || `Selected media ${idx + 1}`
+                                    }
+                                    className="w-full h-28 object-cover"
+                                  />
+                                )}
+                                <p className="px-2 py-1.5 text-[11px] text-gray-600 truncate">
+                                  {media.name}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReturnState((prev) => ({ ...prev, step: 2 }))
+                        }
+                        className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submittingReturn}
+                        onClick={() => {
+                          console.log('[return-review] confirm button pressed');
+                          handleSubmitReturnRequest();
+                        }}
+                        className="flex-1 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {submittingReturn
+                          ? 'Submitting...'
+                          : 'Confirm Return & Pickup'}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeReturnModal}
+                      className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Keep Renting
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>

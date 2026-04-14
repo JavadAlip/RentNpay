@@ -3,8 +3,32 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { adminAuth } from '../middleware/auth.js';
 import { userAuth } from '../middleware/userAuth.js';
+import upload from '../middleware/upload.js';
+import { uploadMediaToCloudinary } from '../config/cloudinaryUpload.js';
 
 const router = express.Router();
+
+function parseArrayField(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseObjectField(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value !== 'string' || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 router.post('/', userAuth, async (req, res) => {
   try {
@@ -54,6 +78,8 @@ router.post('/', userAuth, async (req, res) => {
       user: req.user._id,
       products: normalizedLines,
       rentalDuration: Number(rentalDuration),
+      originalRentalDuration: Number(rentalDuration),
+      extendedDurationTotal: 0,
       tenureUnit: unit,
       address,
       phone,
@@ -170,8 +196,14 @@ router.put('/my/:id/extend', userAuth, async (req, res) => {
       targetLine.pricePerDay = parsedRent / qty;
     }
 
+    const currentDuration = Math.max(1, Number(order.rentalDuration || 1));
+    if (!Number.isFinite(Number(order.originalRentalDuration))) {
+      order.originalRentalDuration = currentDuration;
+    }
     order.tenureUnit = unit;
-    order.rentalDuration = Math.max(1, Number(order.rentalDuration || 1)) + durationInc;
+    order.rentalDuration = currentDuration + durationInc;
+    order.extendedDurationTotal =
+      Math.max(0, Number(order.extendedDurationTotal || 0)) + durationInc;
 
     await order.save();
 
@@ -186,6 +218,133 @@ router.put('/my/:id/extend', userAuth, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+router.put(
+  '/my/:id/return-request',
+  userAuth,
+  upload.array('mediaFiles', 10),
+  async (req, res) => {
+  try {
+    const {
+      productId,
+      pickupDate,
+      refundMethod,
+      refundDetails,
+      rating,
+      reviewText,
+      mediaNames,
+      upiId,
+      bankAccountName,
+      bankAccountNumber,
+      bankIfsc,
+    } = req.body || {};
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    }).populate('products.product');
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (String(order.status || '').toLowerCase() !== 'delivered') {
+      return res
+        .status(400)
+        .json({ message: 'Only delivered rentals can request return.' });
+    }
+
+    const targetLine = (order.products || []).find((line) => {
+      const lineType = String(line?.productType || '').toLowerCase();
+      if (lineType === 'sell') return false;
+      const p = line?.product;
+      if (!p || typeof p === 'string') return false;
+      if (String(p?.type || '').toLowerCase() === 'sell') return false;
+      return String(p?._id || '') === String(productId || '');
+    });
+
+    if (!targetLine || !targetLine.product || typeof targetLine.product === 'string') {
+      return res.status(400).json({ message: 'Rental product line not found.' });
+    }
+
+    const method = ['original', 'upi', 'bank'].includes(String(refundMethod))
+      ? String(refundMethod)
+      : 'original';
+    const parsedRating = Number(rating || 0);
+    const safeRating =
+      Number.isFinite(parsedRating) && parsedRating >= 1 && parsedRating <= 5
+        ? parsedRating
+        : undefined;
+    const safePickupDate = pickupDate ? new Date(pickupDate) : null;
+    if (safePickupDate && Number.isNaN(safePickupDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid pickup date.' });
+    }
+
+    const files = Array.isArray(req.files) ? req.files.slice(0, 10) : [];
+    const hasUnsupportedMedia = files.some((file) => {
+      const mime = String(file?.mimetype || '').toLowerCase();
+      return !(mime.startsWith('image/') || mime.startsWith('video/'));
+    });
+    if (hasUnsupportedMedia) {
+      return res.status(400).json({
+        message: 'Only image and video files are allowed for review media.',
+      });
+    }
+
+    const uploadedMedia = [];
+    for (const file of files) {
+      const mediaRes = await uploadMediaToCloudinary(file.buffer, 'return-reviews');
+      uploadedMedia.push({
+        url: String(mediaRes?.secure_url || ''),
+        type: String(file?.mimetype || ''),
+        name: String(file?.originalname || ''),
+      });
+    }
+
+    const refundObj = parseObjectField(refundDetails);
+    const fallbackMediaNames = parseArrayField(mediaNames)
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+    const safeMediaNames = uploadedMedia.length
+      ? uploadedMedia.map((m) => m.name).filter(Boolean).slice(0, 10)
+      : fallbackMediaNames;
+
+    targetLine.returnRequest = {
+      status: safeRating ? 'review_submitted' : 'requested',
+      pickupDate: safePickupDate || null,
+      refundMethod: method,
+      refundDetails: {
+        upiId: String(upiId || refundObj?.upiId || '').trim(),
+        bankAccountName: String(
+          bankAccountName || refundObj?.bankAccountName || '',
+        ).trim(),
+        bankAccountNumber: String(
+          bankAccountNumber || refundObj?.bankAccountNumber || '',
+        ).trim(),
+        bankIfsc: String(bankIfsc || refundObj?.bankIfsc || '')
+          .trim()
+          .toUpperCase(),
+      },
+      rating: safeRating,
+      reviewText: String(reviewText || '').trim().slice(0, 1000),
+      mediaNames: safeMediaNames,
+      media: uploadedMedia,
+      requestedAt: new Date(),
+      reviewedAt: safeRating ? new Date() : null,
+    };
+
+    await order.save();
+
+    const populated = await Order.findById(order._id)
+      .populate('user', 'fullName emailAddress')
+      .populate({
+        path: 'products.product',
+        populate: { path: 'vendorId', select: 'fullName emailAddress' },
+      });
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+},
+);
 
 router.put('/my/:id/cancel', userAuth, async (req, res) => {
   try {

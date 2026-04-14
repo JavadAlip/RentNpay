@@ -8,6 +8,37 @@ const orderItemSchema = new mongoose.Schema({
   pricePerDay: { type: Number, required: true },
   /** Snapshot: total refundable deposit for this line (per-unit deposit × quantity). */
   refundableDeposit: { type: Number, default: 0 },
+  /** Customer-side return request + review for this specific rented line item. */
+  returnRequest: {
+    status: {
+      type: String,
+      enum: ['none', 'requested', 'review_submitted'],
+      default: 'none',
+    },
+    pickupDate: { type: Date },
+    refundMethod: {
+      type: String,
+      enum: ['original', 'upi', 'bank'],
+    },
+    refundDetails: {
+      upiId: { type: String, default: '' },
+      bankAccountName: { type: String, default: '' },
+      bankAccountNumber: { type: String, default: '' },
+      bankIfsc: { type: String, default: '' },
+    },
+    rating: { type: Number, min: 1, max: 5 },
+    reviewText: { type: String, default: '' },
+    mediaNames: [{ type: String }],
+    media: [
+      {
+        url: { type: String, default: '' },
+        type: { type: String, default: '' },
+        name: { type: String, default: '' },
+      },
+    ],
+    requestedAt: { type: Date },
+    reviewedAt: { type: Date },
+  },
 });
 
 /** Vendor packing + delivery handoff (saved when order is marked shipped). */
@@ -38,6 +69,10 @@ const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [orderItemSchema],
   rentalDuration: { type: Number, required: true },
+  /** Initial checkout tenure before any extension updates. */
+  originalRentalDuration: { type: Number },
+  /** Sum of all tenure increments applied via extend endpoint. */
+  extendedDurationTotal: { type: Number, default: 0 },
   /** How `rentalDuration` is interpreted: calendar months vs day count (matches cart / checkout). */
   tenureUnit: {
     type: String,
