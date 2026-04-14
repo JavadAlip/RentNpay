@@ -563,7 +563,7 @@ export default function RentalCommandCenter() {
       </div>
       {extendState.open && extendState.row ? (
         <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl rounded-tr-2xl rounded-br-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex items-start justify-between p-5 border-b border-gray-100">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900">
