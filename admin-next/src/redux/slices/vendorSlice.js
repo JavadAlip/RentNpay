@@ -11,8 +11,10 @@ export const vendorSignup = createAsyncThunk(
   async (signupData, { rejectWithValue }) => {
     try {
       const response = await apiVendorSignup(signupData);
-      // Store email so OTP screen can use it without prop-drilling
-      localStorage.setItem('vendorPendingEmail', signupData.emailAddress);
+      const pending = String(signupData.emailAddress || '')
+        .trim()
+        .toLowerCase();
+      localStorage.setItem('vendorPendingEmail', pending);
       return response.data; // { message: 'Signup successful, OTP sent to email' }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Signup failed');
@@ -101,6 +103,13 @@ const vendorSlice = createSlice({
     clearOtpVerified: (state) => {
       state.otpVerified = false;
     },
+    /** Clears abandoned signup OTP state so opening Sign Up shows the form, not OTP. */
+    clearPendingSignup: (state) => {
+      state.pendingEmail = null;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('vendorPendingEmail');
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -170,5 +179,6 @@ const vendorSlice = createSlice({
   },
 });
 
-export const { clearError, clearOtpVerified } = vendorSlice.actions;
+export const { clearError, clearOtpVerified, clearPendingSignup } =
+  vendorSlice.actions;
 export default vendorSlice.reducer;

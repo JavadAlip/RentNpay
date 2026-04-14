@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import VendorLogin from './VendorLogin';
 import VendorSignup from './VendorSignup';
 import VendorOtpVerification from './VendorOtpVerification';
 import VendorWelcome from './VendorWelcome';
+import { clearPendingSignup } from '../../../redux/slices/vendorSlice';
 
 const VendorMain = () => {
+  const dispatch = useDispatch();
   const [modal, setModal] = useState(null);
   const [otpEmail, setOtpEmail] = useState('');
 
   const closeModal = () => setModal(null);
+
+  /** Reset stale pending-email from localStorage so Sign Up opens the form, not OTP. */
+  const openSignupModal = () => {
+    dispatch(clearPendingSignup());
+    setModal('signup');
+  };
 
   const modalContent = () => {
     switch (modal) {
@@ -16,7 +25,7 @@ const VendorMain = () => {
         return (
           <VendorLogin
             onClose={closeModal}
-            onSignup={() => setModal('signup')}
+            onSignup={openSignupModal}
           />
         );
       case 'signup':
@@ -34,7 +43,7 @@ const VendorMain = () => {
         return (
           <VendorOtpVerification
             email={otpEmail}
-            onChangeEmail={() => setModal('signup')}
+            onChangeEmail={openSignupModal}
             onSuccess={() => setModal('welcome')}
           />
         );
@@ -105,7 +114,7 @@ const VendorMain = () => {
                   />
                 </div>
                 <button
-                  onClick={() => setModal('signup')}
+                  onClick={openSignupModal}
                   className="w-full sm:w-auto inline-flex items-center justify-center px-5 sm:px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium shadow-sm"
                 >
                   Start Selling

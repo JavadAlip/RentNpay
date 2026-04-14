@@ -84,21 +84,27 @@ export const sendBrevoTestOtpEmail = async (toEmail, otp) => {
 
 export const sendBrevoVendorOtpEmail = async (toEmail, otp) => {
   ensureBrevoEnv();
-  const response = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'api-key': BREVO_API_KEY,
-    },
-    body: JSON.stringify({
-      sender: {
-        email: BREVO_FROM_EMAIL,
-        name: 'RentNPay',
+  const startedAt = Date.now();
+  console.log('[BrevoVendorOtp] API send start', {
+    to: maskEmail(toEmail),
+    endpoint: BREVO_API_URL,
+  });
+  try {
+    const response = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': BREVO_API_KEY,
       },
-      to: [{ email: toEmail }],
-      subject: 'Your OTP Code',
-      htmlContent: `
+      body: JSON.stringify({
+        sender: {
+          email: BREVO_FROM_EMAIL,
+          name: 'RentNPay',
+        },
+        to: [{ email: toEmail }],
+        subject: 'Your OTP Code',
+        htmlContent: `
         <div style="font-family:Arial,sans-serif;line-height:1.5">
           <h2 style="margin:0 0 8px">Your OTP Code</h2>
           <p style="margin:0 0 10px">Use this OTP to continue:</p>
@@ -106,10 +112,33 @@ export const sendBrevoVendorOtpEmail = async (toEmail, otp) => {
           <p style="margin:0;color:#666">This OTP expires in a few minutes.</p>
         </div>
       `,
-    }),
-  });
-  const raw = await response.text();
-  if (!response.ok) {
-    throw new Error(`Brevo API error ${response.status}: ${raw || 'Unknown error'}`);
+      }),
+    });
+    const raw = await response.text();
+    let parsed = null;
+    try {
+      parsed = raw ? JSON.parse(raw) : null;
+    } catch {
+      parsed = null;
+    }
+    if (!response.ok) {
+      throw new Error(
+        `Brevo API error ${response.status}: ${
+          parsed?.message || raw || 'Unknown error'
+        }`,
+      );
+    }
+    console.log('[BrevoVendorOtp] send accepted by Brevo', {
+      to: maskEmail(toEmail),
+      messageId: parsed?.messageId || null,
+      elapsedMs: Date.now() - startedAt,
+    });
+  } catch (error) {
+    console.error('[BrevoVendorOtp] send failed', {
+      to: maskEmail(toEmail),
+      elapsedMs: Date.now() - startedAt,
+      message: error?.message,
+    });
+    throw error;
   }
 };
