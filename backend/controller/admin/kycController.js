@@ -339,7 +339,7 @@ export const requestVendorKycDocumentReupload = async (req, res) => {
     const kyc = await VendorKyc.findOne({ vendorId });
     if (!kyc) return res.status(404).json({ message: 'KYC not found' });
     if (kyc.status !== 'pending') {
-      return res.status(400).json({ message: 'KYC is not pending review' });
+      return res.status(400).json({ message: 'KYC already approved' });
     }
 
     const dr = normalizeDocReviews(kyc.documentReviews);
