@@ -231,8 +231,31 @@ export default function VendorKycStatus() {
                 <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${actionRequired ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-                        <span className="text-lg">!</span>
+                      <div
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+                          verified
+                            ? 'bg-emerald-50 border-emerald-200'
+                            : actionRequired
+                              ? 'bg-amber-50 border-amber-200'
+                              : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
+                        {verified ? (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-5 h-5 text-emerald-600"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        ) : (
+                          <span className="text-lg">!</span>
+                        )}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">
