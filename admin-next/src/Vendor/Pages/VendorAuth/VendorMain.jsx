@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import VendorLogin from './VendorLogin';
 import VendorSignup from './VendorSignup';
@@ -66,6 +66,16 @@ const VendorMain = () => {
         return null;
     }
   };
+
+  // Prevent background scroll while any auth modal is open.
+  useEffect(() => {
+    if (!modal) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [modal]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -216,9 +226,8 @@ const VendorMain = () => {
             backgroundColor: 'rgba(15,23,42,0.45)',
             backdropFilter: 'blur(4px)',
           }}
-          onClick={closeModal}
         >
-          <div onClick={(e) => e.stopPropagation()}>{modalContent()}</div>
+          <div>{modalContent()}</div>
         </div>
       )}
     </div>

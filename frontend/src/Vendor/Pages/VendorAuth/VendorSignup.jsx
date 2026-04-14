@@ -247,7 +247,7 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
   };
 
   return (
-    <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-9 py-10 flex flex-col items-center relative max-h-[90vh] overflow-y-auto">
+    <div className="vendor-login-scroll w-full max-w-lg bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-9 py-10 flex flex-col items-center relative max-h-[90vh] overflow-y-auto">
       {/* Close button */}
       <button
         onClick={() =>

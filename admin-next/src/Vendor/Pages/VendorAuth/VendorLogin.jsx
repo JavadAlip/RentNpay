@@ -68,7 +68,7 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-7 py-9 flex flex-col items-center relative">
+    <div className="vendor-login-scroll w-full max-w-md max-h-[88vh] overflow-y-auto bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-6 py-6 sm:px-7 sm:py-7 flex flex-col items-center relative">
       {/* Close button */}
       {onClose && (
         <button
@@ -93,7 +93,7 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
       )}
 
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-4">
         <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <rect
@@ -125,12 +125,12 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
       <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 text-center">
         Vendor Sign In
       </h1>
-      <p className="text-xs sm:text-sm text-gray-500 mb-5 text-center">
+      <p className="text-xs sm:text-sm text-gray-500 mb-4 text-center">
         Welcome back! Sign in to your partner account
       </p>
 
       {/* Step dots */}
-      <div className="flex items-center gap-2 mb-7">
+      <div className="flex items-center gap-2 mb-5">
         <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
         <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
         <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
@@ -279,7 +279,7 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
       </div>
 
       {/* Secure badge */}
-      <div className="flex items-center gap-1.5 mt-7 text-[11px] text-gray-400">
+      <div className="flex items-center gap-1.5 mt-5 text-[11px] text-gray-400">
         <svg
           width="13"
           height="13"
