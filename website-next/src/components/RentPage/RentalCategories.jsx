@@ -55,7 +55,7 @@ const RentalCategories = () => {
         <div className="relative">
           <div
             ref={sliderRef}
-            className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
+            className="flex gap-6 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {loading ? (
               // Skeleton loaders

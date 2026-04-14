@@ -58,7 +58,7 @@ const BuyBannerSection = () => {
             Brand New Products with warranty or Certified Pre-owned Details
           </p>
 
-          <div className="mt-4 sm:mt-6 flex flex-row flex-nowrap items-center justify-center gap-1.5 sm:gap-3 overflow-x-auto pb-1">
+          <div className="mt-4 sm:mt-6 flex flex-row flex-nowrap items-center justify-center gap-1.5 sm:gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setActiveFilter('all')}
               className={`px-2.5 sm:px-6 md:px-8 py-1.5 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-medium whitespace-nowrap shrink-0 ${

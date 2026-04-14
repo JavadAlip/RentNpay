@@ -79,7 +79,7 @@ const FeaturedCategories = () => {
         <div className="relative">
           <div
             ref={sliderRef}
-            className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-6"
+            className="flex gap-6 overflow-x-auto scroll-smooth pb-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {loading ? (
               <div className="text-sm text-gray-500">Loading categories...</div>
