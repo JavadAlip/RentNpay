@@ -15,6 +15,7 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [testOtp, setTestOtp] = useState('');
 
   const canSubmit = useMemo(() => {
     if (step === 1) return !!emailAddress;
@@ -32,8 +33,16 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
   const handleStep1 = async () => {
     setLoading(true);
     try {
-      await apiVendorForgotPassword({ emailAddress });
-      toast.success('OTP sent to your email');
+      const res = await apiVendorForgotPassword({ emailAddress });
+      const otpFromApi = String(res?.data?.testOtp || '').trim();
+      if (/^\d{6}$/.test(otpFromApi)) {
+        setTestOtp(otpFromApi);
+        setOtp(otpFromApi);
+        toast.success('Test OTP generated and auto-filled');
+      } else {
+        setTestOtp('');
+        toast.success('OTP sent to your email');
+      }
       setStep(2);
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to send OTP');
@@ -161,31 +170,38 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
         ) : null}
 
         {step === 2 ? (
-          <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
-            <svg
-              className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+          <>
+            {testOtp ? (
+              <div className="w-full px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs text-center">
+                Test OTP auto-filled for this environment.
+              </div>
+            ) : null}
+            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
+              <svg
+                className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                />
+              </svg>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="6-digit OTP"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
               />
-            </svg>
-            <input
-              type="text"
-              value={otp}
-              onChange={(e) =>
-                setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-              }
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
-              placeholder="6-digit OTP"
-              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
-            />
-          </div>
+            </div>
+          </>
         ) : null}
 
         {step === 3 ? (

@@ -19,6 +19,34 @@ const normalizeEmail = (raw) => String(raw || '').trim().toLowerCase();
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const isTruthy = (value) =>
+  ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+
+const isVendorOtpBypassEnabled = () =>
+  isTruthy(
+    process.env.VENDOR_OTP_BYPASS_ENABLED || process.env.OTP_BYPASS_ENABLED,
+  );
+
+const getVendorDummyOtp = () => {
+  const envOtp = String(
+    process.env.VENDOR_DUMMY_OTP || process.env.DUMMY_OTP || '',
+  ).trim();
+  return /^\d{6}$/.test(envOtp) ? envOtp : '123456';
+};
+
+const shouldExposeSignupOtp = () =>
+  isTruthy(
+    process.env.VENDOR_SIGNUP_EXPOSE_OTP || process.env.EXPOSE_SIGNUP_OTP,
+  );
+
+const shouldSkipVendorOtpEmail = () =>
+  isTruthy(
+    process.env.VENDOR_SKIP_OTP_EMAIL || process.env.SKIP_VENDOR_OTP_EMAIL,
+  );
+
+const shouldExposeResetOtp = () =>
+  isTruthy(process.env.VENDOR_RESET_EXPOSE_OTP || process.env.EXPOSE_RESET_OTP);
+
 /** Finds vendor by normalized email, with case-insensitive fallback for legacy rows. */
 const findVendorByEmail = async (raw) => {
   const email = normalizeEmail(raw);
@@ -58,7 +86,10 @@ export const signupVendor = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const bypassEnabled = isVendorOtpBypassEnabled();
+    const otp = bypassEnabled
+      ? getVendorDummyOtp()
+      : Math.floor(100000 + Math.random() * 900000).toString();
 
     const ref = String(referralCode || '').trim().slice(0, 64);
 
@@ -74,11 +105,23 @@ export const signupVendor = async (req, res) => {
 
     await vendor.save();
 
-    await sendVendorOtpEmail(email, otp);
+    const skipOtpEmail = shouldSkipVendorOtpEmail();
+    if (!bypassEnabled && !skipOtpEmail) {
+      await sendVendorOtpEmail(email, otp);
+    }
 
-    res.status(201).json({
-      message: 'Signup successful, OTP sent to email',
-    });
+    const exposeOtp = bypassEnabled || shouldExposeSignupOtp();
+    const payload = {
+      message:
+        bypassEnabled || skipOtpEmail
+          ? 'Signup successful, use test OTP to verify account'
+          : 'Signup successful, OTP sent to email',
+    };
+    if (exposeOtp) {
+      payload.testOtp = otp;
+    }
+
+    res.status(201).json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -98,10 +141,16 @@ export const verifyOTP = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (
-      String(vendor.otp) !== String(otp).trim() ||
-      vendor.otpExpire < Date.now()
-    ) {
+    const enteredOtp = String(otp || '').trim();
+    const bypassEnabled = isVendorOtpBypassEnabled();
+    const bypassOtp = getVendorDummyOtp();
+    const isBypassMatch = bypassEnabled && enteredOtp === bypassOtp;
+    const isStoredOtpMatch =
+      String(vendor.otp || '') === enteredOtp &&
+      vendor.otpExpire &&
+      vendor.otpExpire >= Date.now();
+
+    if (!isBypassMatch && !isStoredOtpMatch) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
@@ -206,11 +255,20 @@ export const forgotVendorPassword = async (req, res) => {
     vendor.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     await vendor.save();
 
-    await sendVendorOtpEmail(vendor.emailAddress, otp);
+    const skipOtpEmail = shouldSkipVendorOtpEmail();
+    if (!skipOtpEmail) {
+      await sendVendorOtpEmail(vendor.emailAddress, otp);
+    }
 
-    return res.json({
-      message: 'If this email exists, an OTP has been sent.',
-    });
+    const payload = {
+      message: skipOtpEmail
+        ? 'OTP generated for testing.'
+        : 'If this email exists, an OTP has been sent.',
+    };
+    if (shouldExposeResetOtp()) {
+      payload.testOtp = otp;
+    }
+    return res.json(payload);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

@@ -7,7 +7,7 @@ import { vendorVerifyOtp, clearError } from '../../../redux/slices/vendorSlice';
 const VendorOtpVerification = ({ onChangeEmail, onSuccess }) => {
   const dispatch = useDispatch();
   // email comes from Redux state (set during signup), no need to pass as prop
-  const { loading, error, pendingEmail, otpVerified } = useSelector(
+  const { loading, error, pendingEmail, pendingOtp, otpVerified } = useSelector(
     (state) => state.vendor,
   );
 
@@ -19,6 +19,13 @@ const VendorOtpVerification = ({ onChangeEmail, onSuccess }) => {
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
+
+  useEffect(() => {
+    const testOtp = String(pendingOtp || '').trim();
+    if (!/^\d{6}$/.test(testOtp)) return;
+    setOtp(testOtp.split(''));
+    inputRefs.current[5]?.focus();
+  }, [pendingOtp]);
 
   useEffect(() => {
     dispatch(clearError());
@@ -159,6 +166,12 @@ const VendorOtpVerification = ({ onChangeEmail, onSuccess }) => {
       <p className="text-sm font-semibold text-blue-600 text-center mb-5 break-all">
         {pendingEmail || '—'}
       </p>
+
+      {String(pendingOtp || '').trim() ? (
+        <div className="w-full mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm text-center">
+          Test OTP auto-filled for this environment.
+        </div>
+      ) : null}
 
       {/* Progress dots */}
       <div className="flex items-center gap-1.5 mb-8">

@@ -15,6 +15,12 @@ export const vendorSignup = createAsyncThunk(
         .trim()
         .toLowerCase();
       localStorage.setItem('vendorPendingEmail', pending);
+      const testOtp = String(response.data?.testOtp || '').trim();
+      if (/^\d{6}$/.test(testOtp)) {
+        localStorage.setItem('vendorPendingOtp', testOtp);
+      } else {
+        localStorage.removeItem('vendorPendingOtp');
+      }
       return response.data; // { message: 'Signup successful, OTP sent to email' }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Signup failed');
@@ -29,6 +35,7 @@ export const vendorVerifyOtp = createAsyncThunk(
     try {
       const response = await apiVendorVerifyOtp(otpData);
       localStorage.removeItem('vendorPendingEmail');
+      localStorage.removeItem('vendorPendingOtp');
       const data = response.data;
       if (data?.token) {
         localStorage.setItem('vendorToken', data.token);
@@ -63,6 +70,7 @@ export const vendorLogout = createAsyncThunk('vendor/logout', async () => {
   localStorage.removeItem('vendorToken');
   localStorage.removeItem('vendorUser');
   localStorage.removeItem('vendorPendingEmail');
+  localStorage.removeItem('vendorPendingOtp');
   return true;
 });
 
@@ -74,6 +82,7 @@ function readVendorAuthFromStorage() {
       token: null,
       user: null,
       pendingEmail: null,
+      pendingOtp: null,
     };
   }
   const token = localStorage.getItem('vendorToken');
@@ -82,6 +91,7 @@ function readVendorAuthFromStorage() {
     token,
     user: JSON.parse(localStorage.getItem('vendorUser') || 'null'),
     pendingEmail: localStorage.getItem('vendorPendingEmail') || null,
+    pendingOtp: localStorage.getItem('vendorPendingOtp') || null,
   };
 }
 
@@ -106,8 +116,10 @@ const vendorSlice = createSlice({
     /** Clears abandoned signup OTP state so opening Sign Up shows the form, not OTP. */
     clearPendingSignup: (state) => {
       state.pendingEmail = null;
+      state.pendingOtp = null;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('vendorPendingEmail');
+        localStorage.removeItem('vendorPendingOtp');
       }
     },
   },
@@ -124,6 +136,10 @@ const vendorSlice = createSlice({
           typeof window !== 'undefined'
             ? localStorage.getItem('vendorPendingEmail')
             : null;
+        state.pendingOtp =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('vendorPendingOtp')
+            : null;
       })
       .addCase(vendorSignup.rejected, (state, action) => {
         state.loading = false;
@@ -139,6 +155,7 @@ const vendorSlice = createSlice({
         state.loading = false;
         state.otpVerified = true;
         state.pendingEmail = null;
+        state.pendingOtp = null;
         if (action.payload?.token) {
           state.isAuthenticated = true;
           state.token = action.payload.token;
@@ -173,6 +190,7 @@ const vendorSlice = createSlice({
         state.token = null;
         state.user = null;
         state.pendingEmail = null;
+        state.pendingOtp = null;
         state.otpVerified = false;
         state.error = null;
       });
