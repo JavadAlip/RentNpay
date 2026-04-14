@@ -153,6 +153,8 @@ const RentPrdctDesc = ({ product }) => {
       : '';
 
   const rentalTerms = {
+    cancellation:
+      'Free cancellation before delivery. If you cancel after dispatch, a 10% processing fee will be deducted from your refundable deposit. Cancel anytime during the rental period with 7 days notice.',
     damage:
       'Normal wear and tear is covered. Significant accidental or intentional damage may result in repair charges deducted from the refundable deposit where applicable.',
     returns:

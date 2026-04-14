@@ -13,7 +13,14 @@ const parsePrice = (raw) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const ProductCard = ({ product, offer }) => {
+const ProductCard = ({
+  product,
+  offer,
+  isAuthenticated = false,
+  isWishlisted = false,
+  toggling = false,
+  onToggleWishlist,
+}) => {
   const { _id, productName, image, price, type, category, subCategory, stock } =
     product;
   const isSellProduct = String(type || '').toLowerCase() === 'sell';
@@ -47,10 +54,21 @@ const ProductCard = ({ product, offer }) => {
           </span>
           <button
             type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleWishlist?.(_id);
+            }}
+            disabled={toggling}
             className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center"
             aria-label="Wishlist"
+            title={isAuthenticated ? 'Wishlist' : 'Login to wishlist'}
           >
-            <Heart className="w-4 h-4 text-gray-500" />
+            <Heart
+              className={`w-4 h-4 ${
+                isWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-500'
+              }`}
+            />
           </button>
           <img
             src={image || 'https://placehold.co/600x400/e5e7eb/6b7280?text=IMG'}

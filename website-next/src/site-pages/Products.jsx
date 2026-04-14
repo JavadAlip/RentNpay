@@ -8,14 +8,20 @@ import {
   apiGetStorefrontVendorProducts,
   apiGetPublicActiveOffers,
   apiGetCategories,
+  apiGetMyWishlist,
+  apiToggleWishlist,
 } from '../lib/api';
 import { getProductListPriceValue } from '@/lib/rentalPriceDisplay';
+import { useSelector } from 'react-redux';
 
 const Products = () => {
+  const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const searchParams = useSearchParams();
   const [allProducts, setAllProducts] = useState([]);
   const [categoriesMaster, setCategoriesMaster] = useState([]);
   const [offersByProduct, setOffersByProduct] = useState({});
+  const [wishedIds, setWishedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState('');
   const [filters, setFilters] = useState({
     minPrice: '',
     maxPrice: '',
@@ -68,6 +74,51 @@ const Products = () => {
       })
       .catch(() => setCategoriesMaster([]));
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWishedIds([]);
+      return;
+    }
+    let mounted = true;
+    apiGetMyWishlist()
+      .then((res) => {
+        if (!mounted) return;
+        setWishedIds(
+          Array.isArray(res.data?.wishedProductIds)
+            ? res.data.wishedProductIds
+            : [],
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setWishedIds([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated]);
+
+  const isWished = (id) => wishedIds.includes(String(id));
+
+  const onToggleWishlist = async (productId) => {
+    if (!isAuthenticated) return;
+    setTogglingId(String(productId));
+    try {
+      const res = await apiToggleWishlist(productId);
+      const wished = !!res.data?.wished;
+      setWishedIds((prev) => {
+        const pid = String(productId);
+        if (wished) return prev.includes(pid) ? prev : [...prev, pid];
+        return prev.filter((x) => x !== pid);
+      });
+    } catch {
+      // keep UI unchanged on failure
+    } finally {
+      setTogglingId('');
+    }
+  };
 
   useEffect(() => {
     setFilters((prev) => ({
@@ -511,6 +562,10 @@ const Products = () => {
                     key={p._id}
                     product={p}
                     offer={offersByProduct[String(p._id)]}
+                    isAuthenticated={isAuthenticated}
+                    isWishlisted={isWished(p._id)}
+                    toggling={togglingId === String(p._id)}
+                    onToggleWishlist={onToggleWishlist}
                   />
                 ))}
               </div>

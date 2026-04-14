@@ -2,13 +2,18 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
-import { apiGetStorefrontVendorProducts } from '@/lib/api';
+import {
+  apiGetStorefrontVendorProducts,
+  apiGetMyWishlist,
+  apiToggleWishlist,
+} from '@/lib/api';
 import {
   getRentalListingAmount,
   getRentalListingSuffix,
   getProductDeliveryEtaLabel,
 } from '@/lib/rentalPriceDisplay';
 import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
 
 import {
   Heart,
@@ -20,8 +25,11 @@ import {
 } from 'lucide-react';
 
 const SimilarRental = () => {
+  const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const [page, setPage] = useState(0);
   const [products, setProducts] = useState([]);
+  const [wishedIds, setWishedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState('');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -47,6 +55,53 @@ const SimilarRental = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWishedIds([]);
+      return;
+    }
+    let mounted = true;
+    apiGetMyWishlist()
+      .then((res) => {
+        if (!mounted) return;
+        setWishedIds(
+          Array.isArray(res.data?.wishedProductIds)
+            ? res.data.wishedProductIds
+            : [],
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setWishedIds([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated]);
+
+  const isWished = (id) => wishedIds.includes(String(id));
+
+  const onToggleWishlist = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) return;
+    setTogglingId(String(productId));
+    try {
+      const res = await apiToggleWishlist(productId);
+      const wished = !!res.data?.wished;
+      setWishedIds((prev) => {
+        const pid = String(productId);
+        if (wished) return prev.includes(pid) ? prev : [...prev, pid];
+        return prev.filter((x) => x !== pid);
+      });
+    } catch {
+      // keep UI unchanged on failure
+    } finally {
+      setTogglingId('');
+    }
+  };
 
   const cardsPerPage = 3;
 
@@ -127,8 +182,21 @@ const SimilarRental = () => {
                     <span className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-orange-500 text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                       Bestseller
                     </span>
-                    <button className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white p-1 rounded-full shadow">
-                      <Heart size={14} />
+                    <button
+                      type="button"
+                      onClick={(e) => onToggleWishlist(e, item?._id)}
+                      disabled={togglingId === String(item?._id)}
+                      title={isAuthenticated ? 'Wishlist' : 'Login to wishlist'}
+                      className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white p-1 rounded-full shadow disabled:opacity-60"
+                    >
+                      <Heart
+                        size={14}
+                        className={
+                          isWished(item?._id)
+                            ? 'text-red-500 fill-red-500'
+                            : 'text-gray-700'
+                        }
+                      />
                     </button>
                     <img
                       src={item?.image || mainimg}
