@@ -1,6 +1,6 @@
 import Vendor from '../../models/vendorAuthModel.js';
 import bcrypt from 'bcryptjs';
-import { sendBrevoVendorOtpEmail } from '../../utils/sendBrevoMail.js';
+import { sendVendorOtpEmail } from '../../utils/sendMail.js';
 import jwt from 'jsonwebtoken';
 import Product from '../../models/Product.js';
 import Offer from '../../models/Offer.js';
@@ -14,9 +14,30 @@ const normalizeMobileDigits = (raw) => {
   return digits;
 };
 
+/** Same as brevo-test + forgot-password: one canonical email per account. */
+const normalizeEmail = (raw) => String(raw || '').trim().toLowerCase();
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Finds vendor by normalized email, with case-insensitive fallback for legacy rows. */
+const findVendorByEmail = async (raw) => {
+  const email = normalizeEmail(raw);
+  if (!email) return null;
+  let v = await Vendor.findOne({ emailAddress: email });
+  if (v) return v;
+  return Vendor.findOne({
+    emailAddress: { $regex: new RegExp(`^${escapeRegExp(email)}$`, 'i') },
+  });
+};
+
 export const signupVendor = async (req, res) => {
   try {
     const { fullName, emailAddress, password, mobileNumber, referralCode } = req.body;
+
+    const email = normalizeEmail(emailAddress);
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
     const mobile = normalizeMobileDigits(mobileNumber);
     if (!mobile || mobile.length < 10) {
@@ -25,7 +46,7 @@ export const signupVendor = async (req, res) => {
       });
     }
 
-    const existing = await Vendor.findOne({ emailAddress });
+    const existing = await findVendorByEmail(emailAddress);
     if (existing) {
       return res.status(400).json({ message: 'Email already exists' });
     }
@@ -42,8 +63,8 @@ export const signupVendor = async (req, res) => {
     const ref = String(referralCode || '').trim().slice(0, 64);
 
     const vendor = new Vendor({
-      fullName,
-      emailAddress,
+      fullName: String(fullName || '').trim(),
+      emailAddress: email,
       password: hashedPassword,
       mobileNumber: mobile,
       referralCode: ref,
@@ -53,7 +74,7 @@ export const signupVendor = async (req, res) => {
 
     await vendor.save();
 
-    await sendBrevoVendorOtpEmail(emailAddress, otp);
+    await sendVendorOtpEmail(email, otp);
 
     res.status(201).json({
       message: 'Signup successful, OTP sent to email',
@@ -66,20 +87,28 @@ export const signupVendor = async (req, res) => {
 export const verifyOTP = async (req, res) => {
   try {
     const { emailAddress, otp } = req.body;
+    const email = normalizeEmail(emailAddress);
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
-    const vendor = await Vendor.findOne({ emailAddress });
+    const vendor = await findVendorByEmail(emailAddress);
 
     if (!vendor) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (vendor.otp !== otp || vendor.otpExpire < Date.now()) {
+    if (
+      String(vendor.otp) !== String(otp).trim() ||
+      vendor.otpExpire < Date.now()
+    ) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
     vendor.isVerified = true;
     vendor.otp = null;
     vendor.otpExpire = null;
+    vendor.emailAddress = email;
 
     await vendor.save();
 
@@ -108,8 +137,12 @@ export const verifyOTP = async (req, res) => {
 export const loginVendor = async (req, res) => {
   try {
     const { emailAddress, password } = req.body;
+    const email = normalizeEmail(emailAddress);
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
-    const vendor = await Vendor.findOne({ emailAddress });
+    const vendor = await findVendorByEmail(emailAddress);
 
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
@@ -154,9 +187,12 @@ export const forgotVendorPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const vendor = await Vendor.findOne({
-      emailAddress: String(emailAddress).trim().toLowerCase(),
-    });
+    const email = normalizeEmail(emailAddress);
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const vendor = await findVendorByEmail(emailAddress);
 
     // Keep response generic to avoid email enumeration.
     if (!vendor) {
@@ -170,7 +206,7 @@ export const forgotVendorPassword = async (req, res) => {
     vendor.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     await vendor.save();
 
-    await sendBrevoVendorOtpEmail(vendor.emailAddress, otp);
+    await sendVendorOtpEmail(vendor.emailAddress, otp);
 
     return res.json({
       message: 'If this email exists, an OTP has been sent.',
@@ -187,13 +223,15 @@ export const verifyVendorResetOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
-    const vendor = await Vendor.findOne({
-      emailAddress: String(emailAddress).trim().toLowerCase(),
-    });
+    const vendor = await findVendorByEmail(emailAddress);
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
     }
-    if (vendor.otp !== otp || !vendor.otpExpire || vendor.otpExpire < Date.now()) {
+    if (
+      String(vendor.otp) !== String(otp).trim() ||
+      !vendor.otpExpire ||
+      vendor.otpExpire < Date.now()
+    ) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
@@ -217,16 +255,19 @@ export const resetVendorPassword = async (req, res) => {
         .json({ message: 'New password must be at least 6 characters' });
     }
 
-    const vendor = await Vendor.findOne({
-      emailAddress: String(emailAddress).trim().toLowerCase(),
-    });
+    const vendor = await findVendorByEmail(emailAddress);
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
     }
-    if (vendor.otp !== otp || !vendor.otpExpire || vendor.otpExpire < Date.now()) {
+    if (
+      String(vendor.otp) !== String(otp).trim() ||
+      !vendor.otpExpire ||
+      vendor.otpExpire < Date.now()
+    ) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
+    vendor.emailAddress = normalizeEmail(vendor.emailAddress);
     vendor.password = await bcrypt.hash(String(newPassword), 10);
     vendor.otp = null;
     vendor.otpExpire = null;
