@@ -207,3 +207,81 @@ export const updateVendorOrderStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const scheduleVendorReturnPickup = async (req, res) => {
+  try {
+    const {
+      productId,
+      pickupDate,
+      pickupTime,
+      driverName,
+      pickupAddress,
+    } = req.body || {};
+
+    const parsedPickupDate = new Date(pickupDate);
+    if (!pickupDate || Number.isNaN(parsedPickupDate.getTime())) {
+      return res.status(400).json({ message: 'Valid pickup date is required.' });
+    }
+
+    const timeSlot = ['Morning', 'Afternoon', 'Evening'].includes(
+      String(pickupTime || ''),
+    )
+      ? String(pickupTime)
+      : null;
+    if (!timeSlot) {
+      return res.status(400).json({ message: 'Valid pickup time is required.' });
+    }
+
+    const safeDriverName = String(driverName || '').trim();
+    if (!safeDriverName) {
+      return res.status(400).json({ message: 'Driver name is required.' });
+    }
+
+    const order = await Order.findById(req.params.id).populate(
+      'products.product',
+      'vendorId type',
+    );
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const vid = String(req.vendor._id);
+    const targetLine = (order.products || []).find((line) => {
+      const p = line?.product;
+      if (!p || typeof p === 'string') return false;
+      if (String(p.vendorId || '') !== vid) return false;
+      if (String(p.type || '').toLowerCase() === 'sell') return false;
+      if (productId && String(p._id || '') !== String(productId)) return false;
+      const rr = line?.returnRequest;
+      return Boolean(rr?.requestedAt);
+    });
+
+    if (!targetLine) {
+      return res.status(404).json({
+        message: 'Return request line not found for this vendor.',
+      });
+    }
+
+    const resolvedPickupAddress =
+      String(pickupAddress || '').trim() || String(order.address || '').trim();
+    if (!targetLine.returnRequest || typeof targetLine.returnRequest !== 'object') {
+      targetLine.returnRequest = {};
+    }
+    if (
+      !targetLine.returnRequest.refundDetails ||
+      typeof targetLine.returnRequest.refundDetails !== 'object'
+    ) {
+      targetLine.returnRequest.refundDetails = {};
+    }
+    targetLine.returnRequest.vendorPickupDate = parsedPickupDate;
+    targetLine.returnRequest.vendorPickupTime = timeSlot;
+    targetLine.returnRequest.vendorPickupAddress = resolvedPickupAddress;
+    targetLine.returnRequest.vendorDriverName = safeDriverName;
+    targetLine.returnRequest.pickupScheduledAt = new Date();
+
+    await order.save();
+
+    const populated = await Order.findById(order._id).populate(vendorOrderPopulate);
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

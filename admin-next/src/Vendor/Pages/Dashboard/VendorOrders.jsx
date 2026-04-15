@@ -27,6 +27,7 @@ const tabs = [
   'Cancelled',
   'Delivered',
   'Completed',
+  'Pickup',
 ];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -96,6 +97,7 @@ const mapTabToStatuses = (tab) => {
   if (tab === 'Cancelled') return ['cancelled'];
   if (tab === 'Delivered') return ['delivered'];
   if (tab === 'Completed') return ['completed'];
+  if (tab === 'Pickup') return [];
   return [];
 };
 
@@ -126,6 +128,13 @@ function lineMatchesVendor(line, vendorIdStr) {
   return String(vid) === vendorIdStr;
 }
 
+function vendorScheduledReturnLine(order, vendorIdStr) {
+  return (order?.products || []).find((line) => {
+    if (!lineMatchesVendor(line, vendorIdStr)) return false;
+    return Boolean(line?.returnRequest?.pickupScheduledAt);
+  });
+}
+
 /** Same row shape as admin Orders, but amount / primary product are only this vendor's lines. */
 function normalizeVendorOrder(order, vendorIdStr) {
   const dur = Math.max(1, Number(order.rentalDuration || 1));
@@ -136,7 +145,8 @@ function normalizeVendorOrder(order, vendorIdStr) {
     (s, i) => s + Number(i.pricePerDay || 0) * Number(i.quantity || 0) * dur,
     0,
   );
-  const primary = myLines[0];
+  const scheduledLine = vendorScheduledReturnLine(order, vendorIdStr);
+  const primary = scheduledLine || myLines[0];
   const product = primary?.product;
   return {
     ...order,
@@ -146,6 +156,9 @@ function normalizeVendorOrder(order, vendorIdStr) {
     productName: product?.productName || 'Product',
     productImage: product?.image || '',
     primaryProduct: product || null,
+    hasScheduledReturnPickup: Boolean(
+      scheduledLine?.returnRequest?.pickupScheduledAt,
+    ),
   };
 }
 
@@ -479,6 +492,9 @@ export default function VendorOrdersPage() {
     const q = query.trim().toLowerCase();
     const allowed = mapTabToStatuses(activeTab);
     return normalizedOrders.filter((o) => {
+      if (activeTab !== 'Pickup' && o.hasScheduledReturnPickup) {
+        return false;
+      }
       const tabMatch = allowed.length
         ? allowed.includes(String(o.status))
         : true;
@@ -491,6 +507,19 @@ export default function VendorOrdersPage() {
       );
     });
   }, [normalizedOrders, activeTab, query]);
+
+  const pickupScheduledOrders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return normalizedOrders.filter((o) => {
+      if (!o.hasScheduledReturnPickup) return false;
+      if (!q) return true;
+      return (
+        String(o.displayId).toLowerCase().includes(q) ||
+        String(o.customerName).toLowerCase().includes(q) ||
+        String(o.productName).toLowerCase().includes(q)
+      );
+    });
+  }, [normalizedOrders, query]);
 
   const stats = useMemo(() => {
     const processing = normalizedOrders.filter((o) =>
@@ -529,6 +558,7 @@ export default function VendorOrdersPage() {
       Cancelled: list.filter((x) => String(x.status) === 'cancelled').length,
       Delivered: list.filter((x) => String(x.status) === 'delivered').length,
       Completed: list.filter((x) => String(x.status) === 'completed').length,
+      Pickup: list.filter((x) => x.hasScheduledReturnPickup).length,
     };
   }, [normalizedOrders]);
 
@@ -683,9 +713,135 @@ export default function VendorOrdersPage() {
                   />
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                {activeTab !== 'Pickup' && (
+                  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[1060px] w-full text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                          <tr className="text-gray-500">
+                            <th className="px-4 py-3 text-left font-medium">
+                              Order ID
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Customer
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Your product
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Order Date
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Status
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Your amount
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Action
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredOrders.map((order) => (
+                            <tr
+                              key={order._id}
+                              className="border-t border-gray-100"
+                            >
+                              <td className="px-4 py-3 font-semibold text-gray-900">
+                                {order.displayId}
+                              </td>
+                              <td className="px-4 py-3 text-gray-700">
+                                {order.customerName}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  {order.productImage ? (
+                                    <img
+                                      src={order.productImage}
+                                      alt=""
+                                      className="w-9 h-9 rounded-md object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-md bg-gray-100" />
+                                  )}
+                                  <span className="text-gray-800">
+                                    {order.productName}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">
+                                {order.createdAt
+                                  ? new Date(
+                                      order.createdAt,
+                                    ).toLocaleDateString('en-GB')
+                                  : '-'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-1.5 border rounded-lg text-xs font-semibold capitalize ${statusBadgeClasses(order.status)}`}
+                                >
+                                  {String(order.status || 'unknown')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-gray-900">
+                                {money(order.amount)}
+                              </td>
+                              <td className="px-4 py-3">
+                                {showPackaging(order.status) ? (
+                                  <Link
+                                    href={`/vendor/orders/${order._id}/pack`}
+                                    className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100"
+                                  >
+                                    Packaging
+                                  </Link>
+                                ) : showDeliveryAction(order.status) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openDeliveryModal(order)}
+                                    disabled={updatingId === order._id}
+                                    className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                                  >
+                                    Delivery
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 text-xs">
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+
+                          {filteredOrders.length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-4 py-10 text-center text-gray-500"
+                              >
+                                No orders found.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-[#F97316] text-white">
+                            <td colSpan={6} className="px-4 py-3 font-semibold">
+                              Total (your lines)
+                            </td>
+                            <td className="px-4 py-3 font-semibold">
+                              {money(filteredTotal)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'Pickup' && (
                   <div className="overflow-x-auto">
-                    <table className="min-w-[1060px] w-full text-sm">
+                    <table className="min-w-[980px] w-full text-sm bg-white rounded-2xl border border-gray-200 overflow-hidden">
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr className="text-gray-500">
                           <th className="px-4 py-3 text-left font-medium">
@@ -701,9 +857,6 @@ export default function VendorOrdersPage() {
                             Order Date
                           </th>
                           <th className="px-4 py-3 text-left font-medium">
-                            Status
-                          </th>
-                          <th className="px-4 py-3 text-left font-medium">
                             Your amount
                           </th>
                           <th className="px-4 py-3 text-left font-medium">
@@ -712,9 +865,9 @@ export default function VendorOrdersPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredOrders.map((order) => (
+                        {pickupScheduledOrders.map((order) => (
                           <tr
-                            key={order._id}
+                            key={`pickup-${order._id}`}
                             className="border-t border-gray-100"
                           >
                             <td className="px-4 py-3 font-semibold text-gray-900">
@@ -746,64 +899,38 @@ export default function VendorOrdersPage() {
                                   )
                                 : '-'}
                             </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-1.5 border rounded-lg text-xs font-semibold capitalize ${statusBadgeClasses(order.status)}`}
-                              >
-                                {String(order.status || 'unknown')}
-                              </span>
-                            </td>
                             <td className="px-4 py-3 font-semibold text-gray-900">
                               {money(order.amount)}
                             </td>
                             <td className="px-4 py-3">
-                              {showPackaging(order.status) ? (
-                                <Link
-                                  href={`/vendor/orders/${order._id}/pack`}
-                                  className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100"
-                                >
-                                  Packaging
-                                </Link>
-                              ) : showDeliveryAction(order.status) ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openDeliveryModal(order)}
-                                  disabled={updatingId === order._id}
-                                  className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-                                >
-                                  Delivery
-                                </button>
-                              ) : (
-                                <span className="text-gray-300 text-xs">—</span>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toast.info(
+                                    'Inspection modal will be added next.',
+                                  )
+                                }
+                                className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100"
+                              >
+                                Inspection
+                              </button>
                             </td>
                           </tr>
                         ))}
-
-                        {filteredOrders.length === 0 && (
+                        {pickupScheduledOrders.length === 0 && (
                           <tr>
                             <td
-                              colSpan={7}
+                              colSpan={6}
                               className="px-4 py-10 text-center text-gray-500"
                             >
-                              No orders found.
+                              No pickup-scheduled returns yet.
                             </td>
                           </tr>
                         )}
                       </tbody>
-                      <tfoot>
-                        <tr className="bg-[#F97316] text-white">
-                          <td colSpan={6} className="px-4 py-3 font-semibold">
-                            Total (your lines)
-                          </td>
-                          <td className="px-4 py-3 font-semibold">
-                            {money(filteredTotal)}
-                          </td>
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>

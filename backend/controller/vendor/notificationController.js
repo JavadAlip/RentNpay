@@ -7,6 +7,15 @@ function orderShortRef(orderId) {
   return s.length > 6 ? s.slice(-6).toUpperCase() : s.toUpperCase();
 }
 
+function lineProductId(line) {
+  const p = line?.product;
+  if (!p) return '';
+  if (typeof p === 'string') return String(p);
+  // `products.product` can be either populated document OR raw ObjectId.
+  if (p?._id) return String(p._id);
+  return String(p);
+}
+
 /**
  * Activity feed for the authenticated vendor (merged, sorted by time).
  * GET /vendor/notifications
@@ -24,13 +33,17 @@ export async function getVendorNotifications(req, res) {
         .lean(),
       Product.find({ vendorId }).distinct('_id'),
     ]);
+    const productNameById = new Map(
+      (myProducts || []).map((p) => [String(p?._id || ''), p?.productName || 'Product']),
+    );
+    const productIdSet = new Set((productIds || []).map((id) => String(id)));
 
     const orders =
       productIds.length > 0
         ? await Order.find({ 'products.product': { $in: productIds } })
-            .sort({ createdAt: -1 })
+            .sort({ updatedAt: -1, createdAt: -1 })
             .limit(20)
-            .select('createdAt status products')
+            .select('createdAt updatedAt status products')
             .lean()
         : [];
 
@@ -82,6 +95,24 @@ export async function getVendorNotifications(req, res) {
         detail: `Order #${ref} — status: ${o.status || 'pending'}.`,
         at: o.createdAt,
       });
+
+      for (const line of o.products || []) {
+        const pid = lineProductId(line);
+        if (!pid || !productIdSet.has(pid)) continue;
+        const rr = line?.returnRequest;
+        const requestedAt = rr?.requestedAt ? new Date(rr.requestedAt) : null;
+        if (!requestedAt || Number.isNaN(requestedAt.getTime())) continue;
+        const productName = productNameById.get(pid) || 'Product';
+        items.push({
+          id: `return-${o._id}-${pid}`,
+          type: 'return_request',
+          orderId: String(o._id),
+          productId: pid,
+          title: 'Return requested',
+          detail: `User requested return for ${productName} (#${ref}).`,
+          at: requestedAt,
+        });
+      }
     }
 
     items.sort((a, b) => new Date(b.at) - new Date(a.at));
@@ -101,8 +132,12 @@ export async function getVendorNotifications(req, res) {
       title: n.title,
       detail: n.detail,
       at: n.at instanceof Date ? n.at.toISOString() : n.at,
-      ...(n.type === 'order' && n.orderId
-        ? { orderId: n.orderId, orderStatus: n.orderStatus }
+      ...((n.type === 'order' || n.type === 'return_request') && n.orderId
+        ? {
+            orderId: n.orderId,
+            ...(n.orderStatus ? { orderStatus: n.orderStatus } : {}),
+            ...(n.productId ? { productId: n.productId } : {}),
+          }
         : {}),
     }));
 

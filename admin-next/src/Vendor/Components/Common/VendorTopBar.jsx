@@ -8,8 +8,10 @@ import React, {
   useState,
 } from 'react';
 import { useSelector } from 'react-redux';
+import { Eye } from 'lucide-react';
 import { apiGetVendorNotifications } from '../../../service/api';
 import VendorNewOrderModal from '../Modals/VendorNewOrderModal';
+import VendorReturnRequestedModal from '../Modals/VendorReturnRequestedModal';
 
 function clearedStorageKey(vendorId) {
   const id = vendorId || 'session';
@@ -40,6 +42,10 @@ const VendorTopBar = () => {
   /** Bumps when user opens the panel so badge recalculates after “mark seen” */
   const [lastClearedVersion, setLastClearedVersion] = useState(0);
   const [orderModalId, setOrderModalId] = useState(null);
+  const [returnModal, setReturnModal] = useState({
+    orderId: null,
+    productId: null,
+  });
 
   const vendorId = user?._id || user?.id || '';
 
@@ -270,7 +276,8 @@ const VendorTopBar = () => {
                       const at =
                         n.at != null ? new Date(n.at) : new Date(NaN);
                       const oid = orderIdFromNotification(n);
-                      const showView = n.type === 'order' && oid;
+                      const showView =
+                        (n.type === 'order' || n.type === 'return_request') && oid;
                       return (
                         <li key={n.id} className="px-4 py-3 hover:bg-gray-50">
                           <div className="flex items-start gap-2">
@@ -288,14 +295,22 @@ const VendorTopBar = () => {
                             {showView ? (
                               <button
                                 type="button"
-                                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-[#F97316] border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100"
+                                className="shrink-0 inline-flex items-center justify-center w-8 h-8 text-[#F97316] border border-orange-200 rounded-lg bg-orange-50 hover:bg-orange-100"
                                 onClick={() => {
-                                  setOrderModalId(oid);
+                                  if (n.type === 'return_request') {
+                                    setReturnModal({
+                                      orderId: oid,
+                                      productId: n.productId || null,
+                                    });
+                                  } else {
+                                    setOrderModalId(oid);
+                                  }
                                   setNotificationsOpen(false);
                                   loadNotifications();
                                 }}
+                                aria-label="View notification"
                               >
-                                View
+                                <Eye className="w-4 h-4" />
                               </button>
                             ) : null}
                           </div>
@@ -314,6 +329,18 @@ const VendorTopBar = () => {
             getToken={getVendorToken}
             onClose={() => {
               setOrderModalId(null);
+              loadNotifications();
+            }}
+          />
+
+          <VendorReturnRequestedModal
+            open={Boolean(returnModal.orderId)}
+            orderId={returnModal.orderId}
+            productId={returnModal.productId}
+            vendorIdStr={String(user?.id || user?._id || '')}
+            getToken={getVendorToken}
+            onClose={() => {
+              setReturnModal({ orderId: null, productId: null });
               loadNotifications();
             }}
           />

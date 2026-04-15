@@ -28,6 +28,7 @@ import {
   getVendorOrderPackDetail,
   vendorMarkOrderShipped,
   updateVendorOrderStatus,
+  scheduleVendorReturnPickup,
 } from '../controller/vendor/orderController.js';
 import {
   signupVendor,
@@ -90,6 +91,11 @@ router.get('/orders/:id/pack', vendorAuth, getVendorOrderPackDetail);
 router.put('/orders/:id/mark-shipped', vendorAuth, vendorMarkOrderShipped);
 router.get('/orders/:id', vendorAuth, getVendorOrderById);
 router.put('/orders/:id/status', vendorAuth, updateVendorOrderStatus);
+router.put(
+  '/orders/:id/return-pickup',
+  vendorAuth,
+  scheduleVendorReturnPickup,
+);
 router.get('/kyc', vendorAuth, getMyKyc);
 router.get('/notifications', vendorAuth, getVendorNotifications);
 router.post(

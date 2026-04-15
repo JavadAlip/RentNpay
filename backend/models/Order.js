@@ -16,6 +16,14 @@ const orderItemSchema = new mongoose.Schema({
       default: 'none',
     },
     pickupDate: { type: Date },
+    vendorPickupDate: { type: Date },
+    vendorPickupTime: {
+      type: String,
+      enum: ['Morning', 'Afternoon', 'Evening'],
+    },
+    vendorPickupAddress: { type: String, default: '' },
+    vendorDriverName: { type: String, default: '' },
+    pickupScheduledAt: { type: Date },
     refundMethod: {
       type: String,
       enum: ['original', 'upi', 'bank'],

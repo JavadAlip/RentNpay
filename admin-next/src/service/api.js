@@ -123,6 +123,13 @@ export const apiUpdateVendorOrderStatus = (id, status, token) =>
     },
   );
 
+export const apiScheduleVendorReturnPickup = (id, body, token) =>
+  API.put(`/vendor/orders/${id}/return-pickup`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Vendor Offers
 export const apiGetVendorOffers = (token) =>
   API.get('/vendor/offers', {

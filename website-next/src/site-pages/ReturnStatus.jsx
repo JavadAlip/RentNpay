@@ -17,8 +17,7 @@ import { primaryProduct } from '@/lib/orderRentalUtils';
 
 function orderReturnLine(order) {
   return (order.products || []).find((line) => {
-    const s = String(line?.returnRequest?.status || '');
-    return s === 'requested' || s === 'review_submitted';
+    return Boolean(line?.returnRequest?.requestedAt);
   });
 }
 
@@ -36,15 +35,16 @@ function formatDateTime(iso) {
   });
 }
 
-function formatPickupWindow(iso) {
+function formatPickupWindow(iso, slot) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
+  const safeSlot = String(slot || '').trim();
   return `${d.toLocaleString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  })}, 1-4 PM`;
+  })}${safeSlot ? `, ${safeSlot}` : ''}`;
 }
 
 export default function ReturnStatus() {
@@ -113,7 +113,8 @@ export default function ReturnStatus() {
     );
   }
 
-  const pickupIso = rr.pickupDate;
+  const pickupIso = rr.vendorPickupDate || rr.pickupDate;
+  const hasPickupScheduled = Boolean(rr.pickupScheduledAt);
 
   return (
     <div className="min-h-screen bg-[#F4F6FB] py-8 px-4 sm:px-6 pb-16">
@@ -164,36 +165,56 @@ export default function ReturnStatus() {
             </li>
 
             <li className="relative pb-8">
-              <div className="absolute left-[17px] top-10 bottom-0 w-0.5 bg-blue-400" />
+              <div
+                className={`absolute left-[17px] top-10 bottom-0 w-0.5 ${
+                  hasPickupScheduled ? 'bg-blue-400' : 'bg-gray-200'
+                }`}
+              />
               <div className="flex gap-4">
-                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white">
+                <div
+                  className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    hasPickupScheduled
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
                   <Truck className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-bold text-gray-900">Pickup Scheduled</p>
-                  <p className="text-sm font-medium text-blue-600">In Progress</p>
-                  <div className="mt-3 rounded-xl bg-blue-50 border border-blue-100 p-4 text-sm text-gray-800 space-y-2">
-                    <p className="flex items-start gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <span>
-                        <span className="font-semibold">Scheduled for: </span>
-                        {formatPickupWindow(pickupIso)}
-                      </span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <span>
-                        <span className="font-semibold">Pickup from: </span>
-                        {order.address || 'Your delivery address on file'}
-                      </span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="mt-3 text-sm font-semibold text-[#FF6F00] hover:underline"
+                  <p className={`font-bold ${hasPickupScheduled ? 'text-gray-900' : 'text-gray-500'}`}>
+                    Pickup Scheduled
+                  </p>
+                  <p
+                    className={`text-sm font-medium ${
+                      hasPickupScheduled ? 'text-blue-600' : 'text-gray-500'
+                    }`}
                   >
-                    Reschedule Pickup
-                  </button>
+                    {hasPickupScheduled ? 'In Progress' : 'Pending'}
+                  </p>
+                  {hasPickupScheduled ? (
+                    <div className="mt-3 rounded-xl bg-blue-50 border border-blue-100 p-4 text-sm text-gray-800 space-y-2">
+                      <p className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <span>
+                          <span className="font-semibold">Scheduled for: </span>
+                          {formatPickupWindow(pickupIso, rr.vendorPickupTime)}
+                        </span>
+                      </p>
+                      <p className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <span>
+                          <span className="font-semibold">Pickup from: </span>
+                          {rr.vendorPickupAddress ||
+                            order.address ||
+                            'Your delivery address on file'}
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Vendor will schedule your pickup date and time shortly.
+                    </p>
+                  )}
                 </div>
               </div>
             </li>
