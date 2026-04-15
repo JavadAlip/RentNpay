@@ -19,6 +19,7 @@ import VendorTopBar from '../../Components/Common/VendorTopBar';
 import { apiGetVendorOrders, apiUpdateVendorOrderStatus } from '@/service/api';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import VendorReturnRequestedModal from '../../Components/Modals/VendorReturnRequestedModal';
 
 const tabs = [
   'Processing',
@@ -26,7 +27,7 @@ const tabs = [
   'In Transit',
   'Cancelled',
   'Delivered',
-  'Completed',
+  // 'Completed',
   'Pickup',
 ];
 
@@ -96,7 +97,7 @@ const mapTabToStatuses = (tab) => {
   if (tab === 'In Transit') return ['shipped'];
   if (tab === 'Cancelled') return ['cancelled'];
   if (tab === 'Delivered') return ['delivered'];
-  if (tab === 'Completed') return ['completed'];
+  // if (tab === 'Completed') return ['completed'];
   if (tab === 'Pickup') return [];
   return [];
 };
@@ -112,9 +113,9 @@ const statusBadgeClasses = (statusRaw) => {
   if (status === 'delivered') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
   }
-  if (status === 'completed') {
-    return 'border-violet-200 bg-violet-50 text-violet-700';
-  }
+  // if (status === 'completed') {
+  //   return 'border-violet-200 bg-violet-50 text-violet-700';
+  // }
   if (status === 'cancelled') {
     return 'border-red-200 bg-red-50 text-red-700';
   }
@@ -132,6 +133,13 @@ function vendorScheduledReturnLine(order, vendorIdStr) {
   return (order?.products || []).find((line) => {
     if (!lineMatchesVendor(line, vendorIdStr)) return false;
     return Boolean(line?.returnRequest?.pickupScheduledAt);
+  });
+}
+
+function vendorReturnRequestedLine(order, vendorIdStr) {
+  return (order?.products || []).find((line) => {
+    if (!lineMatchesVendor(line, vendorIdStr)) return false;
+    return Boolean(line?.returnRequest?.requestedAt);
   });
 }
 
@@ -442,6 +450,10 @@ export default function VendorOrdersPage() {
   });
   const [otpInput, setOtpInput] = useState('');
   const [installationDone, setInstallationDone] = useState(false);
+  const [returnModal, setReturnModal] = useState({
+    orderId: null,
+    productId: null,
+  });
   const [activeTab, setActiveTab] = useState('Processing');
   const [query, setQuery] = useState('');
 
@@ -557,7 +569,7 @@ export default function VendorOrdersPage() {
       'In Transit': shipped,
       Cancelled: list.filter((x) => String(x.status) === 'cancelled').length,
       Delivered: list.filter((x) => String(x.status) === 'delivered').length,
-      Completed: list.filter((x) => String(x.status) === 'completed').length,
+      // Completed: list.filter((x) => String(x.status) === 'completed').length,
       Pickup: list.filter((x) => x.hasScheduledReturnPickup).length,
     };
   }, [normalizedOrders]);
@@ -565,6 +577,11 @@ export default function VendorOrdersPage() {
   const showPackaging = (status) =>
     ['pending', 'confirmed'].includes(String(status));
   const showDeliveryAction = (status) => String(status) === 'shipped';
+  const showScheduleAction = (order) => {
+    if (String(order?.status || '') !== 'cancelled') return false;
+    if (order?.hasScheduledReturnPickup) return false;
+    return true;
+  };
 
   const openDeliveryModal = (order) => {
     setDeliveryModal({ open: true, order, otp: makeOtp() });
@@ -804,6 +821,23 @@ export default function VendorOrdersPage() {
                                   >
                                     Delivery
                                   </button>
+                                ) : showScheduleAction(order) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const rrLine = vendorReturnRequestedLine(
+                                        order,
+                                        vendorIdStr,
+                                      );
+                                      setReturnModal({
+                                        orderId: order._id,
+                                        productId: rrLine?.product?._id || null,
+                                      });
+                                    }}
+                                    className="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100"
+                                  >
+                                    Schedule
+                                  </button>
                                 ) : (
                                   <span className="text-gray-300 text-xs">
                                     —
@@ -950,6 +984,22 @@ export default function VendorOrdersPage() {
         )}
         onClose={closeDeliveryModal}
         onConfirm={confirmDeliveryFromModal}
+      />
+      <VendorReturnRequestedModal
+        open={Boolean(returnModal.orderId)}
+        orderId={returnModal.orderId}
+        productId={returnModal.productId}
+        vendorIdStr={vendorIdStr}
+        getToken={() =>
+          token ||
+          (typeof window !== 'undefined'
+            ? localStorage.getItem('vendorToken')
+            : null)
+        }
+        onClose={() => {
+          setReturnModal({ orderId: null, productId: null });
+          fetchOrders();
+        }}
       />
     </div>
   );

@@ -126,7 +126,7 @@ export async function getVendorNotifications(req, res) {
     }
 
     const totalCount = deduped.length;
-    const notifications = deduped.slice(0, 5).map((n) => ({
+    const notifications = deduped.slice(0, 10).map((n) => ({
       id: n.id,
       type: n.type,
       title: n.title,

@@ -144,13 +144,7 @@ const VendorTopBar = () => {
       return !Number.isNaN(t) && t > clearedMs;
     }).length;
     return Math.min(unread, 99);
-  }, [
-    mounted,
-    notifications,
-    notificationCount,
-    lastClearedVersion,
-    vendorId,
-  ]);
+  }, [mounted, notifications, notificationCount, lastClearedVersion, vendorId]);
 
   const badgeText =
     visibleBadgeCount > 99 ? '99+' : String(visibleBadgeCount || '');
@@ -248,7 +242,7 @@ const VendorTopBar = () => {
                   Notifications
                 </p>
                 <span className="text-[11px] text-gray-400">
-                  Last 5 updates
+                  Last 10 updates
                 </span>
               </div>
               {notificationsLoading && (
@@ -271,13 +265,13 @@ const VendorTopBar = () => {
               {!notificationsLoading &&
                 !notificationsError &&
                 notifications.length > 0 && (
-                  <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50">
+                  <ul className="max-h-[min(70vh,20rem)] overflow-y-auto divide-y divide-gray-50 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:bg-transparent">
                     {notifications.map((n) => {
-                      const at =
-                        n.at != null ? new Date(n.at) : new Date(NaN);
+                      const at = n.at != null ? new Date(n.at) : new Date(NaN);
                       const oid = orderIdFromNotification(n);
                       const showView =
-                        (n.type === 'order' || n.type === 'return_request') && oid;
+                        (n.type === 'order' || n.type === 'return_request') &&
+                        oid;
                       return (
                         <li key={n.id} className="px-4 py-3 hover:bg-gray-50">
                           <div className="flex items-start gap-2">
