@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Sofa,
   BarChart3,
@@ -153,6 +153,7 @@ function normalizeExtensionPlans(product, tenureUnit) {
 export default function RentalCommandCenter() {
   const { pushToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -202,7 +203,51 @@ export default function RentalCommandCenter() {
   }, []);
 
   const rentals = useMemo(() => flattenRentals(orders), [orders]);
+  const openReturnFromQuery = searchParams.get('openReturn') === '1';
+  const requestedOrderId = searchParams.get('orderId') || '';
+  const requestedProductId = searchParams.get('productId') || '';
   const today = startOfDay(new Date());
+
+  useEffect(() => {
+    if (!openReturnFromQuery || loading) return;
+    if (!requestedOrderId || !requestedProductId) return;
+    if (!rentals.length) return;
+    if (returnState.open) return;
+
+    const targetRow = rentals.find(
+      (row) =>
+        String(row?.order?._id || '') === String(requestedOrderId) &&
+        String(row?.product?._id || '') === String(requestedProductId),
+    );
+    if (!targetRow) return;
+
+    setReturnState((prev) => ({
+      ...prev,
+      open: true,
+      row: targetRow,
+      pickupDateIso: '',
+      step: 1,
+      refundMethod: '',
+      bankAccountName: '',
+      bankAccountNumber: '',
+      bankIfsc: '',
+      upiId: '',
+      reviewRating: 0,
+      reviewText: '',
+      mediaNames: [],
+      mediaPreviews: [],
+      mediaFiles: [],
+    }));
+    router.replace('/my-rentals');
+  }, [
+    openReturnFromQuery,
+    requestedOrderId,
+    requestedProductId,
+    loading,
+    rentals,
+    returnState.open,
+    router,
+  ]);
 
   const extensionPlans = useMemo(() => {
     if (!extendState.row) return [];

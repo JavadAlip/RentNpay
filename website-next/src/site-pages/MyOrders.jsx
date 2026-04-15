@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Truck,
@@ -13,6 +14,7 @@ import {
   Star,
   Calendar,
   Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { apiGetMyOrders } from '@/lib/api';
 import {
@@ -216,12 +218,27 @@ function expectedDeliveryDate(order) {
 }
 
 export default function MyOrders() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState('all');
   const [page, setPage] = useState(1);
+  const [returnPrompt, setReturnPrompt] = useState({
+    open: false,
+    orderId: '',
+    orderRef: '',
+    productId: '',
+    title: '',
+    image: '',
+    cycleRent: 0,
+    cycleUnit: 'month',
+    startedOn: '',
+    totalTenure: '',
+    totalTenureLabel: 'Total Months',
+    cycleEnds: '',
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -381,7 +398,13 @@ export default function MyOrders() {
           <>
             <ul className="mt-8 space-y-5">
               {pageSlice.map((order) => (
-                <OrderCard key={order._id} order={order} />
+                <OrderCard
+                  key={order._id}
+                  order={order}
+                  onOpenReturnPrompt={(payload) =>
+                    setReturnPrompt({ open: true, ...payload })
+                  }
+                />
               ))}
             </ul>
 
@@ -428,12 +451,101 @@ export default function MyOrders() {
             ) : null}
           </>
         )}
+
+        {returnPrompt.open ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+            onClick={() =>
+              setReturnPrompt((prev) => ({ ...prev, open: false }))
+            }
+          >
+            <div
+              className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3" />
+
+              <div className="mt-4 rounded-xl border border-gray-200 bg-[#F7F8FB] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-lg bg-gray-100">
+                    {returnPrompt.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={returnPrompt.image}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {returnPrompt.title}
+                    </p>
+                    <div className="mt-0.5 inline-flex items-center gap-2">
+                      <p className="text-xs text-emerald-700 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5">
+                        Active Rental
+                      </p>
+                      <span className="text-xs text-gray-500">
+                        Order #{returnPrompt.orderRef}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-700 space-y-1.5">
+                  <p className="flex justify-between gap-3">
+                    <span>Monthly Rent:</span>
+                    <span className="font-medium">
+                      ₹{formatMoney(returnPrompt.cycleRent)}/
+                      {returnPrompt.cycleUnit === 'day' ? 'day' : 'month'}
+                    </span>
+                  </p>
+                  <p className="flex justify-between gap-3">
+                    <span>Started:</span>
+                    <span className="font-medium">
+                      {returnPrompt.startedOn}
+                    </span>
+                  </p>
+                  <p className="flex justify-between gap-3">
+                    <span>{returnPrompt.totalTenureLabel}:</span>
+                    <span className="font-medium">
+                      {returnPrompt.totalTenure}
+                    </span>
+                  </p>
+                  <p className="flex justify-between gap-3">
+                    <span>Cycle Ends:</span>
+                    <span className="font-semibold text-[#F97316]">
+                      {returnPrompt.cycleEnds}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const next = `/my-rentals?openReturn=1&orderId=${encodeURIComponent(returnPrompt.orderId)}&productId=${encodeURIComponent(returnPrompt.productId)}`;
+                  setReturnPrompt((prev) => ({ ...prev, open: false }));
+                  router.push(next);
+                }}
+                className="mt-5 w-full rounded-xl border border-[#F97316] bg-white py-3 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
+              >
+                End Tenancy / Return Item
+              </button>
+              <p className="mt-2 text-center text-xs text-gray-500">
+                Rent cycle ends on{' '}
+                <span className="font-semibold">{returnPrompt.cycleEnds}</span>.
+                Schedule your return pickup now.
+              </p>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function OrderCard({ order }) {
+function OrderCard({ order, onOpenReturnPrompt }) {
   const meta = classifyOrder(order);
   const product = meta.product;
   const img = productImageUrl(product?.image || '');
@@ -672,9 +784,9 @@ function OrderCard({ order }) {
         <div className="p-4">
           <p className="text-sm text-gray-700 leading-relaxed">
             This order is delivered, but product details are missing from the
-            snapshot, so it does{' '}
-            <span className="font-semibold">not</span> show under My Rentals and
-            should not be treated as a normal active rental.
+            snapshot, so it does <span className="font-semibold">not</span> show
+            under My Rentals and should not be treated as a normal active
+            rental.
           </p>
           <p className="text-xs text-gray-500 mt-3">
             This is usually a data or loading issue. Contact support with your
@@ -686,6 +798,10 @@ function OrderCard({ order }) {
   }
 
   if (meta.kind === 'active_rental') {
+    const activeLine = firstMyRentalsEligibleLine(order);
+    const tenureCount = Math.max(1, Number(order?.rentalDuration || 1));
+    const cycleRent = Math.max(0, Math.round(Number(total || 0) / tenureCount));
+    const cycleUnit = meta.unit === 'day' ? 'day' : 'month';
     const nextRentDays = product ? daysUntilNextRent(order, product) : null;
     const nextDueLabel = computeNextPaymentLabel(
       order.createdAt,
@@ -755,12 +871,32 @@ function OrderCard({ order }) {
           >
             Pay rent
           </Link>
-          <Link
-            href="/my-rentals"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
+          <button
+            type="button"
+            onClick={() => {
+              const orderId = String(order?._id || '');
+              const productId = String(activeLine?.product?._id || '');
+              if (!orderId || !productId) return;
+              onOpenReturnPrompt?.({
+                orderId,
+                orderRef: oid,
+                productId,
+                title,
+                image: img,
+                cycleRent,
+                cycleUnit,
+                startedOn: formatOrderDate(order.createdAt),
+                totalTenure: String(order.rentalDuration || 0),
+                totalTenureLabel:
+                  cycleUnit === 'day' ? 'Total Days' : 'Total Months',
+                cycleEnds: formatOrderDate(meta.leaseEnd),
+              });
+            }}
+            className="inline-flex items-center justify-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
           >
             Request Pickup / Close Rental
-          </Link>
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
       </li>
     );
