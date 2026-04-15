@@ -373,7 +373,7 @@ const Orders = () => {
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
+          {/* <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
             <span>
               {filteredOrders.length === 0
                 ? 'No orders in this view'
@@ -385,7 +385,7 @@ const Orders = () => {
                 {money(filteredTotal)}
               </span>
             </span>
-          </div>
+          </div> */}
 
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
