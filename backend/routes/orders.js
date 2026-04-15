@@ -331,6 +331,18 @@ router.put(
       reviewedAt: safeRating ? new Date() : null,
     };
 
+    const rentalLineCount = (order.products || []).filter((line) => {
+      const lineType = String(line?.productType || '').toLowerCase();
+      if (lineType === 'sell') return false;
+      const p = line?.product;
+      if (!p || typeof p === 'string') return false;
+      if (String(p?.type || '').toLowerCase() === 'sell') return false;
+      return true;
+    }).length;
+    if (rentalLineCount <= 1) {
+      order.status = 'cancelled';
+    }
+
     await order.save();
 
     const populated = await Order.findById(order._id)

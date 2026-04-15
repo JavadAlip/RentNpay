@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Sofa,
   BarChart3,
@@ -35,6 +36,7 @@ import {
   resolveTenureUnit,
   computeLeaseEnd,
 } from '@/lib/orderRentalUtils';
+import PickupScheduledModal from '@/components/PickupScheduledModal';
 
 function flattenRentals(orders) {
   const rows = [];
@@ -46,6 +48,8 @@ function flattenRentals(orders) {
     const start = order.createdAt ? new Date(order.createdAt) : new Date();
     const duration = order.rentalDuration;
     for (const line of order.products || []) {
+      const rr = String(line?.returnRequest?.status || '');
+      if (rr === 'requested' || rr === 'review_submitted') continue;
       const lineType = String(line?.productType || '').toLowerCase();
       if (lineType === 'sell') continue;
       const p = line.product;
@@ -152,6 +156,7 @@ function normalizeExtensionPlans(product, tenureUnit) {
 
 export default function RentalCommandCenter() {
   const { pushToast } = useToast();
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -178,6 +183,15 @@ export default function RentalCommandCenter() {
     mediaFiles: [],
   });
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [pickupScheduled, setPickupScheduled] = useState({
+    open: false,
+    orderId: '',
+    productName: '',
+    pickupSubtitle: '',
+    refundableDeposit: 0,
+    extensionFine: 0,
+    netEstimate: 0,
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -318,6 +332,8 @@ export default function RentalCommandCenter() {
 
     try {
       setSubmittingReturn(true);
+      const calcSnapshot = returnCalc;
+      const rowSnapshot = returnState.row;
       const res = await apiSubmitMyReturnRequest(orderId, payload);
       console.log('[return-review] API success', {
         status: res?.status,
@@ -333,6 +349,22 @@ export default function RentalCommandCenter() {
       );
       pushToast('Return request submitted successfully.', 'success');
       closeReturnModal();
+      if (calcSnapshot && rowSnapshot) {
+        const pd = calcSnapshot.pickupDate;
+        const datePart = pd.toLocaleString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+        });
+        setPickupScheduled({
+          open: true,
+          orderId: String(rowSnapshot.order?._id || ''),
+          productName: rowSnapshot.product?.productName || 'Rental item',
+          pickupSubtitle: `Our team will collect the item on ${datePart}, 1-4 PM`,
+          refundableDeposit: calcSnapshot.refundableDeposit,
+          extensionFine: calcSnapshot.extensionFine,
+          netEstimate: Math.max(0, calcSnapshot.netBalance),
+        });
+      }
     } catch (err) {
       console.log('[return-review] API error', {
         status: err?.response?.status,
@@ -1816,6 +1848,22 @@ export default function RentalCommandCenter() {
           </div>
         </div>
       ) : null}
+
+      <PickupScheduledModal
+        open={pickupScheduled.open}
+        onClose={() => setPickupScheduled((p) => ({ ...p, open: false }))}
+        pickupSubtitle={pickupScheduled.pickupSubtitle}
+        refundableDeposit={pickupScheduled.refundableDeposit}
+        extensionFine={pickupScheduled.extensionFine}
+        netEstimate={pickupScheduled.netEstimate}
+        onViewReturnStatus={() => {
+          const id = pickupScheduled.orderId;
+          setPickupScheduled((p) => ({ ...p, open: false }));
+          router.push(
+            `/orders/return-status?orderId=${encodeURIComponent(id)}`,
+          );
+        }}
+      />
     </div>
   );
 }

@@ -38,6 +38,46 @@ const ORANGE = 'bg-[#FF6F00] hover:bg-[#e56400]';
 const ORANGE_TEXT = 'text-[#FF6F00]';
 const ORANGE_BORDER = 'border-[#FF6F00]';
 
+function rentalProductLines(order) {
+  return (order.products || []).filter((line) => {
+    const lineType = String(line?.productType || '').toLowerCase();
+    if (lineType === 'sell') return false;
+    const p = line?.product;
+    if (!p || typeof p === 'string') return false;
+    if (String(p?.type || '').toLowerCase() === 'sell') return false;
+    return true;
+  });
+}
+
+/** Delivered order should use the cancelled card only when every rental line has a return in progress. */
+function everyRentalLineHasReturnRequest(order) {
+  const lines = rentalProductLines(order);
+  if (!lines.length) return false;
+  return lines.every((line) => {
+    const s = String(line?.returnRequest?.status || '');
+    return s === 'requested' || s === 'review_submitted';
+  });
+}
+
+function orderReturnLine(order) {
+  return (order.products || []).find((line) => {
+    const s = String(line?.returnRequest?.status || '');
+    return s === 'requested' || s === 'review_submitted';
+  });
+}
+
+function lineRefundableDeposit(line) {
+  if (!line) return 0;
+  const fromLine = Number(line.refundableDeposit);
+  if (Number.isFinite(fromLine) && fromLine > 0) return fromLine;
+  const p = line.product;
+  if (p && typeof p === 'object') {
+    const d = Number(p.refundableDeposit);
+    if (Number.isFinite(d) && d > 0) return d;
+  }
+  return 0;
+}
+
 /** Card visual + tab membership for one order. */
 function classifyOrder(order) {
   const st = normalizeStatus(order.status);
@@ -85,6 +125,15 @@ function classifyOrder(order) {
       return {
         kind: 'delivered_purchase',
         purchasePhase: 'delivered',
+        leaseEnd,
+        daysLeft,
+        unit,
+        product,
+      };
+    }
+    if (everyRentalLineHasReturnRequest(order)) {
+      return {
+        kind: 'cancelled',
         leaseEnd,
         daysLeft,
         unit,
@@ -445,6 +494,16 @@ function OrderCard({ order }) {
   }
 
   if (meta.kind === 'cancelled') {
+    const rrLine = orderReturnLine(order);
+    const rr = rrLine?.returnRequest;
+    const hasReturnTracking = Boolean(rr?.requestedAt);
+    const refundShown = hasReturnTracking
+      ? lineRefundableDeposit(rrLine)
+      : total;
+    const cancelledDetailDate = hasReturnTracking
+      ? formatOrderDate(rr.requestedAt)
+      : placed;
+
     return (
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
@@ -471,22 +530,33 @@ function OrderCard({ order }) {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-gray-900">{title}</p>
             <p
-              className={`text-sm mt-2 flex items-center gap-1.5 text-emerald-600`}
+              className={`text-sm mt-2 flex items-center gap-1.5 text-emerald-600 font-medium`}
             >
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              Refund processed: ₹{formatMoney(total)} to source
+              Refund Processed: ₹{formatMoney(refundShown)} to Source
             </p>
-            <p className="text-xs text-gray-500 mt-1">Cancelled on {placed}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {hasReturnTracking
+                ? `Cancelled by you on ${cancelledDetailDate}`
+                : `Cancelled on ${cancelledDetailDate}`}
+            </p>
           </div>
         </div>
         <div className="px-4 pb-4 flex justify-end">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            View refund details
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+          {hasReturnTracking ? (
+            <Link
+              href={`/orders/return-status?orderId=${encodeURIComponent(order._id)}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
+              View Refund Details
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 cursor-not-allowed">
+              View Refund Details
+              <ExternalLink className="w-3.5 h-3.5" />
+            </span>
+          )}
         </div>
       </li>
     );
