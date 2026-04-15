@@ -115,6 +115,8 @@ export default function ReturnStatus() {
 
   const pickupIso = rr.vendorPickupDate || rr.pickupDate;
   const hasPickupScheduled = Boolean(rr.pickupScheduledAt);
+  const hasQcCompleted = Boolean(rr.qcCompletedAt);
+  const hasRefundInitiated = Boolean(rr.refundInitiatedAt);
 
   return (
     <div className="min-h-screen bg-[#F4F6FB] py-8 px-4 sm:px-6 pb-16">
@@ -220,34 +222,93 @@ export default function ReturnStatus() {
             </li>
 
             <li className="relative pb-8">
-              <div className="absolute left-[17px] top-10 bottom-0 w-0.5 bg-gray-200" />
+              <div
+                className={`absolute left-[17px] top-10 bottom-0 w-0.5 ${
+                  hasQcCompleted ? 'bg-emerald-400' : 'bg-gray-200'
+                }`}
+              />
               <div className="flex gap-4">
-                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-600">
+                <div
+                  className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    hasQcCompleted
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
                   <FileSearch className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-bold text-gray-500">Quality Check (QC)</p>
-                  <p className="text-sm font-medium text-gray-500">Pending</p>
+                  <p className={`font-bold ${hasQcCompleted ? 'text-gray-900' : 'text-gray-500'}`}>
+                    Quality Check (QC)
+                  </p>
+                  <p
+                    className={`text-sm font-medium ${
+                      hasQcCompleted ? 'text-emerald-600' : 'text-gray-500'
+                    }`}
+                  >
+                    {hasQcCompleted ? 'Completed' : 'Pending'}
+                  </p>
                   <p className="mt-2 text-sm text-gray-500">
                     Our technician will verify the item condition and assess any
                     damage.
                   </p>
+                  {hasQcCompleted ? (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Completed on {formatDateTime(rr.qcCompletedAt)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </li>
 
             <li className="relative">
               <div className="flex gap-4">
-                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-600">
+                <div
+                  className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    hasRefundInitiated
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
                   <RefreshCw className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-bold text-gray-500">Refund Initiated</p>
-                  <p className="text-sm font-medium text-gray-500">Pending</p>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Deposit will be refunded to your original payment source
-                    within 7 days of QC completion.
+                  <p
+                    className={`font-bold ${
+                      hasRefundInitiated ? 'text-gray-900' : 'text-gray-500'
+                    }`}
+                  >
+                    Refund Initiated
                   </p>
+                  <p
+                    className={`text-sm font-medium ${
+                      hasRefundInitiated ? 'text-emerald-600' : 'text-gray-500'
+                    }`}
+                  >
+                    {hasRefundInitiated ? 'Completed' : 'Pending'}
+                  </p>
+                  {hasRefundInitiated ? (
+                    <>
+                      <p className="mt-2 text-sm text-gray-600">
+                        Final refund amount initiated: {' '}
+                        <span className="font-semibold text-gray-900">
+                          ₹{Number(rr.finalRefundAmount || 0).toLocaleString('en-IN')}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Damage deduction: ₹{Number(rr.damageDeduction || 0).toLocaleString('en-IN')} •
+                        Cleaning fees: ₹{Number(rr.cleaningFees || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Initiated on {formatDateTime(rr.refundInitiatedAt)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Deposit will be refunded to your original payment source
+                      within 7 days of QC completion.
+                    </p>
+                  )}
                 </div>
               </div>
             </li>

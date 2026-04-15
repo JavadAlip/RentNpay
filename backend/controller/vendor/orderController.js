@@ -113,8 +113,7 @@ export const vendorMarkOrderShipped = async (req, res) => {
       });
     }
 
-    const method =
-      delivery?.method === 'third_party' ? 'third_party' : 'self';
+    const method = delivery?.method === 'third_party' ? 'third_party' : 'self';
     const driverName = String(delivery?.driverName || '').trim();
     const driverPhone = String(delivery?.driverPhone || '').trim();
     if (method === 'self' && (!driverName || !driverPhone)) {
@@ -210,17 +209,14 @@ export const updateVendorOrderStatus = async (req, res) => {
 
 export const scheduleVendorReturnPickup = async (req, res) => {
   try {
-    const {
-      productId,
-      pickupDate,
-      pickupTime,
-      driverName,
-      pickupAddress,
-    } = req.body || {};
+    const { productId, pickupDate, pickupTime, driverName, pickupAddress } =
+      req.body || {};
 
     const parsedPickupDate = new Date(pickupDate);
     if (!pickupDate || Number.isNaN(parsedPickupDate.getTime())) {
-      return res.status(400).json({ message: 'Valid pickup date is required.' });
+      return res
+        .status(400)
+        .json({ message: 'Valid pickup date is required.' });
     }
 
     const timeSlot = ['Morning', 'Afternoon', 'Evening'].includes(
@@ -229,7 +225,9 @@ export const scheduleVendorReturnPickup = async (req, res) => {
       ? String(pickupTime)
       : null;
     if (!timeSlot) {
-      return res.status(400).json({ message: 'Valid pickup time is required.' });
+      return res
+        .status(400)
+        .json({ message: 'Valid pickup time is required.' });
     }
 
     const safeDriverName = String(driverName || '').trim();
@@ -262,7 +260,10 @@ export const scheduleVendorReturnPickup = async (req, res) => {
 
     const resolvedPickupAddress =
       String(pickupAddress || '').trim() || String(order.address || '').trim();
-    if (!targetLine.returnRequest || typeof targetLine.returnRequest !== 'object') {
+    if (
+      !targetLine.returnRequest ||
+      typeof targetLine.returnRequest !== 'object'
+    ) {
       targetLine.returnRequest = {};
     }
     if (
@@ -279,7 +280,97 @@ export const scheduleVendorReturnPickup = async (req, res) => {
 
     await order.save();
 
-    const populated = await Order.findById(order._id).populate(vendorOrderPopulate);
+    const populated = await Order.findById(order._id).populate(
+      vendorOrderPopulate,
+    );
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const completeVendorReturnInspection = async (req, res) => {
+  try {
+    const {
+      productId,
+      inspectionChecklist,
+      pickupPhotoName,
+      damageDeduction,
+      cleaningFees,
+      authorizeRefund,
+    } = req.body || {};
+
+    if (!authorizeRefund) {
+      return res.status(400).json({
+        message: 'Authorization is required to initiate refund.',
+      });
+    }
+
+    const order = await Order.findById(req.params.id).populate(
+      'products.product',
+      'vendorId type',
+    );
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const vid = String(req.vendor._id);
+    const targetLine = (order.products || []).find((line) => {
+      const p = line?.product;
+      if (!p || typeof p === 'string') return false;
+      if (String(p.vendorId || '') !== vid) return false;
+      if (String(p.type || '').toLowerCase() === 'sell') return false;
+      if (productId && String(p._id || '') !== String(productId)) return false;
+      return Boolean(line?.returnRequest?.pickupScheduledAt);
+    });
+
+    if (!targetLine) {
+      return res.status(404).json({
+        message: 'Pickup-scheduled return line not found for this vendor.',
+      });
+    }
+
+    const safeDamage = Math.max(0, Number(damageDeduction || 0));
+    const safeCleaning = Math.max(0, Number(cleaningFees || 0));
+    const totalDeduction = safeDamage + safeCleaning;
+    const depositHeld = Math.max(0, Number(targetLine?.refundableDeposit || 0));
+    const finalRefundAmount = Math.max(0, depositHeld - totalDeduction);
+
+    if (
+      !targetLine.returnRequest ||
+      typeof targetLine.returnRequest !== 'object'
+    ) {
+      targetLine.returnRequest = {};
+    }
+    if (
+      !targetLine.returnRequest.refundDetails ||
+      typeof targetLine.returnRequest.refundDetails !== 'object'
+    ) {
+      targetLine.returnRequest.refundDetails = {};
+    }
+
+    const checklist = inspectionChecklist || {};
+    targetLine.returnRequest.inspectionChecklist = {
+      powerFunctionCheck: Boolean(checklist.powerFunctionCheck),
+      surfaceScratches: Boolean(checklist.surfaceScratches),
+      structuralIntegrity: Boolean(checklist.structuralIntegrity),
+      accessoriesAccountedFor: Boolean(checklist.accessoriesAccountedFor),
+      cleanlinessCheck: Boolean(checklist.cleanlinessCheck),
+    };
+    targetLine.returnRequest.pickupPhotoName = String(
+      pickupPhotoName || '',
+    ).trim();
+    targetLine.returnRequest.damageDeduction = safeDamage;
+    targetLine.returnRequest.cleaningFees = safeCleaning;
+    targetLine.returnRequest.totalDeduction = totalDeduction;
+    targetLine.returnRequest.finalRefundAmount = finalRefundAmount;
+    targetLine.returnRequest.qcCompletedAt = new Date();
+    targetLine.returnRequest.refundInitiatedAt = new Date();
+    order.status = 'completed';
+
+    await order.save();
+
+    const populated = await Order.findById(order._id).populate(
+      vendorOrderPopulate,
+    );
     res.json(populated);
   } catch (err) {
     res.status(500).json({ message: err.message });

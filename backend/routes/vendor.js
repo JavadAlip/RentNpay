@@ -29,6 +29,7 @@ import {
   vendorMarkOrderShipped,
   updateVendorOrderStatus,
   scheduleVendorReturnPickup,
+  completeVendorReturnInspection,
 } from '../controller/vendor/orderController.js';
 import {
   signupVendor,
@@ -95,6 +96,11 @@ router.put(
   '/orders/:id/return-pickup',
   vendorAuth,
   scheduleVendorReturnPickup,
+);
+router.put(
+  '/orders/:id/return-inspection',
+  vendorAuth,
+  completeVendorReturnInspection,
 );
 router.get('/kyc', vendorAuth, getMyKyc);
 router.get('/notifications', vendorAuth, getVendorNotifications);

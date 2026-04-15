@@ -130,6 +130,13 @@ export const apiScheduleVendorReturnPickup = (id, body, token) =>
     },
   });
 
+export const apiCompleteVendorReturnInspection = (id, body, token) =>
+  API.put(`/vendor/orders/${id}/return-inspection`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 // Vendor Offers
 export const apiGetVendorOffers = (token) =>
   API.get('/vendor/offers', {
