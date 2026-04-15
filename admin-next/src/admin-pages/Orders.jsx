@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGetAllOrders } from '@/service/api';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 const tabs = [
   'Processing',
@@ -11,10 +11,17 @@ const tabs = [
   'In Transit',
   'Cancelled',
   'Delivered',
-  'Completed',
+  'Pickup',
 ];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+function looksLikeUrl(value) {
+  const s = String(value || '')
+    .trim()
+    .toLowerCase();
+  return s.startsWith('http://') || s.startsWith('https://');
+}
 
 const mapTabToStatuses = (tab) => {
   if (tab === 'Processing') return ['pending', 'confirmed'];
@@ -22,7 +29,7 @@ const mapTabToStatuses = (tab) => {
   if (tab === 'In Transit') return ['shipped'];
   if (tab === 'Cancelled') return ['cancelled'];
   if (tab === 'Delivered') return ['delivered'];
-  if (tab === 'Completed') return ['completed'];
+  if (tab === 'Pickup') return [];
   return [];
 };
 
@@ -35,6 +42,7 @@ function statusLabel(raw) {
     delivered: 'Delivered',
     completed: 'Completed',
     cancelled: 'Cancelled',
+    pickup_scheduled: 'Pickup Scheduled',
   };
   return map[s] || s;
 }
@@ -44,9 +52,12 @@ function statusBadgeClass(raw) {
   if (s === 'pending') return 'bg-amber-50 text-amber-900 border-amber-200';
   if (s === 'confirmed') return 'bg-sky-50 text-sky-900 border-sky-200';
   if (s === 'shipped') return 'bg-indigo-50 text-indigo-900 border-indigo-200';
-  if (s === 'delivered') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
+  if (s === 'delivered')
+    return 'bg-emerald-50 text-emerald-900 border-emerald-200';
   if (s === 'completed') return 'bg-teal-50 text-teal-900 border-teal-200';
   if (s === 'cancelled') return 'bg-red-50 text-red-800 border-red-200';
+  if (s === 'pickup_scheduled')
+    return 'bg-blue-50 text-blue-800 border-blue-200';
   return 'bg-gray-50 text-gray-800 border-gray-200';
 }
 
@@ -95,14 +106,22 @@ const Orders = () => {
               Number(o.rentalDuration || 0),
           0,
         );
-        const lines = (o.products || []).map((i) => {
+        const lineItems = (o.products || []).map((i) => {
           const p = i.product;
-          const name =
-            p && typeof p === 'object'
-              ? p.productName || p.title || 'Item'
-              : 'Item';
-          return `${name} ×${Number(i.quantity || 1)}`;
+          const rawName =
+            p && typeof p === 'object' ? p.productName || p.title || '' : '';
+          const imageFromProduct =
+            p && typeof p === 'object' ? String(p.image || '').trim() : '';
+          const hasUrlName = looksLikeUrl(rawName);
+          const lineImage = imageFromProduct || (hasUrlName ? rawName : '');
+          const safeName = hasUrlName ? 'Product' : rawName || 'Item';
+          return {
+            name: safeName,
+            qty: Number(i.quantity || 1),
+            image: lineImage,
+          };
         });
+        const lines = lineItems.map((x) => `${x.name} ×${x.qty}`);
         const primary = o.products?.[0]?.product;
         const productImage =
           primary && typeof primary === 'object' ? primary.image || '' : '';
@@ -119,6 +138,31 @@ const Orders = () => {
             })
             .filter(Boolean),
         );
+        const pickupLines = (o.products || []).filter((i) =>
+          Boolean(
+            i?.returnRequest?.pickupScheduledAt &&
+            !i?.returnRequest?.refundInitiatedAt,
+          ),
+        );
+        const pickupLineItems = pickupLines.map((i) => {
+          const p = i.product;
+          const rawName =
+            p && typeof p === 'object' ? p.productName || p.title || '' : '';
+          const imageFromProduct =
+            p && typeof p === 'object' ? String(p.image || '').trim() : '';
+          const hasUrlName = looksLikeUrl(rawName);
+          const lineImage = imageFromProduct || (hasUrlName ? rawName : '');
+          const safeName = hasUrlName ? 'Product' : rawName || 'Item';
+          return {
+            name: safeName,
+            qty: Number(i.quantity || 1),
+            image: lineImage,
+          };
+        });
+        const pickupProductLines = pickupLineItems.map(
+          (x) => `${x.name} ×${x.qty}`,
+        );
+        const pickupProductImage = pickupLineItems?.[0]?.image || '';
         return {
           ...o,
           amount,
@@ -126,7 +170,14 @@ const Orders = () => {
           customerName: o.user?.fullName || o.name || '-',
           customerEmail: o.user?.emailAddress || '',
           productLines: lines.length ? lines : ['—'],
-          productImage,
+          productImage:
+            String(productImage || '').trim() || lineItems?.[0]?.image || '',
+          productLineItems: lineItems.length ? lineItems : [],
+          pickupProductLines: pickupProductLines.length
+            ? pickupProductLines
+            : ['—'],
+          pickupProductImage,
+          hasScheduledReturnPickup: pickupLines.length > 0,
           productTypes: Array.from(productTypeSet),
         };
       }),
@@ -137,16 +188,24 @@ const Orders = () => {
     const q = query.trim().toLowerCase();
     const allowed = mapTabToStatuses(activeTab);
     return normalizedOrders.filter((o) => {
-      const tabMatch = allowed.length ? allowed.includes(String(o.status)) : true;
+      if (activeTab === 'Pickup' && !o.hasScheduledReturnPickup) return false;
+      if (activeTab !== 'Pickup' && o.hasScheduledReturnPickup) return false;
+      const tabMatch = allowed.length
+        ? allowed.includes(String(o.status))
+        : true;
       if (!tabMatch) return false;
       if (!q) return true;
-      const lineMatch = (o.productLines || []).some((l) =>
+      const linesForSearch =
+        activeTab === 'Pickup' ? o.pickupProductLines : o.productLines;
+      const lineMatch = (linesForSearch || []).some((l) =>
         String(l).toLowerCase().includes(q),
       );
       return (
         String(o.displayId).toLowerCase().includes(q) ||
         String(o.customerName).toLowerCase().includes(q) ||
-        String(o.customerEmail || '').toLowerCase().includes(q) ||
+        String(o.customerEmail || '')
+          .toLowerCase()
+          .includes(q) ||
         lineMatch
       );
     });
@@ -154,16 +213,21 @@ const Orders = () => {
 
   const tabCounts = useMemo(() => {
     const list = normalizedOrders;
+    const nonPickup = list.filter((x) => !x.hasScheduledReturnPickup);
     const shipped = list.filter((x) => String(x.status) === 'shipped').length;
     return {
-      Processing: list.filter((x) =>
+      Processing: nonPickup.filter((x) =>
         ['pending', 'confirmed'].includes(String(x.status)),
       ).length,
-      Dispatched: shipped,
-      'In Transit': shipped,
-      Cancelled: list.filter((x) => String(x.status) === 'cancelled').length,
-      Delivered: list.filter((x) => String(x.status) === 'delivered').length,
-      Completed: list.filter((x) => String(x.status) === 'completed').length,
+      Dispatched: nonPickup.filter((x) => String(x.status) === 'shipped')
+        .length,
+      'In Transit': nonPickup.filter((x) => String(x.status) === 'shipped')
+        .length,
+      Cancelled: nonPickup.filter((x) => String(x.status) === 'cancelled')
+        .length,
+      Delivered: nonPickup.filter((x) => String(x.status) === 'delivered')
+        .length,
+      Pickup: list.filter((x) => x.hasScheduledReturnPickup).length,
     };
   }, [normalizedOrders]);
 
@@ -186,7 +250,10 @@ const Orders = () => {
     const processing = normalizedOrders.filter((o) =>
       ['pending', 'confirmed'].includes(String(o.status)),
     ).length;
-    const totalRevenue = normalizedOrders.reduce((s, o) => s + Number(o.amount || 0), 0);
+    const totalRevenue = normalizedOrders.reduce(
+      (s, o) => s + Number(o.amount || 0),
+      0,
+    );
     const averageOrder = normalizedOrders.length
       ? Math.round(totalRevenue / normalizedOrders.length)
       : 0;
@@ -209,7 +276,8 @@ const Orders = () => {
     [pageSlice],
   );
 
-  const pageFrom = filteredOrders.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const pageFrom =
+    filteredOrders.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
   const pageTo = Math.min(safePage * PAGE_SIZE, filteredOrders.length);
 
   const pageNumbers = useMemo(() => {
@@ -227,8 +295,7 @@ const Orders = () => {
       <div>
         <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Read-only view of all customer orders and line items. Status is set by
-          vendors and workflows — not editable here.
+          Read-only view of all customer orders.
         </p>
       </div>
 
@@ -245,7 +312,9 @@ const Orders = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-white rounded-2xl border border-blue-100 p-4">
               <p className="text-xs text-gray-500">Total Processing</p>
-              <p className="text-4xl font-semibold text-blue-600 mt-1">{stats.processing}</p>
+              <p className="text-4xl font-semibold text-blue-600 mt-1">
+                {stats.processing}
+              </p>
             </div>
             <div className="bg-white rounded-2xl border border-emerald-100 p-4">
               <p className="text-xs text-gray-500">Total Revenue</p>
@@ -311,7 +380,10 @@ const Orders = () => {
                 : `Showing ${pageFrom}–${pageTo} of ${filteredOrders.length} orders`}
             </span>
             <span className="text-gray-500">
-              Filtered total: <span className="font-semibold text-gray-800">{money(filteredTotal)}</span>
+              Filtered total:{' '}
+              <span className="font-semibold text-gray-800">
+                {money(filteredTotal)}
+              </span>
             </span>
           </div>
 
@@ -320,11 +392,21 @@ const Orders = () => {
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-gray-500">
-                    <th className="px-4 py-3 text-left font-medium">Order ID</th>
-                    <th className="px-4 py-3 text-left font-medium">Customer</th>
-                    <th className="px-4 py-3 text-left font-medium">Products</th>
-                    <th className="px-4 py-3 text-left font-medium">Product Type</th>
-                    <th className="px-4 py-3 text-left font-medium">Order date</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Order ID
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Products
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Product Type
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Order date
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">Status</th>
                     <th className="px-4 py-3 text-left font-medium">Amount</th>
                   </tr>
@@ -345,9 +427,17 @@ const Orders = () => {
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex items-start gap-2 max-w-xs">
-                          {order.productImage ? (
+                          {(
+                            activeTab === 'Pickup'
+                              ? order.pickupProductImage
+                              : order.productImage
+                          ) ? (
                             <img
-                              src={order.productImage}
+                              src={
+                                activeTab === 'Pickup'
+                                  ? order.pickupProductImage
+                                  : order.productImage
+                              }
                               alt=""
                               className="w-9 h-9 rounded-md object-cover shrink-0"
                             />
@@ -355,7 +445,10 @@ const Orders = () => {
                             <div className="w-9 h-9 rounded-md bg-gray-100 shrink-0" />
                           )}
                           <ul className="text-xs text-gray-800 space-y-0.5 min-w-0">
-                            {order.productLines.map((line, idx) => (
+                            {(activeTab === 'Pickup'
+                              ? order.pickupProductLines
+                              : order.productLines
+                            ).map((line, idx) => (
                               <li key={idx} className="leading-snug">
                                 {line}
                               </li>
@@ -388,15 +481,23 @@ const Orders = () => {
                       </td>
                       <td className="px-4 py-3 text-gray-600 align-top">
                         {order.createdAt
-                          ? new Date(order.createdAt).toLocaleDateString('en-GB')
+                          ? new Date(order.createdAt).toLocaleDateString(
+                              'en-GB',
+                            )
                           : '-'}
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold capitalize border ${statusBadgeClass(order.status)}`}
-                        >
-                          {statusLabel(order.status)}
-                        </span>
+                        {activeTab === 'Pickup' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold capitalize border bg-blue-50 text-blue-800 border-blue-200">
+                            {statusLabel('pickup_scheduled')}
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold capitalize border ${statusBadgeClass(order.status)}`}
+                          >
+                            {statusLabel(order.status)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-900 align-top">
                         {money(order.amount)}
@@ -406,7 +507,10 @@ const Orders = () => {
 
                   {filteredOrders.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-gray-500"
+                      >
                         No orders found.
                       </td>
                     </tr>
@@ -417,7 +521,9 @@ const Orders = () => {
                     <td colSpan={6} className="px-4 py-3 font-semibold">
                       This page total ({pageSlice.length} orders)
                     </td>
-                    <td className="px-4 py-3 font-semibold">{money(pageTotal)}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      {money(pageTotal)}
+                    </td>
                   </tr>
                 </tfoot>
               </table>
