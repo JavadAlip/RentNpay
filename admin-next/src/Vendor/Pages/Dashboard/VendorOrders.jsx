@@ -30,8 +30,7 @@ const tabs = [
 ];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
-const makeOtp = () =>
-  String(1000 + Math.floor(Math.random() * 9000));
+const makeOtp = () => String(1000 + Math.floor(Math.random() * 9000));
 
 function normalizeBool(v) {
   if (v === true || v === false) return v;
@@ -60,8 +59,12 @@ function productRequiresInstallation(product) {
   }
 
   // Dynamic fallback by category + subcategory from product data.
-  const category = String(product?.category || '').trim().toLowerCase();
-  const subCategory = String(product?.subCategory || '').trim().toLowerCase();
+  const category = String(product?.category || '')
+    .trim()
+    .toLowerCase();
+  const subCategory = String(product?.subCategory || '')
+    .trim()
+    .toLowerCase();
   const key = `${category} ${subCategory}`.trim();
   if (!key) return false;
 
@@ -130,9 +133,7 @@ function normalizeVendorOrder(order, vendorIdStr) {
     lineMatchesVendor(l, vendorIdStr),
   );
   const amount = myLines.reduce(
-    (s, i) =>
-      s +
-      Number(i.pricePerDay || 0) * Number(i.quantity || 0) * dur,
+    (s, i) => s + Number(i.pricePerDay || 0) * Number(i.quantity || 0) * dur,
     0,
   );
   const primary = myLines[0];
@@ -175,8 +176,12 @@ function DeliveryVerificationModal({
 
   if (!open || !order) return null;
   const productTitle = order.productName || 'Product';
-  const firstSku = `SKU-${String(order._id || '').slice(-6).toUpperCase()}`;
-  const requiresInstallation = productRequiresInstallation(order.primaryProduct);
+  const firstSku = `SKU-${String(order._id || '')
+    .slice(-6)
+    .toUpperCase()}`;
+  const requiresInstallation = productRequiresInstallation(
+    order.primaryProduct,
+  );
   const orderValue = Number(order.amount || 0);
   const payoutValue = Number(order.amount || 0);
   const otpOk = otpInput.length === 4 && otpInput === otp;
@@ -216,7 +221,9 @@ function DeliveryVerificationModal({
             <p className="text-gray-600 inline-flex items-center gap-2">
               <BadgeCheck className="h-4 w-4 text-gray-400" />
               <span className="text-gray-400">Order:</span>{' '}
-              <span className="font-semibold text-gray-900">#{order.displayId}</span>
+              <span className="font-semibold text-gray-900">
+                #{order.displayId}
+              </span>
             </p>
             <p className="text-gray-600 inline-flex items-center gap-2">
               <User className="h-4 w-4 text-gray-400" />
@@ -234,7 +241,9 @@ function DeliveryVerificationModal({
             </p>
             <div className="mt-2 flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-gray-800 font-medium">{productTitle}</p>
+                <p className="text-sm text-gray-800 font-medium">
+                  {productTitle}
+                </p>
                 <p className="text-xs text-gray-400 mt-0.5">SKU : {firstSku}</p>
               </div>
               {requiresInstallation ? (
@@ -262,7 +271,11 @@ function DeliveryVerificationModal({
                   key={idx}
                   className="h-12 w-12 rounded-xl border border-gray-300 bg-white text-lg font-semibold text-gray-900 flex items-center justify-center"
                 >
-                  {otpInput[idx] ? otpInput[idx] : <span className="text-gray-300">•</span>}
+                  {otpInput[idx] ? (
+                    otpInput[idx]
+                  ) : (
+                    <span className="text-gray-300">•</span>
+                  )}
                 </div>
               ))}
               <input
@@ -270,7 +283,9 @@ function DeliveryVerificationModal({
                 value={otpInput}
                 onChange={(e) =>
                   setOtpInput(
-                    String(e.target.value || '').replace(/\D/g, '').slice(0, 4),
+                    String(e.target.value || '')
+                      .replace(/\D/g, '')
+                      .slice(0, 4),
                   )
                 }
                 className="sr-only"
@@ -279,12 +294,14 @@ function DeliveryVerificationModal({
               />
             </div>
             <p className="mt-2 text-center text-xs text-gray-500">
-              Dummy OTP for test: <span className="font-semibold tracking-widest">{otp}</span>
+              Dummy OTP for test:{' '}
+              <span className="font-semibold tracking-widest">{otp}</span>
             </p>
             <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900 inline-flex items-start gap-2 w-full">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
-              The customer received this OTP via SMS when the order was marked as
-              "Out for Delivery". This confirms they have received the items.
+              The customer received this OTP via SMS when the order was marked
+              as &quot;Out for Delivery&quot;. This confirms they have received
+              the items.
             </div>
           </div>
 
@@ -309,12 +326,15 @@ function DeliveryVerificationModal({
                 <input
                   type="checkbox"
                   checked={installationDone}
-                  onChange={(e) => setInstallationDone(Boolean(e.target.checked))}
+                  onChange={(e) =>
+                    setInstallationDone(Boolean(e.target.checked))
+                  }
                   className="mt-0.5 h-5 w-5 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
                 />
                 <span>
                   <span className="text-sm font-semibold text-gray-900">
-                    Installation Completed <span className="text-red-500">*</span>
+                    Installation Completed{' '}
+                    <span className="text-red-500">*</span>
                   </span>
                   <span className="block text-xs text-gray-500">
                     Check this box after completing installation and testing
@@ -331,14 +351,22 @@ function DeliveryVerificationModal({
             </p>
             <div className="mt-2 flex items-center justify-between text-sm">
               <span className="text-gray-500">Order Value</span>
-              <span className="font-semibold text-gray-900">{money(orderValue)}</span>
+              <span className="font-semibold text-gray-900">
+                {money(orderValue)}
+              </span>
             </div>
             <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 flex items-center justify-between">
-              <span className="text-sm font-semibold text-amber-900">Your Payout</span>
-              <span className="text-2xl font-bold text-amber-700">{money(payoutValue)}</span>
+              <span className="text-sm font-semibold text-amber-900">
+                Your Payout
+              </span>
+              <span className="text-2xl font-bold text-amber-700">
+                {money(payoutValue)}
+              </span>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Will move to <span className="font-semibold">Pending Settlement</span> after delivery confirmation
+              Will move to{' '}
+              <span className="font-semibold">Pending Settlement</span> after
+              delivery confirmation
             </p>
           </div>
 
@@ -346,13 +374,16 @@ function DeliveryVerificationModal({
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 flex gap-2">
               <CircleAlert className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                <span className="font-semibold block">Complete Required Steps</span>
+                <span className="font-semibold block">
+                  Complete Required Steps
+                </span>
                 <span className="block text-xs mt-1">
                   {otpOk ? '✓' : '✗'} Enter the 4-digit OTP from customer
                 </span>
                 {requiresInstallation ? (
                   <span className="block text-xs">
-                    {installationDone ? '✓' : '✗'} Confirm installation is completed
+                    {installationDone ? '✓' : '✗'} Confirm installation is
+                    completed
                   </span>
                 ) : null}
               </span>
@@ -406,7 +437,9 @@ export default function VendorOrdersPage() {
   const fetchOrders = useCallback(async () => {
     const authToken =
       token ||
-      (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) {
       setError('Please login again to continue.');
       setLoading(false);
@@ -446,7 +479,9 @@ export default function VendorOrdersPage() {
     const q = query.trim().toLowerCase();
     const allowed = mapTabToStatuses(activeTab);
     return normalizedOrders.filter((o) => {
-      const tabMatch = allowed.length ? allowed.includes(String(o.status)) : true;
+      const tabMatch = allowed.length
+        ? allowed.includes(String(o.status))
+        : true;
       if (!tabMatch) return false;
       if (!q) return true;
       return (
@@ -461,7 +496,10 @@ export default function VendorOrdersPage() {
     const processing = normalizedOrders.filter((o) =>
       ['pending', 'confirmed'].includes(String(o.status)),
     ).length;
-    const totalRevenue = normalizedOrders.reduce((s, o) => s + Number(o.amount || 0), 0);
+    const totalRevenue = normalizedOrders.reduce(
+      (s, o) => s + Number(o.amount || 0),
+      0,
+    );
     const averageOrder = normalizedOrders.length
       ? Math.round(totalRevenue / normalizedOrders.length)
       : 0;
@@ -527,14 +565,20 @@ export default function VendorOrdersPage() {
     }
     const authToken =
       token ||
-      (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) {
       toast.error('Please login again to continue.');
       return;
     }
     setUpdatingId(order._id);
     try {
-      const res = await apiUpdateVendorOrderStatus(order._id, 'delivered', authToken);
+      const res = await apiUpdateVendorOrderStatus(
+        order._id,
+        'delivered',
+        authToken,
+      );
       const updated = res.data;
       setOrders((prev) =>
         prev.map((o) => (String(o._id) === String(order._id) ? updated : o)),
@@ -558,8 +602,8 @@ export default function VendorOrdersPage() {
             <div>
               <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
               <p className="text-sm text-gray-500 mt-1">
-                Customers who ordered your products. Amounts reflect your lines only;
-                status updates apply to the full order (same as admin).
+                Customers who ordered your products. Amounts reflect your lines
+                only; status updates apply to the full order (same as admin).
               </p>
             </div>
 
@@ -581,7 +625,9 @@ export default function VendorOrdersPage() {
                     </p>
                   </div>
                   <div className="bg-white rounded-2xl border border-emerald-100 p-4">
-                    <p className="text-xs text-gray-500">Your revenue (lines)</p>
+                    <p className="text-xs text-gray-500">
+                      Your revenue (lines)
+                    </p>
                     <p className="text-4xl font-semibold text-emerald-600 mt-1">
                       {money(stats.totalRevenue)}
                     </p>
@@ -642,18 +688,35 @@ export default function VendorOrdersPage() {
                     <table className="min-w-[1060px] w-full text-sm">
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr className="text-gray-500">
-                          <th className="px-4 py-3 text-left font-medium">Order ID</th>
-                          <th className="px-4 py-3 text-left font-medium">Customer</th>
-                          <th className="px-4 py-3 text-left font-medium">Your product</th>
-                          <th className="px-4 py-3 text-left font-medium">Order Date</th>
-                          <th className="px-4 py-3 text-left font-medium">Status</th>
-                          <th className="px-4 py-3 text-left font-medium">Your amount</th>
-                          <th className="px-4 py-3 text-left font-medium">Action</th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Order ID
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Customer
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Your product
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Order Date
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Your amount
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Action
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredOrders.map((order) => (
-                          <tr key={order._id} className="border-t border-gray-100">
+                          <tr
+                            key={order._id}
+                            className="border-t border-gray-100"
+                          >
                             <td className="px-4 py-3 font-semibold text-gray-900">
                               {order.displayId}
                             </td>
@@ -671,12 +734,16 @@ export default function VendorOrdersPage() {
                                 ) : (
                                   <div className="w-9 h-9 rounded-md bg-gray-100" />
                                 )}
-                                <span className="text-gray-800">{order.productName}</span>
+                                <span className="text-gray-800">
+                                  {order.productName}
+                                </span>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-gray-600">
                               {order.createdAt
-                                ? new Date(order.createdAt).toLocaleDateString('en-GB')
+                                ? new Date(order.createdAt).toLocaleDateString(
+                                    'en-GB',
+                                  )
                                 : '-'}
                             </td>
                             <td className="px-4 py-3">
@@ -751,7 +818,9 @@ export default function VendorOrdersPage() {
         setOtpInput={setOtpInput}
         installationDone={installationDone}
         setInstallationDone={setInstallationDone}
-        confirming={Boolean(updatingId && deliveryModal.order?._id === updatingId)}
+        confirming={Boolean(
+          updatingId && deliveryModal.order?._id === updatingId,
+        )}
         onClose={closeDeliveryModal}
         onConfirm={confirmDeliveryFromModal}
       />
