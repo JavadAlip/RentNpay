@@ -960,16 +960,22 @@ export default function VendorOrdersPage() {
 
   const tabCounts = useMemo(() => {
     const list = normalizedOrders;
-    const shipped = list.filter((x) => String(x.status) === 'shipped').length;
+    const nonPickup = list.filter((x) => !x.hasScheduledReturnPickup);
+    const shipped = nonPickup.filter(
+      (x) => String(x.status) === 'shipped',
+    ).length;
     return {
-      Processing: list.filter((x) =>
+      Processing: nonPickup.filter((x) =>
         ['pending', 'confirmed'].includes(String(x.status)),
       ).length,
       Dispatched: shipped,
       'In Transit': shipped,
-      Cancelled: list.filter((x) => String(x.status) === 'cancelled').length,
-      Delivered: list.filter((x) => String(x.status) === 'delivered').length,
-      Completed: list.filter((x) => String(x.status) === 'completed').length,
+      Cancelled: nonPickup.filter((x) => String(x.status) === 'cancelled')
+        .length,
+      Delivered: nonPickup.filter((x) => String(x.status) === 'delivered')
+        .length,
+      Completed: nonPickup.filter((x) => String(x.status) === 'completed')
+        .length,
       Pickup: list.filter((x) => x.hasScheduledReturnPickup).length,
     };
   }, [normalizedOrders]);
@@ -1121,8 +1127,7 @@ export default function VendorOrdersPage() {
             <div>
               <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
               <p className="text-sm text-gray-500 mt-1">
-                Customers who ordered your products. Amounts reflect your lines
-                only; status updates apply to the full order (same as admin).
+                Customers who ordered your products.
               </p>
             </div>
 
