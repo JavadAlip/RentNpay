@@ -174,6 +174,32 @@ export function primaryLine(order) {
 }
 
 /**
+ * Same line-level rules as /my-rentals (Rental Command Center): rental line with
+ * populated product document, not sell, not in active return flow.
+ */
+export function lineEligibleForRentalHub(line) {
+  const rr = String(line?.returnRequest?.status || '');
+  if (rr === 'requested' || rr === 'review_submitted') return false;
+  const lineType = String(line?.productType || '').toLowerCase();
+  if (lineType === 'sell') return false;
+  const p = line?.product;
+  if (!p || typeof p === 'string') return false;
+  if (String(p?.type || '').toLowerCase() === 'sell') return false;
+  return true;
+}
+
+/** First rental line that would appear under /my-rentals, or null. */
+export function firstMyRentalsEligibleLine(order) {
+  if (!order || orderIsPurchase(order)) return null;
+  if (normalizeStatus(order.status) !== 'delivered') return null;
+  for (const line of order.products || []) {
+    if (!lineEligibleForRentalHub(line)) continue;
+    return { line, product: line.product };
+  }
+  return null;
+}
+
+/**
  * Active lease lines shown in customer payment flows:
  * delivered rental lines with time left on tenure. Excludes buy/sell lines.
  */
@@ -187,10 +213,8 @@ export function flattenActiveLeaseRows(orders) {
       const start = order.createdAt ? new Date(order.createdAt) : new Date();
       const duration = order.rentalDuration;
       for (const line of order.products || []) {
-        if (String(line.productType || '').toLowerCase() === 'sell') continue;
+        if (!lineEligibleForRentalHub(line)) continue;
         const p = line.product;
-        if (!p || typeof p === 'string') continue;
-        if (String(p.type || '').toLowerCase() === 'sell') continue;
         const unit = resolveTenureUnit(order, p, duration);
         const end = computeLeaseEnd(start, duration, unit);
         const daysLeft = Math.ceil(

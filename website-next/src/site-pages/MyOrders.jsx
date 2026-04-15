@@ -30,6 +30,7 @@ import {
   primaryProduct,
   orderIsPurchase,
   purchaseLineTotal,
+  firstMyRentalsEligibleLine,
 } from '@/lib/orderRentalUtils';
 
 const PAGE_SIZE = 5;
@@ -81,11 +82,15 @@ function lineRefundableDeposit(line) {
 /** Card visual + tab membership for one order. */
 function classifyOrder(order) {
   const st = normalizeStatus(order.status);
-  const product = primaryProduct(order);
+  const hubEligible =
+    st === 'delivered' ? firstMyRentalsEligibleLine(order) : null;
+  const product = hubEligible?.product ?? primaryProduct(order);
   const start = order.createdAt ? new Date(order.createdAt) : new Date();
   const unit = product
     ? resolveTenureUnit(order, product, order.rentalDuration)
-    : 'month';
+    : order.tenureUnit === 'day'
+      ? 'day'
+      : 'month';
   const leaseEnd = computeLeaseEnd(start, order.rentalDuration, unit);
   const daysLeft = Math.ceil(
     (startOfDay(leaseEnd).getTime() - startOfDay(new Date()).getTime()) /
@@ -141,8 +146,17 @@ function classifyOrder(order) {
       };
     }
     if (daysLeft > 0) {
+      if (hubEligible) {
+        return {
+          kind: 'active_rental',
+          leaseEnd,
+          daysLeft,
+          unit,
+          product: hubEligible.product,
+        };
+      }
       return {
-        kind: 'active_rental',
+        kind: 'rental_missing_catalog',
         leaseEnd,
         daysLeft,
         unit,
@@ -230,8 +244,13 @@ export default function MyOrders() {
       list = list.filter((o) => {
         const id = String(o._id || '').toLowerCase();
         const shortId = orderDisplayId(o).toLowerCase();
+        const hub = firstMyRentalsEligibleLine(o);
         const title = String(
-          primaryProduct(o)?.productName || primaryProduct(o)?.title || '',
+          hub?.product?.productName ||
+            hub?.product?.title ||
+            primaryProduct(o)?.productName ||
+            primaryProduct(o)?.title ||
+            '',
         ).toLowerCase();
         return id.includes(q) || shortId.includes(q) || title.includes(q);
       });
@@ -632,6 +651,35 @@ function OrderCard({ order }) {
           <span className="text-sm text-gray-600 text-center sm:text-right cursor-pointer hover:underline">
             Return or exchange
           </span>
+        </div>
+      </li>
+    );
+  }
+
+  if (meta.kind === 'rental_missing_catalog') {
+    return (
+      <li className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-amber-100 bg-amber-50/50">
+          <div>
+            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+            <Package className="w-3.5 h-3.5" />
+            Delivered · details incomplete
+          </span>
+        </div>
+        <div className="p-4">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            This order is delivered, but product details are missing from the
+            snapshot, so it does{' '}
+            <span className="font-semibold">not</span> show under My Rentals and
+            should not be treated as a normal active rental.
+          </p>
+          <p className="text-xs text-gray-500 mt-3">
+            This is usually a data or loading issue. Contact support with your
+            order ID if it does not clear after refresh.
+          </p>
         </div>
       </li>
     );
