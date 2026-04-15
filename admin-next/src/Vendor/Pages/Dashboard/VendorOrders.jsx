@@ -9,6 +9,7 @@ import {
   CircleAlert,
   IndianRupee,
   Package2,
+  Shield,
   ShieldCheck,
   User,
   X,
@@ -58,31 +59,25 @@ function productRequiresInstallation(product) {
     if (parsed !== null) return parsed;
   }
 
-  // Fallback: infer from product/category naming.
-  const raw = [
-    product?.productName,
-    product?.name,
-    product?.category?.name,
-    product?.subCategory?.name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  if (!raw) return false;
+  // Dynamic fallback by category + subcategory from product data.
+  const category = String(product?.category || '').trim().toLowerCase();
+  const subCategory = String(product?.subCategory || '').trim().toLowerCase();
+  const key = `${category} ${subCategory}`.trim();
+  if (!key) return false;
 
-  // Items that typically do NOT require installation.
+  // Known non-installation families.
   if (
-    /\b(mobile|smartphone|phone|cellphone|laptop|tablet|watch|earbud|headphone|power bank|charger)\b/.test(
-      raw,
+    /\b(mobile|smartphone|phone|cellphone|laptop|tablet|watch|earbud|headphone|charger|power bank)\b/.test(
+      key,
     )
   ) {
     return false;
   }
 
-  // Items that typically require technician/site installation.
+  // Known installation-required families.
   if (
-    /\b(ac|air conditioner|split ac|window ac|geyser|water heater|chimney|hob|tv wall|wall mount|installation)\b/.test(
-      raw,
+    /\b(ac|air conditioner|split ac|window ac|geyser|water heater|chimney|hob|cooktop|wall mount|tv mount)\b/.test(
+      key,
     )
   ) {
     return true;
@@ -252,7 +247,7 @@ function DeliveryVerificationModal({
 
           <div className="mt-4">
             <p className="font-semibold text-gray-900 inline-flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+              <Shield className="h-4 w-4 text-orange-500" />
               Proof of Delivery (OTP)
             </p>
             <p className="mt-1 text-sm text-gray-600">
@@ -373,9 +368,16 @@ function DeliveryVerificationModal({
             type="button"
             disabled={!canConfirm}
             onClick={onConfirm}
-            className="mt-5 w-full rounded-xl bg-[#FF6F00] py-3 text-sm font-semibold text-white enabled:hover:bg-[#e56400] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-sm"
+            className="mt-5 w-full rounded-xl bg-[#FF6F00] py-3 text-sm font-semibold text-white enabled:hover:bg-[#e56400] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-sm inline-flex items-center justify-center gap-2"
           >
-            {confirming ? 'Confirming...' : 'Confirm Delivery'}
+            {confirming ? (
+              'Confirming...'
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Confirm Delivery
+              </>
+            )}
           </button>
         </div>
       </div>
