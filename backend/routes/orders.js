@@ -358,6 +358,108 @@ router.put(
 },
 );
 
+router.put(
+  '/my/:id/report-issue',
+  userAuth,
+  upload.array('issuePhotos', 5),
+  async (req, res) => {
+    try {
+      const { productId, issueType, description, photoNames } = req.body || {};
+
+      const order = await Order.findOne({
+        _id: req.params.id,
+        user: req.user._id,
+      }).populate('products.product');
+
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      if (String(order.status || '').toLowerCase() !== 'delivered') {
+        return res
+          .status(400)
+          .json({ message: 'Issue reporting is available for active rentals only.' });
+      }
+
+      const targetLine = (order.products || []).find((line) => {
+        const lineType = String(line?.productType || '').toLowerCase();
+        if (lineType === 'sell') return false;
+        const p = line?.product;
+        if (!p || typeof p === 'string') return false;
+        if (String(p?.type || '').toLowerCase() === 'sell') return false;
+        return String(p?._id || '') === String(productId || '');
+      });
+
+      if (!targetLine || !targetLine.product || typeof targetLine.product === 'string') {
+        return res.status(400).json({ message: 'Rental product line not found.' });
+      }
+
+      const allowedTypes = [
+        'structural_damage',
+        'fabric_stain',
+        'functionality_issue',
+        'other',
+      ];
+      const safeIssueType = allowedTypes.includes(String(issueType || '').trim())
+        ? String(issueType).trim()
+        : 'other';
+      const safeDescription = String(description || '').trim().slice(0, 500);
+
+      const files = Array.isArray(req.files) ? req.files.slice(0, 5) : [];
+      if (!files.length) {
+        return res.status(400).json({ message: 'Please upload at least 1 photo.' });
+      }
+      const hasUnsupportedMedia = files.some(
+        (file) => !String(file?.mimetype || '').toLowerCase().startsWith('image/'),
+      );
+      if (hasUnsupportedMedia) {
+        return res
+          .status(400)
+          .json({ message: 'Only image files are allowed for issue reporting.' });
+      }
+
+      const uploadedPhotos = [];
+      for (const file of files) {
+        const mediaRes = await uploadMediaToCloudinary(file.buffer, 'rental-issues');
+        uploadedPhotos.push({
+          url: String(mediaRes?.secure_url || ''),
+          type: String(file?.mimetype || ''),
+          name: String(file?.originalname || ''),
+        });
+      }
+
+      const fallbackPhotoNames = parseArrayField(photoNames)
+        .map((x) => String(x || '').trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      const safePhotoNames = uploadedPhotos.length
+        ? uploadedPhotos.map((p) => p.name).filter(Boolean).slice(0, 5)
+        : fallbackPhotoNames;
+
+      if (!Array.isArray(targetLine.issueReports)) {
+        targetLine.issueReports = [];
+      }
+      targetLine.issueReports.unshift({
+        issueType: safeIssueType,
+        description: safeDescription,
+        photoNames: safePhotoNames,
+        photos: uploadedPhotos,
+        status: 'open',
+        createdAt: new Date(),
+      });
+
+      await order.save();
+
+      const populated = await Order.findById(order._id)
+        .populate('user', 'fullName emailAddress')
+        .populate({
+          path: 'products.product',
+          populate: { path: 'vendorId', select: 'fullName emailAddress' },
+        });
+      res.json(populated);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  },
+);
+
 router.put('/my/:id/cancel', userAuth, async (req, res) => {
   try {
     const order = await Order.findOne({

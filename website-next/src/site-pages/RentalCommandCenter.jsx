@@ -24,6 +24,7 @@ import {
 import {
   apiExtendMyOrderTenure,
   apiGetMyOrders,
+  apiSubmitMyIssueReport,
   apiSubmitMyReturnRequest,
 } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
@@ -189,6 +190,25 @@ export default function RentalCommandCenter() {
     extensionFine: 0,
     netEstimate: 0,
   });
+  const [issueState, setIssueState] = useState({
+    open: false,
+    row: null,
+    issueType: '',
+    description: '',
+    photoNames: [],
+    photoFiles: [],
+    photoPreviews: [],
+  });
+  const [submittingIssue, setSubmittingIssue] = useState(false);
+
+  useEffect(() => {
+    if (!issueState.open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [issueState.open]);
 
   useEffect(() => {
     setLoading(true);
@@ -304,6 +324,22 @@ export default function RentalCommandCenter() {
       };
     });
 
+  const closeIssueModal = () =>
+    setIssueState((prev) => {
+      (prev.photoPreviews || []).forEach((item) => {
+        if (item?.url) URL.revokeObjectURL(item.url);
+      });
+      return {
+        open: false,
+        row: null,
+        issueType: '',
+        description: '',
+        photoNames: [],
+        photoFiles: [],
+        photoPreviews: [],
+      };
+    });
+
   const applySelectedMedia = (incomingFiles) => {
     const files = Array.from(incomingFiles || []).slice(0, 10);
     setReturnState((prev) => {
@@ -336,6 +372,91 @@ export default function RentalCommandCenter() {
         mediaFiles: (prev.mediaFiles || []).filter((_, i) => i !== index),
       };
     });
+  };
+
+  const applyIssuePhotos = (incomingFiles) => {
+    const files = Array.from(incomingFiles || []).slice(0, 5);
+    setIssueState((prev) => {
+      (prev.photoPreviews || []).forEach((item) => {
+        if (item?.url) URL.revokeObjectURL(item.url);
+      });
+      return {
+        ...prev,
+        photoNames: files.map((f) => f.name),
+        photoFiles: files,
+        photoPreviews: files.map((file) => ({
+          name: file.name,
+          type: file.type || '',
+          url: URL.createObjectURL(file),
+        })),
+      };
+    });
+  };
+
+  const removeIssuePhotoAt = (index) => {
+    setIssueState((prev) => {
+      const existing = prev.photoPreviews || [];
+      const target = existing[index];
+      if (target?.url) URL.revokeObjectURL(target.url);
+      const nextPreviews = existing.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        photoPreviews: nextPreviews,
+        photoNames: nextPreviews.map((item) => item.name),
+        photoFiles: (prev.photoFiles || []).filter((_, i) => i !== index),
+      };
+    });
+  };
+
+  const handleSubmitIssueReport = async () => {
+    if (!issueState.row) return;
+    if (!issueState.issueType) {
+      pushToast('Please select the issue type.', 'error');
+      return;
+    }
+    if ((issueState.photoFiles || []).length < 1) {
+      pushToast('Please upload at least 1 photo.', 'error');
+      return;
+    }
+    if (String(issueState.description || '').trim().length < 10) {
+      pushToast('Please add at least 10 characters in description.', 'error');
+      return;
+    }
+
+    const orderId = String(issueState.row.order?._id || '');
+    const productId = String(issueState.row.product?._id || '');
+    if (!orderId || !productId) return;
+
+    const payload = new FormData();
+    payload.append('productId', productId);
+    payload.append('issueType', issueState.issueType);
+    payload.append('description', issueState.description || '');
+    payload.append('photoNames', JSON.stringify(issueState.photoNames || []));
+    (issueState.photoFiles || []).slice(0, 5).forEach((file) => {
+      payload.append('issuePhotos', file);
+    });
+
+    try {
+      setSubmittingIssue(true);
+      const res = await apiSubmitMyIssueReport(orderId, payload);
+      const updatedOrder = res.data;
+      setOrders((prev) =>
+        prev.map((o) =>
+          String(o?._id || '') === String(updatedOrder?._id || '')
+            ? updatedOrder
+            : o,
+        ),
+      );
+      pushToast('Issue reported successfully. Our team will review it shortly.', 'success');
+      closeIssueModal();
+    } catch (err) {
+      pushToast(
+        err?.response?.data?.message || 'Failed to submit issue report.',
+        'error',
+      );
+    } finally {
+      setSubmittingIssue(false);
+    }
   };
 
   const handleSubmitReturnRequest = async () => {
@@ -862,6 +983,29 @@ export default function RentalCommandCenter() {
                                 </button>
                                 <button
                                   type="button"
+                                  onClick={() =>
+                                    setIssueState((prev) => {
+                                      (prev.photoPreviews || []).forEach((item) => {
+                                        if (item?.url) URL.revokeObjectURL(item.url);
+                                      });
+                                      return {
+                                        open: true,
+                                        row: {
+                                          order,
+                                          line,
+                                          product,
+                                          start,
+                                          end,
+                                          tenureUnit,
+                                        },
+                                        issueType: '',
+                                        description: '',
+                                        photoNames: [],
+                                        photoFiles: [],
+                                        photoPreviews: [],
+                                      };
+                                    })
+                                  }
                                   className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-50"
                                 >
                                   <Wrench className="w-4 h-4" />
@@ -1885,6 +2029,237 @@ export default function RentalCommandCenter() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {issueState.open && issueState.row ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4"
+        >
+          <div
+            className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+              <div>
+                <h2 className="text-[24px] leading-[1.2] font-bold text-gray-900">
+                  Report an Issue
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  For{' '}
+                  <span className="font-semibold text-gray-800">
+                    {issueState.row.product?.productName || 'Rental item'}
+                  </span>{' '}
+                  (Asset ID{' '}
+                  <span className="font-semibold text-gray-800">
+                    #{String(issueState.row.order?._id || '').slice(-4).toUpperCase()}
+                  </span>
+                  )
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeIssueModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                aria-label="Close issue modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                We are here to help. Please provide details so we can resolve this quickly.
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[18px] font-semibold text-gray-900">
+                  What seems to be the problem?
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  {[
+                    {
+                      id: 'structural_damage',
+                      title: 'Structural Damage',
+                      subtitle: 'e.g., Broken leg, loose parts',
+                    },
+                    {
+                      id: 'fabric_stain',
+                      title: 'Fabric Tear / Stain',
+                      subtitle: 'e.g., Rips, discoloration',
+                    },
+                    {
+                      id: 'functionality_issue',
+                      title: 'Functionality Issue',
+                      subtitle: 'e.g., Mechanism not working',
+                    },
+                    {
+                      id: 'other',
+                      title: 'Other',
+                      subtitle: 'Any other issue not listed above',
+                    },
+                  ].map((opt) => {
+                    const active = issueState.issueType === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() =>
+                          setIssueState((prev) => ({ ...prev, issueType: opt.id }))
+                        }
+                        className={`rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
+                          active
+                            ? 'border-orange-300 bg-orange-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span
+                            className={`mt-1 h-4 w-4 rounded-full border ${
+                              active
+                                ? 'border-orange-500 bg-orange-500'
+                                : 'border-gray-300 bg-white'
+                            }`}
+                          />
+                          <span className="min-w-0">
+                            <p className="text-[15px] font-semibold text-gray-900 leading-tight">
+                              {opt.title}
+                            </p>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                              {opt.subtitle}
+                            </p>
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[18px] font-semibold text-gray-900">
+                  Upload Photos of the Issue
+                </p>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Minimum 1 photo required - Max 5 photos
+                </p>
+                <label
+                  className="mt-2.5 block rounded-xl border border-gray-200 bg-gray-50 p-7 text-center cursor-pointer"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    applyIssuePhotos(e.dataTransfer.files);
+                  }}
+                >
+                  <Camera className="w-9 h-9 text-gray-400 mx-auto" />
+                  <p className="mt-2.5 text-[16px] font-semibold text-gray-800">
+                    Click to Upload or Drag & Drop
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    JPG, PNG or HEIC - Max 5MB per file
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      applyIssuePhotos(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+
+                {issueState.photoPreviews?.length ? (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {issueState.photoPreviews.map((photo, idx) => (
+                      <div
+                        key={`${photo.name}-${idx}`}
+                        className="relative rounded-xl border border-gray-200 bg-white overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Remove ${photo.name || `image ${idx + 1}`}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeIssuePhotoAt(idx);
+                          }}
+                          className="absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/70 text-white hover:bg-black"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <img
+                          src={photo.url}
+                          alt={photo.name || `Issue photo ${idx + 1}`}
+                          className="w-full h-28 object-cover"
+                        />
+                        <p className="px-2 py-1.5 text-[11px] text-gray-600 truncate">
+                          {photo.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[18px] font-semibold text-gray-900">
+                  Describe the issue briefly
+                </p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Help us understand what happened
+                </p>
+                <textarea
+                  value={issueState.description}
+                  onChange={(e) =>
+                    setIssueState((prev) => ({
+                      ...prev,
+                      description: e.target.value.slice(0, 500),
+                    }))
+                  }
+                  placeholder="e.g. Left leg feels unstable when seated. Started after moving the sofa."
+                  className="mt-2 w-full min-h-[110px] rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-gray-500">
+                  <span>
+                    {Math.max(0, 10 - String(issueState.description || '').trim().length)} more
+                    characters needed
+                  </span>
+                  <span>{(issueState.description || '').length}/500</span>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-[12px] font-semibold text-amber-900 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  Tips for faster resolution:
+                </p>
+                <ul className="mt-2 space-y-1 text-[11px] text-amber-800">
+                  <li>- Take clear, well-lit photos from multiple angles</li>
+                  <li>- Include close-ups of the specific problem area</li>
+                  <li>- Describe when you first noticed the issue</li>
+                  <li>- Mention if the issue affects usability</li>
+                </ul>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  disabled={submittingIssue}
+                  onClick={handleSubmitIssueReport}
+                  className="w-full rounded-xl bg-[#f2a36f] text-white py-2.5 text-sm font-semibold hover:bg-[#ea9156] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {submittingIssue ? 'Submitting...' : 'Submit Report'}
+                </button>
+                <p className="text-center text-[11px] text-gray-500 mt-2">
+                  Our support team will review this within{' '}
+                  <span className="font-semibold text-gray-700">24 hours</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>

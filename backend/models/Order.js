@@ -61,6 +61,30 @@ const orderItemSchema = new mongoose.Schema({
     requestedAt: { type: Date },
     reviewedAt: { type: Date },
   },
+  issueReports: [
+    {
+      issueType: {
+        type: String,
+        enum: ['structural_damage', 'fabric_stain', 'functionality_issue', 'other'],
+        default: 'other',
+      },
+      description: { type: String, default: '' },
+      photoNames: [{ type: String }],
+      photos: [
+        {
+          url: { type: String, default: '' },
+          type: { type: String, default: '' },
+          name: { type: String, default: '' },
+        },
+      ],
+      status: {
+        type: String,
+        enum: ['open', 'in_progress', 'resolved'],
+        default: 'open',
+      },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 /** Vendor packing + delivery handoff (saved when order is marked shipped). */

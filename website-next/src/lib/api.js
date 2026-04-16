@@ -71,6 +71,12 @@ export const apiSubmitMyReturnRequest = (id, data) => {
     ? { headers: { 'Content-Type': 'multipart/form-data' } }
     : undefined);
 };
+export const apiSubmitMyIssueReport = (id, data) => {
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+  return api.put(`/orders/my/${id}/report-issue`, data, isFormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined);
+};
 
 // ── USER NOTIFICATIONS ───────────────────────
 export const apiGetUserNotifications = () => api.get('/users/notifications');
