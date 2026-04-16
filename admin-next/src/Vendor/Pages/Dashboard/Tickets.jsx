@@ -171,10 +171,10 @@ export default function VendorTicketsPage() {
               <h1 className="text-2xl font-bold text-gray-900">
                 Customer Queries
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              {/* <p className="text-sm text-gray-500 mt-1">
                 Issues reported from the renter &quot;Report an Issue&quot; flow
                 appear here in real time.
-              </p>
+              </p> */}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -270,7 +270,9 @@ export default function VendorTicketsPage() {
                     <li
                       key={`${t.orderId}-${t._id}`}
                       className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm cursor-pointer hover:border-orange-200 hover:shadow-md transition-all"
-                      onClick={() => router.push(`/vendor/tickets/${t.orderId}/${t._id}`)}
+                      onClick={() =>
+                        router.push(`/vendor/tickets/${t.orderId}/${t._id}`)
+                      }
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex flex-col items-start gap-1 text-sm text-gray-700">
@@ -307,10 +309,10 @@ export default function VendorTicketsPage() {
                           </span>
                         </p>
                       ) : null}
-                      <div className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
+                      {/* <div className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
                         View details
                         <MoveRight className="w-3.5 h-3.5" />
-                      </div>
+                      </div> */}
                     </li>
                   ))}
                 </ul>

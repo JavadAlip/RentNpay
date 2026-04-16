@@ -12,6 +12,7 @@ import {
   MapPin,
   Phone,
   User,
+  MessageCircle,
 } from 'lucide-react';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
@@ -48,7 +49,10 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
 
   const load = useCallback(async () => {
     const authToken =
-      token || (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      token ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) {
       setError('Please login again to continue.');
       setLoading(false);
@@ -57,12 +61,18 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
     setLoading(true);
     setError('');
     try {
-      const { data } = await apiGetVendorTicketById(orderId, issueId, authToken);
+      const { data } = await apiGetVendorTicketById(
+        orderId,
+        issueId,
+        authToken,
+      );
       const nextTicket = data?.ticket || null;
       setTicket(nextTicket);
       setSelectedStatus(String(nextTicket?.vendorStatus || 'open'));
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load ticket details.');
+      setError(
+        err?.response?.data?.message || 'Failed to load ticket details.',
+      );
       setTicket(null);
     } finally {
       setLoading(false);
@@ -81,12 +91,20 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
   const onSave = async () => {
     if (!ticket || !canSave) return;
     const authToken =
-      token || (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      token ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) return;
     setSaving(true);
     setError('');
     try {
-      await apiUpdateVendorTicketStatus(orderId, issueId, selectedStatus, authToken);
+      await apiUpdateVendorTicketStatus(
+        orderId,
+        issueId,
+        selectedStatus,
+        authToken,
+      );
       await load();
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to update status.');
@@ -132,18 +150,29 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
 
             <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
               {loading ? (
-                <div className="py-16 text-center text-sm text-gray-500">Loading details...</div>
+                <div className="py-16 text-center text-sm text-gray-500">
+                  Loading details...
+                </div>
               ) : !ticket ? (
-                <div className="py-16 text-center text-sm text-gray-500">Ticket not found.</div>
+                <div className="py-16 text-center text-sm text-gray-500">
+                  Ticket not found.
+                </div>
               ) : (
                 <>
-                  <h1 className="text-3xl font-semibold text-gray-900">{ticket.customerName}</h1>
+                  <h1 className="text-3xl font-semibold text-gray-900">
+                    {ticket.customerName}
+                  </h1>
                   <p className="mt-1 text-sm text-gray-600">
-                    Customer Query - <span className="text-blue-600 font-semibold">{ticket.queryId}</span>
+                    Customer Query -{' '}
+                    <span className="text-blue-600 font-semibold">
+                      {ticket.queryId}
+                    </span>
                   </p>
 
                   <div className="mt-5 border-t border-gray-100 pt-5">
-                    <h2 className="text-xl font-semibold text-gray-900">Query Information</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Query Information
+                    </h2>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -151,7 +180,9 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                           <Box className="w-4 h-4 text-blue-500" />
                           Product
                         </p>
-                        <p className="mt-1 font-medium text-gray-900">{ticket.productName}</p>
+                        <p className="mt-1 font-medium text-gray-900">
+                          {ticket.productName}
+                        </p>
                       </div>
                       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                         <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
@@ -190,13 +221,19 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                   </div>
 
                   <div className="mt-6">
-                    <h2 className="text-xl font-semibold text-gray-900">Issue & Action Center</h2>
-                    <p className="mt-3 text-sm font-medium text-gray-800">Customer Issue</p>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Issue & Action Center
+                    </h2>
+                    <p className="mt-3 text-sm font-medium text-gray-800">
+                      Customer Issue
+                    </p>
                     <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
                       {ticket.issueDescription || ticket.message}
                     </div>
 
-                    <p className="mt-4 text-sm font-medium text-gray-800">Update Query Status</p>
+                    <p className="mt-4 text-sm font-medium text-gray-800">
+                      Update Query Status
+                    </p>
                     <select
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
@@ -222,7 +259,9 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                       <button
                         type="button"
                         onClick={() =>
-                          setSelectedStatus(String(ticket.vendorStatus || 'open'))
+                          setSelectedStatus(
+                            String(ticket.vendorStatus || 'open'),
+                          )
                         }
                         className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
                       >
@@ -237,12 +276,19 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                         <User className="w-4 h-4 text-blue-500" />
                         Customer
                       </p>
-                      <p className="mt-1.5 text-lg font-semibold text-blue-700">{ticket.customerName}</p>
+                      <p className="mt-1.5 text-lg font-semibold text-blue-700">
+                        {ticket.customerName}
+                      </p>
                       <p className="text-xs text-gray-500">Query Owner</p>
                     </div>
                     <div className="rounded-xl border border-violet-100 bg-violet-50/30 px-4 py-3">
-                      <p className="text-xs text-gray-500">Query ID</p>
-                      <p className="mt-1.5 text-lg font-semibold text-violet-700">{ticket.queryId}</p>
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <MessageCircle className="w-4 h-4 text-violet-500" />
+                        Query ID
+                      </p>
+                      <p className="mt-1.5 text-lg font-semibold text-violet-700">
+                        {ticket.queryId}
+                      </p>
                       <p className="text-xs text-gray-500">Unique Identifier</p>
                     </div>
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 px-4 py-3">

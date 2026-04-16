@@ -2,6 +2,7 @@ import Order from '../../models/Order.js';
 import Product from '../../models/Product.js';
 import UserKyc from '../../models/UserKyc.js';
 import Address from '../../models/Address.js';
+import VendorKyc from '../../models/VendorKyc.js';
 
 const ISSUE_TYPE_LABEL = {
   structural_damage: 'Structural damage',
@@ -46,6 +47,37 @@ function composeAddressFromDoc(addressDoc) {
   }${addressDoc.pincode ? ` - ${addressDoc.pincode}` : ''}`.trim();
 }
 
+function pickPrimaryStore(stores = []) {
+  if (!Array.isArray(stores) || stores.length === 0) return null;
+  return (
+    stores.find((s) => s?.isDefault && s?.isActive !== false) ||
+    stores.find((s) => s?.isActive !== false) ||
+    stores[0]
+  );
+}
+
+async function resolveAssignedStoreName(productDoc) {
+  if (!productDoc) return '';
+  const ownerName =
+    (productDoc.logisticsVerification &&
+      productDoc.logisticsVerification.inventoryOwnerName) ||
+    '';
+  if (String(ownerName || '').trim()) return String(ownerName).trim();
+
+  const vendorId = productDoc.vendorId;
+  if (!vendorId) return '';
+  const kyc = await VendorKyc.findOne({ vendorId }).lean();
+  if (!kyc) return '';
+  const primary = pickPrimaryStore(kyc?.storeManagement?.stores || []);
+  if (primary && String(primary.storeName || '').trim()) {
+    return String(primary.storeName).trim();
+  }
+  if (kyc.businessDetails && String(kyc.businessDetails.shopName || '').trim()) {
+    return String(kyc.businessDetails.shopName).trim();
+  }
+  return '';
+}
+
 /** Flatten issue reports for this vendor’s rental lines across orders. */
 export const getVendorTickets = async (req, res) => {
   try {
@@ -83,6 +115,7 @@ export const getVendorTickets = async (req, res) => {
         for (const ir of reports) {
           if (!ir) continue;
           const st = String(ir.status || 'open').toLowerCase();
+          const assignedStoreName = await resolveAssignedStoreName(p);
           tickets.push({
             _id: String(ir._id),
             orderId: String(order._id),
@@ -94,7 +127,7 @@ export const getVendorTickets = async (req, res) => {
             status: getTicketStatus(ir),
             vendorStatus: st,
             createdAt: ir.createdAt || order.createdAt,
-            assignedStore: String(ownerName || '').trim(),
+            assignedStore: String(assignedStoreName || ownerName || '').trim(),
             photos: Array.isArray(ir.photos) ? ir.photos : [],
             issueType: ir.issueType,
           });
@@ -160,6 +193,7 @@ export const getVendorTicketById = async (req, res) => {
       const p = line.product;
       const ownerName =
         (p.logisticsVerification && p.logisticsVerification.inventoryOwnerName) || '';
+      const assignedStoreName = await resolveAssignedStoreName(p);
       const report = (line.issueReports || []).find(
         (x) => String(x?._id) === String(issueId),
       );
@@ -177,7 +211,7 @@ export const getVendorTicketById = async (req, res) => {
         status: getTicketStatus(report),
         vendorStatus: String(report.status || 'open').toLowerCase(),
         createdAt: report.createdAt || order.createdAt,
-        assignedStore: String(ownerName || '').trim(),
+        assignedStore: String(assignedStoreName || ownerName || '').trim(),
         address: resolvedAddress,
         issueType: String(report.issueType || 'other'),
         issueDescription: String(report.description || '').trim(),
