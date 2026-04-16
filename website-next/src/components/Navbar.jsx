@@ -10,6 +10,7 @@ import { clearCart, syncCart } from '@/store/slices/cartSlice';
 import { api } from '@/lib/axios';
 import {
   apiGetUserNotifications,
+  apiGetMyAddresses,
   apiGetStorefrontVendorProducts,
 } from '@/lib/api';
 import { USER_AUTH } from '@/lib/userAuthApi';
@@ -30,6 +31,9 @@ import {
   Bell,
   History,
 } from 'lucide-react';
+
+const DELIVERY_STORAGE_KEY = 'rn_delivery_location';
+
 
 function formatNotifTime(iso) {
   if (!iso) return '';
@@ -396,6 +400,19 @@ const Navbar = () => {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifList, setNotifList] = useState([]);
   const [notifBadge, setNotifBadge] = useState(0);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [loadingSavedAddresses, setLoadingSavedAddresses] = useState(false);
+  const [showSavedAddresses, setShowSavedAddresses] = useState(false);
+  const [deliveryLocation, setDeliveryLocation] = useState({
+    label: 'Choose your location',
+    lat: null,
+    lon: null,
+  });
 
   const dropdownRef = useRef(null);
   const notifPanelRef = useRef(null);
@@ -411,6 +428,45 @@ const Navbar = () => {
 
   const firstLetter = user?.fullName?.charAt(0)?.toUpperCase() || '';
   const firstName = user?.fullName?.split(' ')[0] || '';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(DELIVERY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed.label === 'string' &&
+        Number.isFinite(Number(parsed.lat)) &&
+        Number.isFinite(Number(parsed.lon))
+      ) {
+        setDeliveryLocation({
+          label: parsed.label,
+          lat: Number.isFinite(Number(parsed.lat)) ? Number(parsed.lat) : null,
+          lon: Number.isFinite(Number(parsed.lon)) ? Number(parsed.lon) : null,
+        });
+      }
+    } catch {
+      /* ignore corrupt local value */
+    }
+  }, []);
+
+  const applyDeliveryLocation = useCallback((label, lat, lon) => {
+    const next = {
+      label: String(label || '').trim() || 'Choose your location',
+      lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
+      lon: Number.isFinite(Number(lon)) ? Number(lon) : null,
+    };
+    setDeliveryLocation(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(
+        new CustomEvent('rn_delivery_location_changed', { detail: next }),
+      );
+    }
+    return next;
+  }, []);
 
   // Keep cart UI in sync when user logs in/out without a full refresh.
   // (Cart state is stored in localStorage, scoped per user.)
@@ -570,6 +626,142 @@ const Navbar = () => {
     runProductSearch(search);
   };
 
+  useEffect(() => {
+    if (!showLocationModal) return;
+    const q = String(locationQuery || '').trim();
+    if (q.length < 3) {
+      setLocationOptions([]);
+      setLocationSearching(false);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setLocationSearching(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&q=${encodeURIComponent(
+          q,
+        )}`;
+        const res = await fetch(url, {
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        const out = Array.isArray(data)
+          ? data.map((x) => ({
+              id: x.place_id,
+              label: x.display_name,
+              lat: Number(x.lat),
+              lon: Number(x.lon),
+            }))
+          : [];
+        setLocationOptions(out.filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon)));
+      } catch {
+        setLocationOptions([]);
+      } finally {
+        setLocationSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [locationQuery, showLocationModal]);
+
+  const chooseLocation = async ({ label, lat, lon }) => {
+    applyDeliveryLocation(label, lat, lon);
+    setLocationError('');
+    setShowLocationModal(false);
+    setLocationQuery('');
+    setLocationOptions([]);
+    setShowSavedAddresses(false);
+  };
+
+  const onFetchMyLocation = async () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported in this browser.');
+      return;
+    }
+    setLocating(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          let label = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+          try {
+            const rev = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+                lat,
+              )}&lon=${encodeURIComponent(lon)}`,
+              { headers: { Accept: 'application/json' } },
+            );
+            const revData = await rev.json();
+            if (revData?.display_name) label = revData.display_name;
+          } catch {
+            /* reverse geocode optional */
+          }
+          await chooseLocation({ label, lat, lon });
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        setLocating(false);
+        setLocationError(err?.message || 'Unable to fetch your location.');
+      },
+      { enableHighAccuracy: true, timeout: 12000 },
+    );
+  };
+
+  const onSavedAddressClick = async () => {
+    if (!isAuthenticated) {
+      setShowLocationModal(false);
+      openAuth('login');
+      return;
+    }
+    setShowSavedAddresses((v) => !v);
+    if (savedAddresses.length > 0 || loadingSavedAddresses) return;
+    setLoadingSavedAddresses(true);
+    try {
+      const res = await apiGetMyAddresses();
+      setSavedAddresses(Array.isArray(res.data?.addresses) ? res.data.addresses : []);
+    } catch {
+      setSavedAddresses([]);
+      setLocationError('Could not load saved addresses.');
+    } finally {
+      setLoadingSavedAddresses(false);
+    }
+  };
+
+  const chooseSavedAddress = async (addr) => {
+    const parts = [
+      addr?.addressLine,
+      addr?.area,
+      addr?.city,
+      addr?.pincode ? `- ${addr.pincode}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    setLocationSearching(true);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=in&q=${encodeURIComponent(
+        parts,
+      )}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const data = await res.json();
+      const first = Array.isArray(data) ? data[0] : null;
+      if (!first) {
+        setLocationError('Could not map this saved address location.');
+        return;
+      }
+      await chooseLocation({
+        label: parts,
+        lat: Number(first.lat),
+        lon: Number(first.lon),
+      });
+    } catch {
+      setLocationError('Failed to use saved address location.');
+    } finally {
+      setLocationSearching(false);
+    }
+  };
+
   return (
     <>
       <header className="bg-white border-b sticky top-0 z-50">
@@ -592,7 +784,12 @@ const Navbar = () => {
                   className="hidden md:inline-flex shrink-0 items-center gap-2 self-center bg-gray-100 px-3 py-1.5 rounded-full text-sm text-gray-600 hover:bg-gray-200 transition-colors"
                 >
                   <MapPin size={14} className="text-orange-500" />
-                  <span>Delivering to: Pune, 411057</span>
+                  <span>
+                    Delivering to:{' '}
+                    {deliveryLocation.label.length > 30
+                      ? `${deliveryLocation.label.slice(0, 30)}...`
+                      : deliveryLocation.label}
+                  </span>
                 </button>
                 <form
                   onSubmit={handleSearch}
@@ -640,7 +837,12 @@ const Navbar = () => {
                 className="hidden md:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm text-gray-600 shrink-0 hover:bg-gray-200 transition-colors"
               >
                 <MapPin size={14} className="text-orange-500" />
-                <span>Delivering to: Pune, 411057</span>
+                <span>
+                  Delivering to:{' '}
+                  {deliveryLocation.label.length > 30
+                    ? `${deliveryLocation.label.slice(0, 30)}...`
+                    : deliveryLocation.label}
+                </span>
               </button>
 
               <form
@@ -1026,28 +1228,89 @@ const Navbar = () => {
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
+                    value={locationQuery}
+                    onChange={(e) => {
+                      setLocationQuery(e.target.value);
+                      setLocationError('');
+                    }}
                     placeholder="Enter area, street name..."
                     className="w-full pl-9 pr-3 py-2.5 sm:py-3 text-xs sm:text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400"
                   />
                 </div>
+                {locationSearching ? (
+                  <p className="mt-2 text-xs text-gray-500">Searching locations...</p>
+                ) : null}
+                {locationOptions.length > 0 ? (
+                  <ul className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 divide-y">
+                    {locationOptions.map((opt) => (
+                      <li key={opt.id}>
+                        <button
+                          type="button"
+                          onClick={() => chooseLocation(opt)}
+                          className="w-full px-3 py-2 text-left text-xs sm:text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {opt.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
-              <button className="mt-5 w-full flex items-center justify-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium py-2.5 sm:py-3 shadow-[0_10px_22px_rgba(249,115,22,0.45)]">
+              <button
+                type="button"
+                onClick={onFetchMyLocation}
+                disabled={locating}
+                className="mt-5 w-full flex items-center justify-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium py-2.5 sm:py-3 shadow-[0_10px_22px_rgba(249,115,22,0.45)] disabled:opacity-60"
+              >
                 <LocateFixed className="w-4 h-4" />
-                Fetch my location
+                {locating ? 'Fetching location...' : 'Fetch my location'}
               </button>
               <button
+                type="button"
                 onClick={() => {
-                  setShowLocationModal(false);
-                  openAuth('login');
+                  onSavedAddressClick();
                 }}
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-xs sm:text-sm text-gray-700 py-2.5 sm:py-3 hover:bg-gray-50"
               >
                 <User className="w-4 h-4" />
-                Login for saved addresses
+                {isAuthenticated ? 'Use saved addresses' : 'Login for saved addresses'}
               </button>
+              {showSavedAddresses ? (
+                <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 max-h-44 overflow-y-auto">
+                  {loadingSavedAddresses ? (
+                    <p className="px-3 py-2 text-xs text-gray-500">Loading saved addresses...</p>
+                  ) : savedAddresses.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-gray-500">No saved addresses yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {savedAddresses.map((addr) => {
+                        const line = `${addr.addressLine || ''}${addr.area ? `, ${addr.area}` : ''}${
+                          addr.city ? `, ${addr.city}` : ''
+                        }${addr.pincode ? ` - ${addr.pincode}` : ''}`;
+                        return (
+                          <li key={addr._id}>
+                            <button
+                              type="button"
+                              onClick={() => chooseSavedAddress(addr)}
+                              className="w-full px-3 py-2 text-left hover:bg-white"
+                            >
+                              <p className="text-xs sm:text-sm font-medium text-gray-800">
+                                {addr.label || 'Address'}
+                              </p>
+                              <p className="text-[11px] text-gray-600 mt-0.5">{line}</p>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+              {locationError ? (
+                <p className="mt-3 text-xs text-red-600 text-center">{locationError}</p>
+              ) : null}
               <div className="mt-4 text-[10px] sm:text-xs text-gray-500 text-center px-3">
-                We deliver within <span className="font-semibold">50km</span>{' '}
-                radius from your location.
+                Your selected location will be used for nearby listings.
               </div>
             </div>
           </div>

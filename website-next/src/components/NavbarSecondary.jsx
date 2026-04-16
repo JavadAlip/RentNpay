@@ -1,10 +1,47 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, MapPin, ChevronDown } from 'lucide-react';
+
+const DELIVERY_STORAGE_KEY = 'rn_delivery_location';
 
 const NavbarSecondary = () => {
   const [search, setSearch] = useState('');
+  const [deliveryLabel, setDeliveryLabel] = useState('Sadashiv Peth, Pune');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const readAndSet = () => {
+      try {
+        const raw = localStorage.getItem(DELIVERY_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const label = String(parsed?.label || '').trim();
+        if (label) setDeliveryLabel(label);
+      } catch {
+        /* ignore invalid local storage */
+      }
+    };
+
+    const onCustomChange = (e) => {
+      const label = String(e?.detail?.label || '').trim();
+      if (label) setDeliveryLabel(label);
+    };
+
+    const onStorage = (e) => {
+      if (e.key !== DELIVERY_STORAGE_KEY) return;
+      readAndSet();
+    };
+
+    readAndSet();
+    window.addEventListener('rn_delivery_location_changed', onCustomChange);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('rn_delivery_location_changed', onCustomChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   return (
     <div className="bg-[#f5f5f5] border-b">
@@ -30,7 +67,7 @@ const NavbarSecondary = () => {
           <MapPin size={16} className="text-orange-500 shrink-0" />
           <span className="text-gray-600 hidden sm:inline">Deliver to</span>
           <span className="text-orange-500 font-medium truncate max-w-[140px] sm:max-w-none">
-            Sadashiv Peth, Pune
+            {deliveryLabel}
           </span>
           <ChevronDown size={16} className="text-gray-500 shrink-0" />
         </button>
