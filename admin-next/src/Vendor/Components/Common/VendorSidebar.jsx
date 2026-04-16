@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { vendorLogout } from '../../../redux/slices/vendorSlice';
+import dashboardIcon from '@/assets/icons/dashboard.png';
+import kycIcon from '@/assets/icons/kyc.png';
+import storesIcon from '@/assets/icons/stores.png';
+import productsIcon from '@/assets/icons/products.png';
+import ordersIcon from '@/assets/icons/orders.png';
+import customersIcon from '@/assets/icons/customers.png';
+import ticketsIcon from '@/assets/icons/tickets.png';
+import offersIcon from '@/assets/icons/offers.png';
 
 const navItems = [
   { to: '/vendor-dashboard', label: 'Dashboard' },
@@ -63,7 +71,8 @@ const VendorSidebar = () => {
           {navItems.map((item) => {
             const isActive =
               pathname === item.to ||
-              (item.to === '/vendor/orders' && pathname?.startsWith('/vendor/orders'));
+              (item.to === '/vendor/orders' &&
+                pathname?.startsWith('/vendor/orders'));
             return (
               <Link
                 key={item.to}
@@ -75,7 +84,97 @@ const VendorSidebar = () => {
                     : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
                 }`}
               >
-                {item.label}
+                {item.label === 'Dashboard' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={dashboardIcon.src}
+                      alt="Dashboard"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'KYC & Verification' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={kycIcon.src}
+                      alt="KYC & Verification"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Stores' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={storesIcon.src}
+                      alt="Stores"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Products' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={productsIcon.src}
+                      alt="Products"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Orders' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={ordersIcon.src}
+                      alt="Orders"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Customers' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={customersIcon.src}
+                      alt="Customers"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Tickets' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={ticketsIcon.src}
+                      alt="Tickets"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : item.label === 'Offers' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={offersIcon.src}
+                      alt="Offers"
+                      className={`w-4 h-4 object-contain ${
+                        isActive ? 'brightness-0 invert' : ''
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </span>
+                ) : (
+                  item.label
+                )}
               </Link>
             );
           })}
