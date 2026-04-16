@@ -36,9 +36,25 @@ export const apiGetAllProducts = (queryString = '') =>
  * (`/vendor/my-products`). Passes `storefront=1` so drafts / pending approval are hidden.
  */
 export const apiGetStorefrontVendorProducts = (queryString = '') =>
-  api.get(
-    `/admin/products?storefront=1${queryString ? `&${queryString}` : ''}`,
-  );
+  {
+    let locationPart = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('rn_delivery_location');
+        const parsed = raw ? JSON.parse(raw) : null;
+        const lat = Number(parsed?.lat);
+        const lon = Number(parsed?.lon);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          locationPart = `&userLat=${encodeURIComponent(lat)}&userLng=${encodeURIComponent(lon)}`;
+        }
+      } catch {
+        /* ignore local parse errors */
+      }
+    }
+    return api.get(
+      `/admin/products?storefront=1${queryString ? `&${queryString}` : ''}${locationPart}`,
+    );
+  };
 
 /** Buy page hero: total sell listings + Brand New / Refurbished counts (full catalog, not paginated). */
 export const apiGetStorefrontSellStats = () =>

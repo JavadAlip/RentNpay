@@ -7,6 +7,57 @@ import User from '../../models/userAuthModel.js';
 import Order from '../../models/Order.js';
 import VendorKyc from '../../models/VendorKyc.js';
 
+function toRad(v) {
+  return (Number(v) * Math.PI) / 180;
+}
+
+function distanceKm(aLat, aLon, bLat, bLon) {
+  const R = 6371;
+  const dLat = toRad(Number(bLat) - Number(aLat));
+  const dLon = toRad(Number(bLon) - Number(aLon));
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLon / 2);
+  const x = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  return R * c;
+}
+
+function pickPrimaryStore(stores = []) {
+  if (!Array.isArray(stores) || stores.length === 0) return null;
+  return (
+    stores.find((s) => s?.isDefault && s?.isActive !== false) ||
+    stores.find((s) => s?.isActive !== false) ||
+    stores[0]
+  );
+}
+
+function vendorServesLocation(store, userLat, userLng) {
+  if (!store) return false;
+  // Prefer explicit service-mode booleans. Some vendors may not sync the
+  // `deliveryZoneType` field when toggling service mode in UI.
+  if (store?.serviceModePanIndia === true) return true;
+
+  const isLocal =
+    store?.serviceModeLocalDelivery === true ||
+    store?.deliveryZoneType === 'hyper-local';
+  if (!isLocal) {
+    // If we only know pan-india via the enum value.
+    if (store?.deliveryZoneType === 'pan-india') return true;
+    return false;
+  }
+  if (!Number.isFinite(userLat) || !Number.isFinite(userLng)) return false;
+
+  const sLat = Number(store?.mapLat);
+  const sLng = Number(store?.mapLng);
+  if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) return false;
+
+  const radius = Number(store?.serviceRadiusKm);
+  const safeRadius = Number.isFinite(radius) && radius > 0 ? radius : 50;
+  return distanceKm(userLat, userLng, sLat, sLng) <= safeRadius;
+}
+
 export const adminLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -463,6 +514,8 @@ export const getAllProducts = async (req, res) => {
       category,
       storefront,
       sellStats,
+      userLat,
+      userLng,
     } = req.query;
 
     /** Storefront buy page: counts for all sell listings + by condition (no pagination). */
@@ -524,7 +577,33 @@ export const getAllProducts = async (req, res) => {
       .limit(Number(limit));
 
     // If a vendor was deleted, populate(vendorId) becomes null; hide such products.
-    const visibleProducts = (products || []).filter((p) => p.vendorId);
+    let visibleProducts = (products || []).filter((p) => p.vendorId);
+
+    // Storefront location filtering: if user location is selected, only show
+    // vendors that serve that location based on their store service mode.
+    const storefrontMode = storefront === '1' || storefront === 'true';
+    const hasUserLocation =
+      Number.isFinite(Number(userLat)) && Number.isFinite(Number(userLng));
+    if (storefrontMode && hasUserLocation && visibleProducts.length) {
+      const userLatNum = Number(userLat);
+      const userLngNum = Number(userLng);
+      const vendorIds = [
+        ...new Set(visibleProducts.map((p) => String(p.vendorId?._id || '')).filter(Boolean)),
+      ];
+      const kycRows = await VendorKyc.find({ vendorId: { $in: vendorIds } })
+        .select('vendorId storeManagement.stores')
+        .lean();
+      const storeMap = new Map();
+      for (const row of kycRows || []) {
+        const store = pickPrimaryStore(row?.storeManagement?.stores || []);
+        storeMap.set(String(row?.vendorId || ''), store || null);
+      }
+      visibleProducts = visibleProducts.filter((p) => {
+        const vid = String(p.vendorId?._id || '');
+        const store = storeMap.get(vid);
+        return vendorServesLocation(store, userLatNum, userLngNum);
+      });
+    }
 
     res.status(200).json({
       products: visibleProducts,

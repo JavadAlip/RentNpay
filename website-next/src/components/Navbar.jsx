@@ -588,6 +588,14 @@ const Navbar = () => {
     return () => document.removeEventListener('keydown', onKey);
   }, [showNotifPanel, closeNotifPanel]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onOpenLocationModal = () => setShowLocationModal(true);
+    window.addEventListener('rn_open_location_modal', onOpenLocationModal);
+    return () =>
+      window.removeEventListener('rn_open_location_modal', onOpenLocationModal);
+  }, []);
+
   // ✅ Logout handler
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -1309,8 +1317,12 @@ const Navbar = () => {
               {locationError ? (
                 <p className="mt-3 text-xs text-red-600 text-center">{locationError}</p>
               ) : null}
-              <div className="mt-4 text-[10px] sm:text-xs text-gray-500 text-center px-3">
-                Your selected location will be used for nearby listings.
+              <div className="mt-4 flex items-start justify-center gap-1.5 text-[10px] sm:text-xs text-gray-500 text-center px-3">
+                <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-[1px]" />
+                <p>
+                  We deliver within <span className="font-bold text-gray-800">50km radius</span>{' '}
+                  from your location
+                </p>
               </div>
             </div>
           </div>

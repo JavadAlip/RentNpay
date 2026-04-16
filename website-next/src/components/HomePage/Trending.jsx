@@ -34,6 +34,28 @@ const Trending = () => {
   const [wishedIds, setWishedIds] = useState([]);
   const [togglingId, setTogglingId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [locVersion, setLocVersion] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onLocChange = () => {
+      setPage(0);
+      setActiveTab('All');
+      setLocVersion((v) => v + 1);
+    };
+
+    window.addEventListener('rn_delivery_location_changed', onLocChange);
+    const onStorage = (e) => {
+      if (e?.key !== 'rn_delivery_location') return;
+      onLocChange();
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      window.removeEventListener('rn_delivery_location_changed', onLocChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -64,7 +86,7 @@ const Trending = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [locVersion]);
 
   useEffect(() => {
     if (!isAuthenticated) {

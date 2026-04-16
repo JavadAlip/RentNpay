@@ -263,6 +263,31 @@ export const submitMyKyc = async (req, res) => {
       next.resubmittedPendingReview = existing?.resubmittedPendingReview ?? false;
     }
 
+    // If vendor is already approved and is only updating store info (no new KYC documents uploaded),
+    // don't downgrade status to draft/pending on intermediate store saves.
+    const existingStatus = existing?.status;
+    const documentsUpdated =
+      Boolean(
+        ownerPhoto ||
+          panPhoto ||
+          aadhaarFront ||
+          aadhaarBack ||
+          cancelledCheque ||
+          shopActLicense ||
+          gstCertificate,
+      ) || anyReuploadLeft;
+
+    if (existingStatus === 'approved' && !documentsUpdated) {
+      next.status = 'approved';
+      next.applicationSubmitted = existing?.applicationSubmitted ?? true;
+      next.submittedAt = existing?.submittedAt ?? new Date();
+      next.rejectionReason = '';
+      next.documentReviews = docReviews;
+      next.awaitingVendorUpload = existing?.awaitingVendorUpload ?? false;
+      next.resubmittedPendingReview =
+        existing?.resubmittedPendingReview ?? false;
+    }
+
     if (isFinalSubmit) {
       const sc = next.sectionsCompleted;
       if (!sc.personal || !sc.business || !sc.banking || !sc.store) {
@@ -284,26 +309,54 @@ export const submitMyKyc = async (req, res) => {
           .status(400)
           .json({ message: 'Account number and confirm account number must match.' });
       }
-      next.status = 'pending';
-      next.applicationSubmitted = true;
-      next.submittedAt = new Date();
-      next.rejectionReason = '';
-      next.documentReviews = docReviews;
+      const existingStatus = existing?.status;
+      // If vendor is already approved and is only updating store info (no new KYC documents uploaded),
+      // keep the approved status to avoid locking product creation.
+      const documentsUpdated =
+        Boolean(
+          ownerPhoto ||
+            panPhoto ||
+            aadhaarFront ||
+            aadhaarBack ||
+            cancelledCheque ||
+            shopActLicense ||
+            gstCertificate,
+        ) || anyReuploadLeft;
 
-      let nextAwaiting = anyReuploadLeft;
-      let nextResubmitted = Boolean(existing?.resubmittedPendingReview);
-      if (existing?.awaitingVendorUpload && !anyReuploadLeft) {
-        nextResubmitted = true;
-        nextAwaiting = false;
-      } else if (anyReuploadLeft) {
-        nextResubmitted = false;
-        nextAwaiting = true;
-      } else if (!existing?.awaitingVendorUpload && !existing?.resubmittedPendingReview) {
-        nextResubmitted = false;
-        nextAwaiting = false;
+      if (existingStatus === 'approved' && !documentsUpdated) {
+        next.status = 'approved';
+        next.applicationSubmitted = existing?.applicationSubmitted ?? true;
+        next.submittedAt = existing?.submittedAt ?? new Date();
+        next.rejectionReason = '';
+        next.documentReviews = docReviews;
+        next.awaitingVendorUpload = existing?.awaitingVendorUpload ?? false;
+        next.resubmittedPendingReview =
+          existing?.resubmittedPendingReview ?? false;
+      } else {
+        next.status = 'pending';
+        next.applicationSubmitted = true;
+        next.submittedAt = new Date();
+        next.rejectionReason = '';
+        next.documentReviews = docReviews;
+
+        let nextAwaiting = anyReuploadLeft;
+        let nextResubmitted = Boolean(existing?.resubmittedPendingReview);
+        if (existing?.awaitingVendorUpload && !anyReuploadLeft) {
+          nextResubmitted = true;
+          nextAwaiting = false;
+        } else if (anyReuploadLeft) {
+          nextResubmitted = false;
+          nextAwaiting = true;
+        } else if (
+          !existing?.awaitingVendorUpload &&
+          !existing?.resubmittedPendingReview
+        ) {
+          nextResubmitted = false;
+          nextAwaiting = false;
+        }
+        next.awaitingVendorUpload = nextAwaiting;
+        next.resubmittedPendingReview = nextResubmitted;
       }
-      next.awaitingVendorUpload = nextAwaiting;
-      next.resubmittedPendingReview = nextResubmitted;
     }
 
     const kyc = await VendorKyc.findOneAndUpdate(
