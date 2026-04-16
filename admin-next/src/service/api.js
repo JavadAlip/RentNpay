@@ -91,6 +91,13 @@ export const apiGetVendorTickets = (token) =>
     },
   });
 
+export const apiGetVendorTicketById = (orderId, issueId, token) =>
+  API.get(`/vendor/tickets/${orderId}/${issueId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiUpdateVendorTicketStatus = (orderId, issueId, status, token) =>
   API.patch(
     `/vendor/tickets/${orderId}/${issueId}/status`,

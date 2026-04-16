@@ -21,6 +21,7 @@ import {
   upsertVendorOffer,
 } from '../controller/vendor/offerController.js';
 import {
+  getVendorTicketById,
   getVendorTickets,
   updateVendorTicketStatus,
 } from '../controller/vendor/ticketController.js';
@@ -123,6 +124,7 @@ router.delete('/offers/:id', vendorAuth, deleteVendorOffer);
 
 // customer issue tickets (from user “Report an Issue” on rentals)
 router.get('/tickets', vendorAuth, getVendorTickets);
+router.get('/tickets/:orderId/:issueId', vendorAuth, getVendorTicketById);
 router.patch(
   '/tickets/:orderId/:issueId/status',
   vendorAuth,

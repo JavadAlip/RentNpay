@@ -8,16 +8,15 @@ import {
   ChevronDown,
   Clock,
   MessageSquare,
+  MoveRight,
   Search,
   User,
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
-import {
-  apiGetVendorTickets,
-  apiUpdateVendorTicketStatus,
-} from '@/service/api';
+import { apiGetVendorTickets } from '@/service/api';
 
 function formatRelativeTime(iso) {
   const d = iso ? new Date(iso) : null;
@@ -79,6 +78,7 @@ function StatusBadge({ status }) {
 
 export default function VendorTicketsPage() {
   const PAGE_SIZE = 10;
+  const router = useRouter();
   const { user, token } = useSelector((s) => s.vendor);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -86,7 +86,6 @@ export default function VendorTicketsPage() {
   const [summary, setSummary] = useState({ total: 0, pending: 0, solved: 0 });
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const [updatingId, setUpdatingId] = useState(null);
   const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
@@ -160,30 +159,6 @@ export default function VendorTicketsPage() {
       setPage(totalPages);
     }
   }, [page, totalPages]);
-
-  const handleSetStatus = async (ticket, nextVendorStatus) => {
-    const authToken =
-      token ||
-      (typeof window !== 'undefined'
-        ? localStorage.getItem('vendorToken')
-        : null);
-    if (!authToken) return;
-    const key = ticket._id;
-    setUpdatingId(key);
-    try {
-      await apiUpdateVendorTicketStatus(
-        ticket.orderId,
-        ticket._id,
-        nextVendorStatus,
-        authToken,
-      );
-      await load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not update ticket.');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
 
   return (
     <div className="flex h-screen bg-[#f3f5f9] overflow-hidden">
@@ -294,7 +269,8 @@ export default function VendorTicketsPage() {
                   {paginatedTickets.map((t) => (
                     <li
                       key={`${t.orderId}-${t._id}`}
-                      className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm"
+                      className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm cursor-pointer hover:border-orange-200 hover:shadow-md transition-all"
+                      onClick={() => router.push(`/vendor/tickets/${t.orderId}/${t._id}`)}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex flex-col items-start gap-1 text-sm text-gray-700">
@@ -331,31 +307,10 @@ export default function VendorTicketsPage() {
                           </span>
                         </p>
                       ) : null}
-                      {t.status === 'pending' ? (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={updatingId === t._id}
-                            onClick={() => handleSetStatus(t, 'resolved')}
-                            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                          >
-                            {updatingId === t._id
-                              ? 'Saving…'
-                              : 'Mark as solved'}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={updatingId === t._id}
-                            onClick={() => handleSetStatus(t, 'open')}
-                            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                          >
-                            {updatingId === t._id ? 'Saving…' : 'Reopen query'}
-                          </button>
-                        </div>
-                      )}
+                      <div className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
+                        View details
+                        <MoveRight className="w-3.5 h-3.5" />
+                      </div>
                     </li>
                   ))}
                 </ul>
