@@ -22,18 +22,40 @@ export default function Payment() {
   const { items } = useSelector((s) => s.cart);
   const isPaymentSuccessFlowRef = useRef(false);
 
-  const total = useMemo(() => {
-    return items.reduce(
-      (sum, i) =>
-        sum +
-        (String(i.productType || 'Rental') === 'Rental'
-          ? Number(i.pricePerDay) *
-            Number(i.rentalMonths || 1) *
-            Number(i.quantity)
-          : Number(i.pricePerDay) * Number(i.quantity)),
-      0,
-    );
+  const isRentalItem = (item) =>
+    String(item?.productType || 'Rental') === 'Rental';
+
+  // Base rental cost: for day-wise rentals, `pricePerDay` stores the full tenure price.
+  const rentalBaseCost = useMemo(() => {
+    return items.reduce((sum, i) => {
+      if (!isRentalItem(i)) return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
+
+      if (String(i.tenureUnit || 'month') === 'day') {
+        return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
+      }
+
+      const months = Number(i.rentalMonths || 1);
+      return sum + Number(i.pricePerDay || 0) * months * Number(i.quantity || 0);
+    }, 0);
   }, [items]);
+
+  const refundableDepositTotal = useMemo(() => {
+    return items.reduce((sum, i) => {
+      if (!isRentalItem(i)) return sum;
+      const deposit = Number(i.refundableDeposit || 0);
+      return sum + deposit * Number(i.quantity || 0);
+    }, 0);
+  }, [items]);
+
+  const deliveryFee = useMemo(() => (items.length ? 99 : 0), [items.length]);
+  const gst = useMemo(() => Math.round(rentalBaseCost * 0.06), [rentalBaseCost]);
+  const careProtection = useMemo(() => (items.length ? 30 : 0), [items.length]);
+
+  const total = useMemo(() => {
+    return (
+      rentalBaseCost + refundableDepositTotal + deliveryFee + gst + careProtection
+    );
+  }, [rentalBaseCost, refundableDepositTotal, deliveryFee, gst, careProtection]);
 
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [instructions, setInstructions] = useState('');

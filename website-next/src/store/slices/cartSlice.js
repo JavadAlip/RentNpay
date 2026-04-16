@@ -118,6 +118,9 @@ const cartSlice = createSlice({
       if (existing) {
         existing.rentalMonths = rentalMonths;
         existing.tenureUnit = tu;
+        existing.pricePerDay = pricePerDay;
+        existing.title = title;
+        existing.image = image;
         existing.productType = String(productType || existing.productType || 'Rental');
         existing.refundableDeposit = Number(refundableDeposit || 0);
       }

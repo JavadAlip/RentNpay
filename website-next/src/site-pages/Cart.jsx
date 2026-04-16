@@ -44,6 +44,11 @@ const Cart = () => {
       const qty = Number(i.quantity || 0);
       const unitPrice = Number(i.pricePerDay || 0);
       if (isRentalItem(i)) {
+        // For day-wise plans, `pricePerDay` stores the full tenure price.
+        // For month-wise plans, `pricePerDay` stores monthly rent and `rentalMonths` stores months count.
+        if (String(i.tenureUnit || 'month') === 'day') {
+          return sum + unitPrice * qty;
+        }
         const rentalMonths = Number(i.rentalMonths || 1);
         return sum + unitPrice * rentalMonths * qty;
       }
@@ -54,7 +59,7 @@ const Cart = () => {
   const refundableDepositTotal = useMemo(() => {
     return items.reduce((sum, i) => {
       if (!isRentalItem(i)) return sum;
-      const deposit = Number(i.refundableDeposit || 1000);
+      const deposit = Number(i.refundableDeposit || 0);
       return sum + deposit * Number(i.quantity || 0);
     }, 0);
   }, [items]);
@@ -63,6 +68,25 @@ const Cart = () => {
     () => items.some((i) => isRentalItem(i)),
     [items],
   );
+
+  const primaryRentalItem = useMemo(() => {
+    return items.find((i) => isRentalItem(i)) || null;
+  }, [items]);
+
+  const getRentalTenureLabel = (item) => {
+    const n = Number(item?.rentalMonths || 1);
+    return String(item?.tenureUnit || 'month') === 'day'
+      ? `${n} Day${n === 1 ? '' : 's'}`
+      : `${n} Month${n === 1 ? '' : 's'}`;
+  };
+
+  const getRentalPriceLabel = (item) => {
+    if (String(item?.tenureUnit || 'month') === 'day') {
+      const n = Number(item?.rentalMonths || 1);
+      return `Rental for ${n} Day${n === 1 ? '' : 's'}`;
+    }
+    return 'Monthly Rent';
+  };
 
   const deliveryFee = useMemo(() => {
     return items.length ? 99 : 0;
@@ -177,15 +201,14 @@ const Cart = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div className="xl:col-span-8 space-y-4">
-            {hasRentalItems ? (
+            {hasRentalItems && primaryRentalItem ? (
               <div className="rounded-2xl border border-blue-200 bg-blue-50/50 px-5 py-4">
                 <p className="font-semibold text-2xl text-gray-900 flex items-center gap-2">
-                  3 Months Lock-IN Period
+                  {getRentalTenureLabel(primaryRentalItem)} Lock-IN Period
                   <Shield className="w-5 h-5 text-gray-500" />
                 </p>
                 <p className="text-sm text-gray-600 mt-1">
-                  You got a 3 months lock-in, ending early means paying for the
-                  rest
+                  You selected {getRentalTenureLabel(primaryRentalItem)}.
                 </p>
               </div>
             ) : null}
@@ -221,7 +244,7 @@ const Cart = () => {
                       </p>
                       {isRentalItem(item) ? (
                         <div className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white">
-                          {item.rentalMonths || 1} Months
+                          {getRentalTenureLabel(item)}
                         </div>
                       ) : null}
                     </div>
@@ -232,13 +255,13 @@ const Cart = () => {
                           ₹{item.pricePerDay}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {isRentalItem(item) ? 'Monthly Rent' : 'Sale Price'}
+                          {isRentalItem(item) ? getRentalPriceLabel(item) : 'Sale Price'}
                         </p>
                       </div>
                       {isRentalItem(item) ? (
                         <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
                           <p className="text-3xl font-semibold text-gray-900">
-                            ₹{item.refundableDeposit || 1000}
+                            ₹{Number(item.refundableDeposit || 0)}
                           </p>
                           <p className="text-xs text-gray-500">Deposit</p>
                         </div>

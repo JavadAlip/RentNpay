@@ -534,7 +534,7 @@ const RentPrdctMain = ({ product, offer }) => {
   const totalRentalForTenure = useMemo(() => {
     if (!plan) return 0;
     if (plan.periodUnit === 'day' && plan.rawDays > 0) {
-      return effectivePlanPrice * plan.rawDays;
+      return effectivePlanPrice;
     }
     return effectivePlanPrice * (plan.rentalMonths || 1);
   }, [plan, effectivePlanPrice]);
@@ -629,17 +629,6 @@ const RentPrdctMain = ({ product, offer }) => {
         return;
       }
 
-      if (items?.length) {
-        const cartRentalMonths = items?.[0]?.rentalMonths;
-        if (cartRentalMonths && cartRentalMonths !== activeRentalMonths) {
-          pushToast(
-            'Please clear cart to choose a different rental duration.',
-            'warning',
-          );
-          return;
-        }
-      }
-
       const existingQty =
         items.find((i) => i.productId === productId)?.quantity || 0;
       const res = await apiGetProductById(productId);
@@ -667,6 +656,7 @@ const RentPrdctMain = ({ product, offer }) => {
           title: productName,
           image: images?.[0] || '',
           tenureUnit: plan?.periodUnit === 'day' ? 'day' : 'month',
+          refundableDeposit: Number(product?.refundableDeposit || 0),
         }),
       );
 
@@ -694,17 +684,6 @@ const RentPrdctMain = ({ product, offer }) => {
         return;
       }
 
-      if (items?.length) {
-        const cartRentalMonths = items?.[0]?.rentalMonths;
-        if (cartRentalMonths && cartRentalMonths !== activeRentalMonths) {
-          pushToast(
-            'Please clear cart to choose a different rental duration.',
-            'warning',
-          );
-          return;
-        }
-      }
-
       const existingQty =
         items.find((i) => i.productId === productId)?.quantity || 0;
       const res = await apiGetProductById(productId);
@@ -732,6 +711,7 @@ const RentPrdctMain = ({ product, offer }) => {
           title: productName,
           image: images?.[0] || '',
           tenureUnit: plan?.periodUnit === 'day' ? 'day' : 'month',
+          refundableDeposit: Number(product?.refundableDeposit || 0),
         }),
       );
 
@@ -1165,7 +1145,7 @@ const RentPrdctMain = ({ product, offer }) => {
             </span>
             {plan?.periodUnit === 'day' ? (
               <span className="block text-[10px] text-gray-400 mt-1">
-                ({plan.rawDays} × ₹{effectivePlanPrice}/day)
+                Exact vendor price for {plan.rawDays} day{plan.rawDays > 1 ? 's' : ''}
               </span>
             ) : null}
           </p>
