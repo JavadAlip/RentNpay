@@ -20,6 +20,10 @@ import {
   getVendorOffers,
   upsertVendorOffer,
 } from '../controller/vendor/offerController.js';
+import {
+  getVendorTickets,
+  updateVendorTicketStatus,
+} from '../controller/vendor/ticketController.js';
 import { getMyKyc, submitMyKyc } from '../controller/vendor/kycController.js';
 import { getVendorNotifications } from '../controller/vendor/notificationController.js';
 import {
@@ -116,5 +120,13 @@ router.get('/offers/public-active', getPublicActiveOffers);
 router.get('/offers', vendorAuth, getVendorOffers);
 router.post('/offers', vendorAuth, upsertVendorOffer);
 router.delete('/offers/:id', vendorAuth, deleteVendorOffer);
+
+// customer issue tickets (from user “Report an Issue” on rentals)
+router.get('/tickets', vendorAuth, getVendorTickets);
+router.patch(
+  '/tickets/:orderId/:issueId/status',
+  vendorAuth,
+  updateVendorTicketStatus,
+);
 
 export default router;

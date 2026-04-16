@@ -84,6 +84,25 @@ export const apiGetVendorCustomers = (token) =>
     },
   });
 
+export const apiGetVendorTickets = (token) =>
+  API.get('/vendor/tickets', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpdateVendorTicketStatus = (orderId, issueId, status, token) =>
+  API.patch(
+    `/vendor/tickets/${orderId}/${issueId}/status`,
+    { status },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
 export const apiGetVendorOrders = (token) =>
   API.get('/vendor/orders', {
     headers: {

@@ -82,6 +82,8 @@ const orderItemSchema = new mongoose.Schema({
         enum: ['open', 'in_progress', 'resolved'],
         default: 'open',
       },
+      /** Monotonic display id for vendor “QRY-####” (assigned at report time). */
+      queryCode: { type: Number },
       createdAt: { type: Date, default: Date.now },
     },
   ],

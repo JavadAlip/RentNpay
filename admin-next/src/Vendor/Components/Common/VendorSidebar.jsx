@@ -13,6 +13,7 @@ const navItems = [
   { to: '/vendor-products', label: 'Products' },
   { to: '/vendor/orders', label: 'Orders' },
   { to: '/vendor/customers', label: 'Customers' },
+  { to: '/vendor/tickets', label: 'Tickets' },
   { to: '/vendor/offers', label: 'Offers' },
 ];
 
@@ -60,14 +61,18 @@ const VendorSidebar = () => {
 
         <nav className="flex-1 overflow-y-auto py-4 space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.to;
+            const isActive =
+              pathname === item.to ||
+              (item.to === '/vendor/orders' && pathname?.startsWith('/vendor/orders'));
             return (
               <Link
                 key={item.to}
                 href={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                  isActive ? 'bg-orange-50 text-orange-600 font-medium' : ''
+                className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center transition-colors ${
+                  isActive
+                    ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                    : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
                 }`}
               >
                 {item.label}

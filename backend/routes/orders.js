@@ -1,6 +1,7 @@
 import express from 'express';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import Counter from '../models/Counter.js';
 import { adminAuth } from '../middleware/auth.js';
 import { userAuth } from '../middleware/userAuth.js';
 import upload from '../middleware/upload.js';
@@ -436,12 +437,19 @@ router.put(
       if (!Array.isArray(targetLine.issueReports)) {
         targetLine.issueReports = [];
       }
+      const seqDoc = await Counter.findByIdAndUpdate(
+        'vendorIssueQuerySeq',
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true },
+      );
+      const queryCode = Number(seqDoc?.seq) || 1;
       targetLine.issueReports.unshift({
         issueType: safeIssueType,
         description: safeDescription,
         photoNames: safePhotoNames,
         photos: uploadedPhotos,
         status: 'open',
+        queryCode,
         createdAt: new Date(),
       });
 
