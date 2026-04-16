@@ -735,6 +735,13 @@ const RentPrdctMain = ({ product, offer }) => {
         }),
       );
 
+      if (typeof window !== 'undefined' && productId) {
+        sessionStorage.setItem(
+          'rentpay_checkout_focus_product_id',
+          String(productId),
+        );
+      }
+
       if (!isAuthenticated) {
         sessionStorage.setItem(AUTH_REDIRECT_SESSION_KEY, '/checkout');
         openAuth('login');

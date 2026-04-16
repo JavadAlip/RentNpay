@@ -12,6 +12,7 @@ import {
   createAddress,
   updateAddress,
   deleteAddress,
+  getCheckoutPickupStores,
 } from '../controller/user/addressController.js';
 import {
   getMyWishlist,
@@ -30,6 +31,7 @@ router.post('/user-logout', userAuth, userLogout);
 
 // addresses
 router.get('/addresses', userAuth, getMyAddresses);
+router.get('/checkout-pickup-stores', userAuth, getCheckoutPickupStores);
 router.post('/addresses', userAuth, createAddress);
 router.put('/addresses/:id', userAuth, updateAddress);
 router.delete('/addresses/:id', userAuth, deleteAddress);

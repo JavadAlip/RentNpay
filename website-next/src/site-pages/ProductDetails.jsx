@@ -42,6 +42,12 @@ const ProductDetails = () => {
 
   const rentNow = () => {
     if (!product) return;
+    if (typeof window !== 'undefined' && product?._id) {
+      sessionStorage.setItem(
+        'rentpay_checkout_focus_product_id',
+        String(product._id),
+      );
+    }
     dispatch(
       addToCart({
         productId: product._id,

@@ -23,6 +23,7 @@ const Cart = () => {
   const { items } = useSelector((s) => s.cart);
   const { user, isAuthenticated } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const { pushToast } = useToast();
   const isRentalItem = (item) =>
@@ -87,8 +88,13 @@ const Cart = () => {
   };
 
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
     dispatch(syncCart());
-  }, [dispatch, user, isAuthenticated]);
+  }, [dispatch, user, isAuthenticated, isHydrated]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +141,10 @@ const Cart = () => {
       stock: Number(stock || 0),
     };
   };
+
+  if (!isHydrated) {
+    return <div className="max-w-7xl mx-auto px-4 py-8" />;
+  }
 
   if (items.length === 0) {
     return (

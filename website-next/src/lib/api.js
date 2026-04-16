@@ -65,6 +65,34 @@ export const apiGetPublicActiveOffers = () => api.get('/vendor/offers/public-act
 
 // ── USER ADDRESSES ────────────────────────────
 export const apiGetMyAddresses = () => api.get('/users/addresses');
+export const apiGetCheckoutPickupStores = (productIds = [], opts = {}) => {
+  let userLat = opts?.userLat;
+  let userLng = opts?.userLng;
+  if (
+    !Number.isFinite(Number(userLat)) ||
+    !Number.isFinite(Number(userLng))
+  ) {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('rn_delivery_location');
+        const parsed = raw ? JSON.parse(raw) : null;
+        userLat = Number(parsed?.lat);
+        userLng = Number(parsed?.lon);
+      } catch {
+        userLat = undefined;
+        userLng = undefined;
+      }
+    }
+  }
+  const params = {
+    productIds: Array.isArray(productIds) ? productIds.join(',') : '',
+  };
+  if (Number.isFinite(Number(userLat)) && Number.isFinite(Number(userLng))) {
+    params.userLat = Number(userLat);
+    params.userLng = Number(userLng);
+  }
+  return api.get('/users/checkout-pickup-stores', { params });
+};
 export const apiCreateAddress = (data) => api.post('/users/addresses', data);
 export const apiUpdateAddress = (id, data) => api.put(`/users/addresses/${id}`, data);
 export const apiDeleteAddress = (id) => api.delete(`/users/addresses/${id}`);

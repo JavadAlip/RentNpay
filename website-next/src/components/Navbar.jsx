@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { useAuthModal } from '@/contexts/AuthModalContext';
 import { logout as logoutAction } from '@/store/slices/authSlice';
-import { clearCart, syncCart } from '@/store/slices/cartSlice';
+import { clearCart, syncCart, removeFromCart } from '@/store/slices/cartSlice';
 import { api } from '@/lib/axios';
 import {
   apiGetUserNotifications,
   apiGetMyAddresses,
   apiGetStorefrontVendorProducts,
+  apiGetCheckoutPickupStores,
 } from '@/lib/api';
 import { USER_AUTH } from '@/lib/userAuthApi';
 import {
@@ -422,6 +423,7 @@ const Navbar = () => {
   const { openAuth } = useAuthModal();
 
   const { user, isAuthenticated } = useSelector((s) => s.auth);
+  const cartItems = useSelector((s) => s.cart.items);
   const cartCount = useSelector((s) =>
     s.cart.items.reduce((a, i) => a + i.quantity, 0),
   );
@@ -465,8 +467,35 @@ const Navbar = () => {
         new CustomEvent('rn_delivery_location_changed', { detail: next }),
       );
     }
+    if (isAuthenticated && cartItems.length) {
+      const productIds = Array.from(
+        new Set(cartItems.map((i) => String(i?.productId || '')).filter(Boolean)),
+      );
+      if (productIds.length && next.lat != null && next.lon != null) {
+        apiGetCheckoutPickupStores(productIds, {
+          userLat: next.lat,
+          userLng: next.lon,
+        })
+          .then((res) => {
+            const validProductIds = new Set(
+              (res.data?.stores || [])
+                .flatMap((store) => store?.products || [])
+                .map((p) => String(p?.productId || ''))
+                .filter(Boolean),
+            );
+            cartItems.forEach((item) => {
+              const id = String(item?.productId || '');
+              if (!id || validProductIds.has(id)) return;
+              dispatch(removeFromCart(id));
+            });
+          })
+          .catch(() => {
+            /* keep cart unchanged on API error */
+          });
+      }
+    }
     return next;
-  }, []);
+  }, [isAuthenticated, cartItems, dispatch]);
 
   // Keep cart UI in sync when user logs in/out without a full refresh.
   // (Cart state is stored in localStorage, scoped per user.)

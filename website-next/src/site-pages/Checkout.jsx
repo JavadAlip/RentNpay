@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
+import { MapPin, Store, Star, Navigation } from 'lucide-react';
 import { syncCart } from '../store/slices/cartSlice';
 import {
   apiGetMyAddresses,
+  apiGetCheckoutPickupStores,
   apiCreateAddress,
   apiUpdateAddress,
   apiDeleteAddress,
@@ -14,6 +16,23 @@ import { useAuthModal, AUTH_REDIRECT_SESSION_KEY } from '@/contexts/AuthModalCon
 
 function getUserId(user) {
   return user?.id || user?._id || null;
+}
+
+function toRad(v) {
+  return (Number(v) * Math.PI) / 180;
+}
+
+function distanceKm(aLat, aLon, bLat, bLon) {
+  const R = 6371;
+  const dLat = toRad(Number(bLat) - Number(aLat));
+  const dLon = toRad(Number(bLon) - Number(aLon));
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLon / 2);
+  const x = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  return R * c;
 }
 
 export default function Checkout() {
@@ -33,10 +52,17 @@ export default function Checkout() {
   );
 
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
+  const [billingSameAsDelivery, setBillingSameAsDelivery] = useState(true);
+  const [billingGstin, setBillingGstin] = useState('');
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [editingId, setEditingId] = useState(null);
+  const [pickupLoading, setPickupLoading] = useState(false);
+  const [pickupError, setPickupError] = useState('');
+  const [pickupStores, setPickupStores] = useState([]);
+  const [mapPreviewOpen, setMapPreviewOpen] = useState(false);
+  const [checkoutFocusProductId, setCheckoutFocusProductId] = useState('');
   const [form, setForm] = useState({
     label: 'Home',
     fullName: user?.fullName || '',
@@ -61,6 +87,60 @@ export default function Checkout() {
       ),
     [items],
   );
+
+  const locationCoords = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('rn_delivery_location');
+      const parsed = raw ? JSON.parse(raw) : null;
+      const lat = Number(parsed?.lat);
+      const lon = Number(parsed?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return { lat, lon };
+    } catch {
+      return null;
+    }
+  }, [selectedId, addresses.length]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = sessionStorage.getItem('rentpay_checkout_focus_product_id') || '';
+    setCheckoutFocusProductId(saved);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!checkoutFocusProductId) return;
+    const existsInCart = items.some(
+      (item) => String(item?.productId || '') === String(checkoutFocusProductId),
+    );
+    if (existsInCart) return;
+    sessionStorage.removeItem('rentpay_checkout_focus_product_id');
+    setCheckoutFocusProductId('');
+  }, [checkoutFocusProductId, items]);
+
+  const primaryPickupStore = useMemo(() => {
+    if (!pickupStores.length) return null;
+    const primaryProductId = String(
+      checkoutFocusProductId || items?.[items.length - 1]?.productId || items?.[0]?.productId || '',
+    );
+    if (!primaryProductId) return pickupStores[0] || null;
+    const matched = pickupStores.find((s) =>
+      Array.isArray(s?.products)
+        ? s.products.some((p) => String(p?.productId || '') === primaryProductId)
+        : false,
+    );
+    return matched || pickupStores[0] || null;
+  }, [pickupStores, items, checkoutFocusProductId]);
+  const pickupDistanceText = useMemo(() => {
+    if (!primaryPickupStore || !locationCoords) return '';
+    const sLat = Number(primaryPickupStore.mapLat);
+    const sLng = Number(primaryPickupStore.mapLng);
+    if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) return '';
+    const d = distanceKm(locationCoords.lat, locationCoords.lon, sLat, sLng);
+    if (!Number.isFinite(d)) return '';
+    return `${d < 10 ? d.toFixed(1) : Math.round(d)} km away from your location`;
+  }, [primaryPickupStore, locationCoords]);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -89,6 +169,28 @@ export default function Checkout() {
   useEffect(() => {
     if (!addresses.length) setSelectedId(null);
   }, [addresses]);
+
+  useEffect(() => {
+    if (!userId || !items.length) {
+      setPickupStores([]);
+      setPickupError('');
+      setPickupLoading(false);
+      return;
+    }
+    setPickupLoading(true);
+    setPickupError('');
+    setPickupStores([]);
+    const ids = items.map((x) => x.productId).filter(Boolean);
+    apiGetCheckoutPickupStores(ids)
+      .then((res) => {
+        setPickupStores(Array.isArray(res.data?.stores) ? res.data.stores : []);
+      })
+      .catch((err) => {
+        setPickupStores([]);
+        setPickupError(err.response?.data?.message || 'Could not load pickup store details.');
+      })
+      .finally(() => setPickupLoading(false));
+  }, [userId, items]);
 
   const openAddModal = () => {
     setModalMode('add');
@@ -204,6 +306,13 @@ export default function Checkout() {
       'rentpay_checkout_instructions',
       JSON.stringify(deliveryInstructions),
     );
+    localStorage.setItem(
+      'rentpay_checkout_billing',
+      JSON.stringify({
+        billingSameAsDelivery,
+        gstin: billingGstin,
+      }),
+    );
     router.push('/payment');
   };
 
@@ -219,17 +328,18 @@ export default function Checkout() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Checkout</h1>
+    <div className="bg-[#eff2f8] min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
+        <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Review your delivery details and complete your order
+        </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-              Select Delivery Address
-            </h2>
+        <div className="mt-6 space-y-4">
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Select Delivery Address</h2>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {addresses.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-500 mb-3">
@@ -251,7 +361,11 @@ export default function Checkout() {
                 return (
                   <div
                     key={addr._id}
-                    className={`rounded-2xl border p-4 cursor-pointer ${active ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-200'}`}
+                    className={`rounded-xl border p-3 cursor-pointer ${
+                      active
+                        ? 'border-orange-400 bg-orange-50/20 ring-1 ring-orange-100'
+                        : 'border-gray-200 bg-white'
+                    }`}
                     onClick={() => setSelectedId(addr._id)}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -260,9 +374,14 @@ export default function Checkout() {
                           <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${active ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`}>
                             {active ? <span className="w-2 h-2 bg-white rounded-full" /> : null}
                           </span>
-                          <p className="font-semibold text-gray-900 truncate">
-                            {addr.fullName}
-                          </p>
+                          <div className="min-w-0 flex items-center gap-2">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {addr.fullName}
+                            </p>
+                            <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                              {addr.label || 'Home'}
+                            </span>
+                          </div>
                         </div>
                         <p className="text-xs sm:text-sm text-gray-600 mt-1">
                           {addressLine}
@@ -300,75 +419,154 @@ export default function Checkout() {
               })}
             </div>
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-3">
               <button
                 type="button"
                 onClick={openAddModal}
-                className="px-4 py-2 text-sm rounded-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-800"
+                className="w-full px-4 py-2.5 text-sm rounded-xl bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
               >
                 + Add New Address
               </button>
             </div>
-          </div>
+          </section>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Pick-up Store</h2>
+            {pickupLoading ? (
+              <p className="mt-3 text-sm text-gray-500">Loading pickup details...</p>
+            ) : pickupError ? (
+              <p className="mt-3 text-sm text-red-600">{pickupError}</p>
+            ) : !primaryPickupStore ? (
+              <p className="mt-3 text-sm text-gray-500">Pickup details unavailable.</p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                <div className="rounded-xl border border-gray-200 px-3 py-2.5">
+                  <p className="text-sm font-medium text-gray-900 inline-flex items-center gap-2">
+                    <Store className="w-4 h-4 text-emerald-600" />
+                    Pick up from Partner Store
+                  </p>
+                  <p className="mt-1 text-xs flex items-center gap-1 text-amber-600">
+                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                    {primaryPickupStore.rating || 4.9} <span className="text-gray-500">(Store Rating)</span>
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-3">
+                  <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    Pickup Location
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-gray-900">
+                    {primaryPickupStore.mapAddress || primaryPickupStore.storeName}
+                  </p>
+                  {pickupDistanceText ? (
+                    <p className="text-xs text-emerald-700 mt-0.5">{pickupDistanceText}</p>
+                  ) : null}
+                  <div className="mt-2 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[11px] text-gray-500 inline-flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Exact address shared after payment</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMapPreviewOpen(true)}
+                    className="mt-2 w-full rounded-lg border border-emerald-400 text-emerald-700 text-sm font-medium py-2 hover:bg-emerald-50 inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    View on Map
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
+            <h2 className="text-lg font-semibold text-gray-900">Billing Address</h2>
+            <label className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={billingSameAsDelivery}
+                onChange={(e) => setBillingSameAsDelivery(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              My Billing address is the same as Delivery address
+            </label>
+            <div className="mt-3">
+              <label className="text-xs text-gray-500">Use GSTIN for Business Invoice</label>
+              <input
+                type="text"
+                value={billingGstin}
+                onChange={(e) => setBillingGstin(e.target.value.toUpperCase())}
+                placeholder="Optional GSTIN"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-100"
+              />
+            </div>
+          </section>
+
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
             <h3 className="font-semibold text-gray-900">Delivery Instructions</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Optional: add gate code, delivery notes, etc.
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Delivery instructions (Optional)</p>
             <textarea
               value={deliveryInstructions}
               onChange={(e) => setDeliveryInstructions(e.target.value)}
               rows={3}
               className="mt-3 w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-100"
-              placeholder="e.g., Leave at reception / ring bell once"
+              placeholder="e.g., Leave at security gate. Call before arriving"
             />
-          </div>
+          </section>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6 h-fit sticky top-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-            Order Summary
-          </h2>
-
-          <div className="mt-4 space-y-3">
-            {items.map((i) => (
-              <div key={i.productId} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate">
-                  {i.title} × {i.quantity}
-                </span>
-                <span className="font-medium text-gray-900">
-                  ₹
-                  {(
-                    (String(i.productType || 'Rental') === 'Rental'
-                      ? Number(i.pricePerDay) *
-                        Number(i.rentalMonths || 1) *
-                        Number(i.quantity)
-                      : Number(i.pricePerDay) * Number(i.quantity))
-                  ).toLocaleString('en-IN')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 border-t pt-4 flex justify-between items-center">
-            <span className="text-gray-600 font-medium">Total Payable</span>
-            <span className="text-xl font-bold text-orange-500">
-              ₹{total.toLocaleString('en-IN')}
-            </span>
-          </div>
 
           <button
             type="button"
             onClick={proceedToPayment}
-            className="mt-6 w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
           >
-            Proceed to Payment
+            Proceed for Payment
           </button>
         </div>
       </div>
+
+      {mapPreviewOpen && primaryPickupStore ? (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setMapPreviewOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <p className="font-semibold text-gray-900">Store Location Preview</p>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-700 text-xl"
+                onClick={() => setMapPreviewOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="h-[420px] w-full">
+              <iframe
+                title="Store map preview"
+                src={
+                  Number.isFinite(Number(primaryPickupStore?.mapLat)) &&
+                  Number.isFinite(Number(primaryPickupStore?.mapLng))
+                    ? `https://www.google.com/maps?q=${encodeURIComponent(
+                        `${primaryPickupStore.mapLat},${primaryPickupStore.mapLng}`,
+                      )}&z=15&output=embed`
+                    : `https://www.google.com/maps?q=${encodeURIComponent(
+                        primaryPickupStore?.mapAddress || primaryPickupStore?.storeName || '',
+                      )}&z=15&output=embed`
+                }
+                className="h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {modalOpen && (
         <div
