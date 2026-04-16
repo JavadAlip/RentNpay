@@ -32,10 +32,10 @@ function writeSearchRecent(term) {
   const t = String(term || '').trim();
   if (!t) return;
   const prev = readSearchRecent();
-  const next = [t, ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(
-    0,
-    SEARCH_RECENT_MAX,
-  );
+  const next = [
+    t,
+    ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase()),
+  ].slice(0, SEARCH_RECENT_MAX);
   localStorage.setItem(SEARCH_RECENT_KEY, JSON.stringify(next));
 }
 
@@ -56,7 +56,7 @@ const NavbarSecondary = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const wrapRef = useRef(null);
-  const [deliveryLabel, setDeliveryLabel] = useState('Sadashiv Peth, Pune');
+  const [deliveryLabel, setDeliveryLabel] = useState('Choose you location');
 
   const formatLocationLabel = (raw) => {
     const s = String(raw || '').trim();
@@ -146,7 +146,9 @@ const NavbarSecondary = () => {
         `search=${encodeURIComponent(q)}&limit=${SEARCH_SUGGEST_LIMIT}`,
       )
         .then((res) => {
-          setSuggestions(Array.isArray(res.data?.products) ? res.data.products : []);
+          setSuggestions(
+            Array.isArray(res.data?.products) ? res.data.products : [],
+          );
         })
         .catch(() => setSuggestions([]))
         .finally(() => setLoading(false));
@@ -197,7 +199,8 @@ const NavbarSecondary = () => {
               }}
               onFocus={() => {
                 setOpen(true);
-                if (search.trim().length === 0) setRecentSearches(readSearchRecent());
+                if (search.trim().length === 0)
+                  setRecentSearches(readSearchRecent());
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setOpen(false);
@@ -244,7 +247,9 @@ const NavbarSecondary = () => {
                           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-500 shrink-0">
                             <History size={16} />
                           </span>
-                          <span className="text-sm text-gray-900 truncate">{term}</span>
+                          <span className="text-sm text-gray-900 truncate">
+                            {term}
+                          </span>
                         </button>
                       </li>
                     ))}
@@ -293,7 +298,10 @@ const NavbarSecondary = () => {
                           >
                             <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
                               <img
-                                src={p.image || 'https://placehold.co/88x88/e5e7eb/6b7280?text=IMG'}
+                                src={
+                                  p.image ||
+                                  'https://placehold.co/88x88/e5e7eb/6b7280?text=IMG'
+                                }
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
