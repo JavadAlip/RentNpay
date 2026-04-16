@@ -94,6 +94,16 @@ export default function AuthModal() {
     if (isAuthenticated && open) closeAuth();
   }, [isAuthenticated, open, closeAuth]);
 
+  // Lock page scroll while auth modal is open.
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   const reset = () => {
     setError('');
     setLoading(false);
@@ -149,8 +159,7 @@ export default function AuthModal() {
       }
 
       closeAuth();
-      const redirect =
-        sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
+      const redirect = sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
       sessionStorage.removeItem(AUTH_REDIRECT_SESSION_KEY);
       router.push(redirect);
     } catch (err) {
@@ -177,8 +186,7 @@ export default function AuthModal() {
       dispatch(setCredentials({ user, token: data.token }));
       sessionStorage.setItem('rn_login_welcome', '1');
       closeAuth();
-      const redirect =
-        sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
+      const redirect = sessionStorage.getItem(AUTH_REDIRECT_SESSION_KEY) || '/';
       sessionStorage.removeItem(AUTH_REDIRECT_SESSION_KEY);
       router.push(redirect);
     } catch (err) {
@@ -196,9 +204,6 @@ export default function AuthModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-modal-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) closeAuth();
-      }}
     >
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[min(90vh,720px)]">
         {/* Left image panel */}
@@ -215,7 +220,7 @@ export default function AuthModal() {
         </div>
 
         {/* Right form panel */}
-        <div className="w-full md:w-1/2 flex flex-col min-h-0 p-6 sm:p-8 relative overflow-y-auto">
+        <div className="w-full md:w-1/2 flex flex-col min-h-0 p-6 sm:p-8 relative">
           <button
             type="button"
             onClick={closeAuth}
