@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../store/slices/cartSlice';
 import { apiCreateOrder } from '@/lib/api';
+import { Building2, CheckCircle2, CreditCard, Landmark, Smartphone } from 'lucide-react';
 
 function safeParse(json) {
   try {
@@ -37,9 +38,10 @@ export default function Payment() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [instructions, setInstructions] = useState('');
 
-  const [method, setMethod] = useState('card'); // card | upi
+  const [method, setMethod] = useState('card'); // card | upi | netbanking
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [saveCardForRentals, setSaveCardForRentals] = useState(false);
 
   // Dummy payment fields
   const [cardNumber, setCardNumber] = useState('');
@@ -129,168 +131,205 @@ export default function Payment() {
     : '';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Payment</h1>
+    <div className="min-h-screen bg-[#eff2f8]">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
+        <h1 className="text-3xl font-bold text-gray-900">Payment</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Choose your preferred payment method
+        </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-            <h2 className="font-semibold text-gray-900">Delivery Details</h2>
-            {selectedAddress ? (
-              <>
-                <p className="text-sm text-gray-700 mt-2 font-medium">
-                  {selectedAddress.fullName}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">{addressLine}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Phone: {selectedAddress.phone}
-                </p>
-                {instructions ? (
-                  <p className="text-xs text-gray-500 mt-3">
-                    Instructions: {instructions}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="text-sm text-gray-500 mt-2">
-                No address selected.
-              </p>
-            )}
-          </div>
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-gray-700">Select Payment Mode</h2>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-            <h2 className="font-semibold text-gray-900">Select Payment Mode</h2>
-
-            <div className="mt-4 space-y-3">
-              <label
-                className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer ${
-                  method === 'upi'
-                    ? 'border-orange-300 bg-orange-50'
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
+          <div className="mt-4 space-y-3">
+            <label
+              className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
+                method === 'upi'
+                  ? 'border-orange-300 bg-orange-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start gap-3 px-4 py-4">
                 <input
                   type="radio"
                   name="paymode"
                   checked={method === 'upi'}
                   onChange={() => setMethod('upi')}
+                  className="mt-1"
                 />
-                <div>
-                  <div className="font-medium text-gray-900">UPI</div>
-                  <div className="text-xs text-gray-500">
-                    Dummy UPI payment (placeholder)
+                <Smartphone className="mt-0.5 h-4 w-4 text-gray-500" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">UPI</span>
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      Fastest
+                    </span>
                   </div>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Google Pay, PhonePe, Paytm & more
+                  </p>
                 </div>
-              </label>
+              </div>
+            </label>
 
-              <label
-                className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer ${
-                  method === 'card'
-                    ? 'border-orange-300 bg-orange-50'
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
+            <div
+              className={`overflow-hidden rounded-2xl border transition ${
+                method === 'card'
+                  ? 'border-orange-300 bg-orange-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <label className="flex cursor-pointer items-start gap-3 px-4 py-4">
                 <input
                   type="radio"
                   name="paymode"
                   checked={method === 'card'}
                   onChange={() => setMethod('card')}
+                  className="mt-1"
                 />
-                <div>
-                  <div className="font-medium text-gray-900">
-                    Credit / Debit Card
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Dummy card payment (placeholder)
-                  </div>
+                <CreditCard className="mt-0.5 h-4 w-4 text-gray-500" />
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900">Credit / Debit Card</div>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Visa, Mastercard, RuPay
+                  </p>
                 </div>
               </label>
+
+              {method === 'card' ? (
+                <div className="border-t border-orange-200 bg-white px-4 py-4 sm:px-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="rounded border border-gray-200 bg-[#f7f9fc] px-2 py-1 text-[10px] text-gray-600">
+                      VISA
+                    </span>
+                    <span className="rounded border border-gray-200 bg-[#f7f9fc] px-2 py-1 text-[10px] text-gray-600">
+                      Mastercard
+                    </span>
+                    <span className="rounded border border-gray-200 bg-[#f7f9fc] px-2 py-1 text-[10px] text-gray-600">
+                      RuPay
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-[11px] font-medium text-gray-600 sm:col-span-2">
+                      Card Number
+                      <input
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(e.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+                        placeholder="1234 5678 9012 3456"
+                      />
+                    </label>
+
+                    <label className="text-[11px] font-medium text-gray-600">
+                      Expiry (MM/YY)
+                      <input
+                        value={expiry}
+                        onChange={(e) => setExpiry(e.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+                        placeholder="12/25"
+                      />
+                    </label>
+
+                    <label className="text-[11px] font-medium text-gray-600">
+                      CVV
+                      <input
+                        value={cvv}
+                        onChange={(e) => setCvv(e.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+                        placeholder="123"
+                      />
+                    </label>
+
+                    <label className="text-[11px] font-medium text-gray-600 sm:col-span-2">
+                      Name on Card
+                      <input
+                        value={nameOnCard}
+                        onChange={(e) => setNameOnCard(e.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm uppercase outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+                        placeholder="RAHUL SHARMA"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="mt-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-[#f5f9ff] px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={saveCardForRentals}
+                      onChange={(e) => setSaveCardForRentals(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="text-xs font-medium text-gray-800">
+                        Save this card securely for monthly rent payments
+                      </p>
+                      <p className="mt-1 text-[10px] text-gray-500">
+                        We can use this card for scheduled debits in future rental renewals.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              ) : null}
             </div>
 
-            {method === 'card' && (
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="text-xs font-medium text-gray-700 sm:col-span-2">
-                  Card Number
-                  <input
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
-                    placeholder="1234 5678 9012 3456"
-                  />
-                </label>
-
-                <label className="text-xs font-medium text-gray-700">
-                  Expiry (MM/YY)
-                  <input
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
-                    placeholder="12/25"
-                  />
-                </label>
-
-                <label className="text-xs font-medium text-gray-700">
-                  CVV
-                  <input
-                    value={cvv}
-                    onChange={(e) => setCvv(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
-                    placeholder="123"
-                  />
-                </label>
-
-                <label className="text-xs font-medium text-gray-700 sm:col-span-2">
-                  Name on Card
-                  <input
-                    value={nameOnCard}
-                    onChange={(e) => setNameOnCard(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
-                    placeholder="Rahul Sharma"
-                  />
-                </label>
+            <label
+              className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
+                method === 'netbanking'
+                  ? 'border-orange-300 bg-orange-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start gap-3 px-4 py-4">
+                <input
+                  type="radio"
+                  name="paymode"
+                  checked={method === 'netbanking'}
+                  onChange={() => setMethod('netbanking')}
+                  className="mt-1"
+                />
+                <Landmark className="mt-0.5 h-4 w-4 text-gray-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-gray-900">Net Banking</div>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        All major banks supported
+                      </p>
+                    </div>
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
               </div>
-            )}
-
-            {error ? <p className="text-red-600 text-sm mt-3">{error}</p> : null}
+            </label>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePay}
-            disabled={loading}
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Processing payment…' : 'Pay Now'}
-          </button>
-        </div>
+          {selectedAddress ? (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
+              Delivering to <span className="font-medium text-gray-700">{selectedAddress.fullName}</span>
+              {addressLine ? `, ${addressLine}` : ''}.
+              {instructions ? ` Instructions: ${instructions}` : ''}
+            </div>
+          ) : null}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6 h-fit">
-          <h2 className="font-semibold text-gray-900">Order Summary</h2>
-          <div className="mt-4 space-y-3">
-            {items.map((i) => (
-              <div key={i.productId} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate">
-                  {i.title} × {i.quantity}
-                </span>
-                <span className="font-medium text-gray-900">
-                  ₹{(
-                    (String(i.productType || 'Rental') === 'Rental'
-                      ? Number(i.pricePerDay) *
-                        Number(i.rentalMonths || 1) *
-                        Number(i.quantity)
-                      : Number(i.pricePerDay) * Number(i.quantity))
-                  ).toLocaleString('en-IN')}
-                </span>
-              </div>
-            ))}
+          <div className="mt-6 flex items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm border border-gray-200">
+            <div>
+              <p className="text-xs text-gray-500">Total payable</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">
+                ₹{total.toLocaleString('en-IN')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {loading ? 'Processing payment…' : 'Pay Now'}
+            </button>
           </div>
 
-          <div className="mt-6 border-t pt-4 flex justify-between items-center">
-            <span className="text-gray-600 font-medium">Total</span>
-            <span className="text-xl font-bold text-orange-500">
-              ₹{total.toLocaleString('en-IN')}
-            </span>
-          </div>
+          {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
         </div>
       </div>
     </div>
