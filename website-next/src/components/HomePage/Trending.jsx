@@ -228,6 +228,11 @@ const Trending = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProducts.map((item) => {
+              const isSellProduct =
+                String(item.type || '').toLowerCase() === 'sell';
+              const detailsHref = isSellProduct
+                ? `/buy-product-details/${item._id}`
+                : `/rent-product-details/${item._id}`;
               const offer = offersByProduct[String(item._id)];
               const base = getRentalListingAmount(item);
               const priceSuffix =
@@ -341,7 +346,7 @@ const Trending = () => {
 
                     {/* BUTTON */}
                     <Link
-                      href={`/rent-product-details/${item._id}`}
+                      href={detailsHref}
                       className="block w-full text-center bg-[#F97316] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600"
                     >
                       Details
