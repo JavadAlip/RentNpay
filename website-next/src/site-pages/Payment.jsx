@@ -25,17 +25,12 @@ export default function Payment() {
   const isRentalItem = (item) =>
     String(item?.productType || 'Rental') === 'Rental';
 
-  // Base rental cost: for day-wise rentals, `pricePerDay` stores the full tenure price.
+  // Base rental cost: saved tier price is already the full selected tenure
+  // (for both day-wise and month-wise rentals).
   const rentalBaseCost = useMemo(() => {
     return items.reduce((sum, i) => {
       if (!isRentalItem(i)) return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
-
-      if (String(i.tenureUnit || 'month') === 'day') {
-        return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
-      }
-
-      const months = Number(i.rentalMonths || 1);
-      return sum + Number(i.pricePerDay || 0) * months * Number(i.quantity || 0);
+      return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
     }, 0);
   }, [items]);
 

@@ -79,9 +79,7 @@ export default function Checkout() {
         (sum, i) =>
           sum +
           (String(i.productType || 'Rental') === 'Rental'
-            ? Number(i.pricePerDay) *
-              Number(i.rentalMonths || 1) *
-              Number(i.quantity)
+            ? Number(i.pricePerDay) * Number(i.quantity)
             : Number(i.pricePerDay) * Number(i.quantity)),
         0,
       ),

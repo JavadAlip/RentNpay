@@ -533,10 +533,9 @@ const RentPrdctMain = ({ product, offer }) => {
 
   const totalRentalForTenure = useMemo(() => {
     if (!plan) return 0;
-    if (plan.periodUnit === 'day' && plan.rawDays > 0) {
-      return effectivePlanPrice;
-    }
-    return effectivePlanPrice * (plan.rentalMonths || 1);
+    // Vendor tier price already represents the full selected tenure
+    // (day-wise and month-wise), so do not multiply again by days/months.
+    return effectivePlanPrice;
   }, [plan, effectivePlanPrice]);
 
   const tenureSummaryText = useMemo(() => {
