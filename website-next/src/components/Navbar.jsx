@@ -1065,7 +1065,7 @@ const Navbar = () => {
                           className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           <User size={15} className="text-orange-500" />
-                          My Profile
+                          My Profile & KYC
                         </Link>
                         <Link
                           href="/my-address"
@@ -1207,7 +1207,7 @@ const Navbar = () => {
                   className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
                 >
                   <User size={15} />
-                  My Profile
+                  My Profile & KYC
                 </Link>
                 <Link
                   href="/my-address"
