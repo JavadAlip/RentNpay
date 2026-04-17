@@ -19,6 +19,17 @@ import {
   BadgePercent,
 } from 'lucide-react';
 
+function getDeliveryTimelineLabel(product) {
+  const lv = product?.logisticsVerification || {};
+  const n = Number(lv.deliveryTimelineValue);
+  const unit = String(lv.deliveryTimelineUnit || 'Days').toLowerCase();
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (unit === 'hours') {
+    return `Delivery in ${n} hour${n === 1 ? '' : 's'}`;
+  }
+  return `Delivery in ${n} day${n === 1 ? '' : 's'}`;
+}
+
 const Cart = () => {
   const { items } = useSelector((s) => s.cart);
   const { user, isAuthenticated } = useSelector((s) => s.auth);
@@ -38,19 +49,16 @@ const Cart = () => {
     [items],
   );
   const [stockByProductId, setStockByProductId] = useState({});
+  const [deliveryByProductId, setDeliveryByProductId] = useState({});
 
   const total = useMemo(() => {
     return items.reduce((sum, i) => {
       const qty = Number(i.quantity || 0);
       const unitPrice = Number(i.pricePerDay || 0);
       if (isRentalItem(i)) {
-        // For day-wise plans, `pricePerDay` stores the full tenure price.
-        // For month-wise plans, `pricePerDay` stores monthly rent and `rentalMonths` stores months count.
-        if (String(i.tenureUnit || 'month') === 'day') {
-          return sum + unitPrice * qty;
-        }
-        const rentalMonths = Number(i.rentalMonths || 1);
-        return sum + unitPrice * rentalMonths * qty;
+        // Saved rental tier price is already the full selected tenure
+        // (day-wise and month-wise), so quantity alone should scale it.
+        return sum + unitPrice * qty;
       }
       return sum + unitPrice * qty;
     }, 0);
@@ -81,11 +89,10 @@ const Cart = () => {
   };
 
   const getRentalPriceLabel = (item) => {
-    if (String(item?.tenureUnit || 'month') === 'day') {
-      const n = Number(item?.rentalMonths || 1);
-      return `Rental for ${n} Day${n === 1 ? '' : 's'}`;
-    }
-    return 'Monthly Rent';
+    const n = Number(item?.rentalMonths || 1);
+    return String(item?.tenureUnit || 'month') === 'day'
+      ? `Rental for ${n} Day${n === 1 ? '' : 's'}`
+      : `Rental for ${n} Month${n === 1 ? '' : 's'}`;
   };
 
   const deliveryFee = useMemo(() => {
@@ -127,6 +134,7 @@ const Cart = () => {
     );
     if (!ids.length) {
       setStockByProductId({});
+      setDeliveryByProductId({});
       return;
     }
 
@@ -139,16 +147,20 @@ const Cart = () => {
               res.data?.product?.stock != null
                 ? Number(res.data.product.stock)
                 : 0,
+            deliveryLabel: getDeliveryTimelineLabel(res.data?.product),
           }))
-          .catch(() => ({ id, stock: 0 })),
+          .catch(() => ({ id, stock: 0, deliveryLabel: '' })),
       ),
     ).then((pairs) => {
       if (cancelled) return;
-      const next = {};
+      const nextStock = {};
+      const nextDelivery = {};
       pairs.forEach((p) => {
-        next[p.id] = p.stock;
+        nextStock[p.id] = p.stock;
+        nextDelivery[p.id] = p.deliveryLabel;
       });
-      setStockByProductId(next);
+      setStockByProductId(nextStock);
+      setDeliveryByProductId(nextDelivery);
     });
 
     return () => {
@@ -269,7 +281,7 @@ const Cart = () => {
                     </div>
 
                     <p className="text-xs text-gray-500 mt-2">
-                      Delivery in 2-3 days
+                      {deliveryByProductId[item.productId] || 'Delivery in 2-3 days'}
                     </p>
 
                     <div className="mt-3 flex items-center justify-between gap-2">
