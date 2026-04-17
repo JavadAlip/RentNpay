@@ -40,6 +40,7 @@ const Products = () => {
 
   const search = searchParams.get('search') || '';
   const categoryUrl = searchParams.get('category') || '';
+  const typeUrl = searchParams.get('type') || '';
 
   useEffect(() => {
     setLoading(true);
@@ -124,8 +125,9 @@ const Products = () => {
     setFilters((prev) => ({
       ...prev,
       category: categoryUrl || prev.category,
+      type: typeUrl || prev.type,
     }));
-  }, [categoryUrl]);
+  }, [categoryUrl, typeUrl]);
 
   const categoryOptions = useMemo(() => {
     return Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean)));
@@ -277,7 +279,7 @@ const Products = () => {
               category: categoryUrl || '',
               subCategory: '',
               brand: '',
-              type: '',
+              type: typeUrl || '',
               availability: '',
             })
           }

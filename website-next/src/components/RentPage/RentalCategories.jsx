@@ -44,7 +44,7 @@ const RentalCategories = () => {
             </p>
           </div>
           <button
-            onClick={() => router.push('/products')}
+            onClick={() => router.push('/products?type=Rental')}
             className="bg-black text-white px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm w-fit whitespace-nowrap"
           >
             View All Categories
@@ -74,7 +74,11 @@ const RentalCategories = () => {
               categories.map((item, index) => (
                 <div
                   key={item._id || index}
-                  onClick={() => router.push(`/products?category=${item.name}`)}
+                  onClick={() =>
+                    router.push(
+                      `/products?type=Rental&category=${encodeURIComponent(item.name || '')}`,
+                    )
+                  }
                   className="flex-none w-[180px] sm:w-[210px] md:w-[220px] lg:w-[240px] text-center cursor-pointer group"
                 >
                   <div className="bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
