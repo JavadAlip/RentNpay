@@ -3,13 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
-import {
-  apiGetAllAdminProducts,
-  apiGetAllOrders,
-  apiGetAllUsers,
-  apiGetAllVendors,
-} from '@/service/api';
-import { buildActivityFeed } from '@/Admin/utils/activityFeed';
+import { apiGetProductApprovalQueue } from '@/service/api';
 
 const AdminTopbar = ({ title = 'Admin Dashboard' }) => {
   const adminUser = useSelector((state) => state.admin.user);
@@ -32,36 +26,32 @@ const AdminTopbar = ({ title = 'Admin Dashboard' }) => {
   const avatarLetter = (adminEmail?.trim()?.[0] || 'A').toUpperCase();
 
   useEffect(() => {
-    let mounted = true;
     const token =
       typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
     if (!token) return;
-
-    Promise.all([
-      apiGetAllUsers(token)
-        .then((r) => r.data.users || [])
-        .catch(() => []),
-      apiGetAllVendors(token)
-        .then((r) => r.data.vendors || [])
-        .catch(() => []),
-      apiGetAllAdminProducts(token, 'limit=100')
-        .then((r) => r.data.products || [])
-        .catch(() => []),
-      apiGetAllOrders(token)
-        .then((r) => r.data || [])
-        .catch(() => []),
-    ]).then(([users, vendors, products, orders]) => {
-      if (!mounted) return;
-      const feed = buildActivityFeed({ users, vendors, products, orders });
-      const lastSeen = Number(
-        sessionStorage.getItem('admin_last_seen_notif_ts') || 0,
-      );
-      const unread = feed.filter(
-        (x) => new Date(x.createdAt || 0).getTime() > lastSeen,
-      ).length;
-      setNotifCount(unread);
-    });
-
+    let mounted = true;
+    const load = async () => {
+      try {
+        const { data } = await apiGetProductApprovalQueue(token, {
+          status: 'pending',
+          limit: 30,
+        });
+        if (!mounted) return;
+        const list = Array.isArray(data?.queue) ? data.queue : [];
+        const items = list.slice(0, 10);
+        const lastSeen = Number(
+          sessionStorage.getItem('admin_last_seen_notif_ts') || 0,
+        );
+        const unread = items.filter(
+          (x) => new Date(x.createdAt || 0).getTime() > lastSeen,
+        ).length;
+        setNotifCount(unread);
+      } catch (error) {
+        if (!mounted) return;
+        setNotifCount(0);
+      }
+    };
+    load();
     return () => {
       mounted = false;
     };

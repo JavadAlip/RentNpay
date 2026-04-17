@@ -43,6 +43,10 @@ const AdminSidebar = () => {
     to: '/system/tickets',
     label: 'Tickets',
   };
+  const systemApprovalChild = {
+    to: '/system/approval',
+    label: 'Approval',
+  };
 
   useEffect(() => {
     const token =
@@ -244,6 +248,18 @@ const AdminSidebar = () => {
                   }`}
                 >
                   {systemTicketsChild.label}
+                </Link>
+                <Link
+                  href={systemApprovalChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === systemApprovalChild.to ||
+                    pathname?.startsWith('/system/approval')
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {systemApprovalChild.label}
                 </Link>
               </div>
             ) : null}

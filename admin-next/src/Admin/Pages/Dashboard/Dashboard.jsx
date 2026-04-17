@@ -126,17 +126,20 @@
 
 // export default Dashboard;
 
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import {
   apiGetAllAdminProducts,
   apiGetAllOrders,
+  apiGetProductApprovalQueue,
   apiGetAllUsers,
   apiGetAllVendors,
 } from '@/service/api';
-import { buildActivityFeed, formatRelativeTime } from '@/Admin/utils/activityFeed';
+import {
+  buildActivityFeed,
+  formatRelativeTime,
+} from '@/Admin/utils/activityFeed';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -151,6 +154,7 @@ const Dashboard = () => {
     delayedOrders: 0,
   });
   const [feed, setFeed] = useState([]);
+  const [showAllFeed, setShowAllFeed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -163,20 +167,35 @@ const Dashboard = () => {
     }
 
     Promise.all([
-      apiGetAllUsers(token).then((r) => r.data.users || []),
-      apiGetAllVendors(token).then((r) => r.data.vendors || []),
-      apiGetAllAdminProducts(token, 'limit=300').then((r) => r.data.products || []),
-      apiGetAllOrders(token).then((r) => r.data || []),
+      apiGetAllUsers(token)
+        .then((r) => r.data.users || [])
+        .catch(() => []),
+      apiGetAllVendors(token)
+        .then((r) => r.data.vendors || [])
+        .catch(() => []),
+      apiGetAllAdminProducts(token, 'limit=300')
+        .then((r) => r.data.products || [])
+        .catch(() => []),
+      apiGetAllOrders(token)
+        .then((r) => r.data || [])
+        .catch(() => []),
+      apiGetProductApprovalQueue(token, { status: 'pending' })
+        .then((r) => r.data.queue || [])
+        .catch(() => []),
     ])
-      .then(([users, vendors, products, orders]) => {
+      .then(([users, vendors, products, orders, approvalQueue]) => {
         if (!mounted) return;
 
         const listingsRent = products.filter((p) => p.type === 'Rental').length;
         const listingsBuy = products.filter((p) => p.type === 'Sell').length;
         const listingsService = products.filter(
           (p) =>
-            String(p.category || '').toLowerCase().includes('service') ||
-            String(p.subCategory || '').toLowerCase().includes('service'),
+            String(p.category || '')
+              .toLowerCase()
+              .includes('service') ||
+            String(p.subCategory || '')
+              .toLowerCase()
+              .includes('service'),
         ).length;
 
         const grossOrderValue = orders.reduce((sum, o) => {
@@ -201,7 +220,44 @@ const Dashboard = () => {
           return ageMs > 24 * 60 * 60 * 1000;
         }).length;
 
-        const latestFeed = buildActivityFeed({ users, vendors, products, orders });
+        const baseFeed = buildActivityFeed({
+          users,
+          vendors,
+          products,
+          orders,
+        });
+        const approvalEvents = [];
+        (products || []).forEach((p) => {
+          const isVendorProduct = Boolean(p?.vendorId);
+          if (!isVendorProduct) return;
+          const vendorLabel =
+            p?.vendorId?.fullName || p?.vendorName || 'Vendor';
+
+          if (p?.createdAt) {
+            approvalEvents.push({
+              id: `approval_created_${p._id}`,
+              type: 'product_approval_created',
+              createdAt: p.createdAt,
+              title: 'Vendor created a product',
+              subtitle: `${vendorLabel} created product "${p.productName || 'Product'}". Check for approval.`,
+            });
+          }
+          if (p?.isAdminApproved && p?.adminApprovedAt) {
+            approvalEvents.push({
+              id: `approval_live_${p._id}`,
+              type: 'product_approval_live',
+              createdAt: p.adminApprovedAt,
+              title: 'Product approved and live',
+              subtitle: `"${p.productName || 'Product'}" is approved and now live.`,
+            });
+          }
+        });
+
+        const latestFeed = [...baseFeed, ...approvalEvents]
+          .sort(
+            (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+          )
+          .slice(0, 10);
         setFeed(latestFeed);
         sessionStorage.setItem('admin_last_seen_notif_ts', String(Date.now()));
 
@@ -231,6 +287,10 @@ const Dashboard = () => {
   const totalListings = useMemo(
     () => stats.listingsRent + stats.listingsBuy + stats.listingsService,
     [stats.listingsRent, stats.listingsBuy, stats.listingsService],
+  );
+  const visibleFeed = useMemo(
+    () => (showAllFeed ? feed : feed.slice(0, 3)),
+    [feed, showAllFeed],
   );
 
   return (
@@ -344,18 +404,24 @@ const Dashboard = () => {
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Live Feed</h2>
-                  <p className="text-xs text-gray-500">Recent platform events</p>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Live Feed
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Recent platform events
+                  </p>
                 </div>
                 <span className="w-2 h-2 rounded-full bg-green-500" />
               </div>
-              <ul className="space-y-2.5">
-                {feed.map((item) => (
+              <ul className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:bg-transparent">
+                {visibleFeed.map((item) => (
                   <li
                     key={item.id}
                     className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5"
                   >
-                    <p className="text-sm text-gray-800 font-medium">{item.title}</p>
+                    <p className="text-sm text-gray-800 font-medium">
+                      {item.title}
+                    </p>
                     <p className="text-xs text-gray-600">{item.subtitle}</p>
                     <p className="text-[11px] text-gray-400 mt-1">
                       {formatRelativeTime(item.createdAt)}
@@ -363,8 +429,12 @@ const Dashboard = () => {
                   </li>
                 ))}
               </ul>
-              <button className="mt-4 w-full text-sm rounded-lg border border-orange-300 text-orange-600 py-2 hover:bg-orange-50">
-                View All Activity
+              <button
+                type="button"
+                onClick={() => setShowAllFeed((v) => !v)}
+                className="mt-4 w-full text-sm rounded-lg border border-orange-300 text-orange-600 py-2 hover:bg-orange-50"
+              >
+                {showAllFeed ? 'Show Less Activity' : 'View All Activity'}
               </button>
             </div>
           </div>

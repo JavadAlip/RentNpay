@@ -8,6 +8,8 @@ import {
   getAllUsers,
   getUserDetails,
   getAllProducts,
+  getProductApprovalQueue,
+  approveProductAndGoLive,
 } from '../controller/admin/adminController.js';
 import {
   getVendorKycQueue,
@@ -155,6 +157,12 @@ router.get('/get-vendors/:id', adminAuth, getVendorDetails);
 router.get('/get-users', adminAuth, getAllUsers);
 router.get('/get-users/:id', adminAuth, getUserDetails);
 router.get('/products', getAllProducts);
+router.get('/product-approvals', adminAuth, getProductApprovalQueue);
+router.patch(
+  '/product-approvals/:productId/approve',
+  adminAuth,
+  approveProductAndGoLive,
+);
 router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
 
 // Tickets (read-only admin view)

@@ -1048,7 +1048,7 @@ export default function VendorManualProductModal({
         price: saleLabel,
         stock: toNum(derivedStock, 0),
         status: 'Active',
-        submissionStatus: 'published',
+        submissionStatus: 'pending_approval',
         createdVia: 'manual',
         allowVendorEditRentalPrices: true,
       };
@@ -1134,7 +1134,7 @@ export default function VendorManualProductModal({
       price: derivedPrice,
       stock: toNum(derivedStock, 0),
       status: 'Active',
-      submissionStatus: 'published',
+      submissionStatus: 'pending_approval',
       createdVia: 'manual',
       allowVendorEditRentalPrices: true,
     };
@@ -2083,7 +2083,7 @@ export default function VendorManualProductModal({
               type="submit"
               className="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600"
             >
-              Publish to store
+              Submit for approval
             </button>
           </div>
         </form>

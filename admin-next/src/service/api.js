@@ -449,6 +449,25 @@ export const apiGetAllAdminProducts = (token, query = '') =>
     },
   });
 
+export const apiGetProductApprovalQueue = (token, params = {}) =>
+  API.get('/admin/product-approvals', {
+    params,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiApproveProductAndGoLive = (productId, token) =>
+  API.patch(
+    `/admin/product-approvals/${productId}/approve`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
 // ── ADMIN ORDER APIs ─────────────────────────
 export const apiGetAllOrders = (token) =>
   API.get('/orders', {

@@ -209,7 +209,7 @@ const Products = () => {
     payload.append('price', next.price || '');
     payload.append('stock', String(stockNum));
     payload.append('status', status);
-    payload.append('submissionStatus', next.submissionStatus || 'published');
+    payload.append('submissionStatus', next.submissionStatus || 'draft');
     return payload;
   };
 
@@ -250,7 +250,7 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    payload.append('submissionStatus', form.submissionStatus || 'published');
+    payload.append('submissionStatus', form.submissionStatus || 'draft');
     if (form.createdVia) {
       payload.append('createdVia', form.createdVia);
     }
@@ -270,7 +270,7 @@ const Products = () => {
       toast.success(
         sub === 'draft'
           ? 'Draft saved'
-          : 'Product published — visible on your storefront',
+          : 'Product submitted for admin approval',
       );
       setIsAddModalOpen(false);
       return true;
@@ -323,7 +323,7 @@ const Products = () => {
     payload.append('price', form.price);
     payload.append('stock', String(form.stock));
     payload.append('status', status);
-    payload.append('submissionStatus', form.submissionStatus || 'published');
+    payload.append('submissionStatus', form.submissionStatus || 'draft');
     if (form.createdVia) {
       payload.append('createdVia', form.createdVia);
     }
@@ -366,7 +366,12 @@ const Products = () => {
   };
 
   const handleToggleActive = async (product) => {
-    const currentlyActive = product.submissionStatus !== 'draft';
+    if (!product.isAdminApproved) {
+      toast.info('This listing is pending admin approval.');
+      return;
+    }
+    const currentlyActive =
+      product.submissionStatus === 'published' && product.isAdminApproved;
     const nextSubmission = currentlyActive ? 'draft' : 'published';
     const payload = buildProductFormData(product, {
       submissionStatus: nextSubmission,
@@ -518,7 +523,9 @@ const Products = () => {
                             ? 'bg-yellow-100 text-yellow-600'
                             : 'bg-green-100 text-green-600';
                       const isActiveOnStorefront =
-                        p.submissionStatus !== 'draft';
+                        p.submissionStatus === 'published' &&
+                        p.isAdminApproved !== false;
+                      const isApprovalPending = p.isAdminApproved === false;
                       const createTypeLabel =
                         p.createdVia === 'template' ? 'automatic' : 'manual';
 
@@ -591,14 +598,18 @@ const Products = () => {
                               type="button"
                               role="switch"
                               aria-checked={isActiveOnStorefront}
+                              aria-disabled={isApprovalPending}
                               onClick={() => handleToggleActive(p)}
                               className={`relative inline-flex h-6 w-11 rounded-full transition ${
                                 isActiveOnStorefront
                                   ? 'bg-emerald-500'
                                   : 'bg-gray-300'
                               }`}
+                              disabled={isApprovalPending}
                               title={
-                                isActiveOnStorefront
+                                isApprovalPending
+                                  ? 'Pending admin approval'
+                                  : isActiveOnStorefront
                                   ? 'Visible on storefront'
                                   : 'Hidden from storefront'
                               }
@@ -611,6 +622,11 @@ const Products = () => {
                                 }`}
                               />
                             </button>
+                            {isApprovalPending ? (
+                              <p className="mt-1 text-[11px] text-amber-600">
+                                Pending approval
+                              </p>
+                            ) : null}
                           </td>
 
                           {/* Actions */}

@@ -104,7 +104,7 @@ const normalizeProductPayload = (body) => {
   const subs = ['draft', 'pending_approval', 'published'];
   data.submissionStatus = subs.includes(body.submissionStatus)
     ? body.submissionStatus
-    : 'published';
+    : 'draft';
   return data;
 };
 
@@ -162,6 +162,13 @@ export const createProduct = async (req, res) => {
     }
 
     delete data.existingImages;
+
+    if (data.submissionStatus === 'published') {
+      data.submissionStatus = 'pending_approval';
+    }
+    data.isAdminApproved = false;
+    data.adminApprovedAt = null;
+    data.adminApprovedBy = '';
 
     const product = await Product.create({
       ...data,
@@ -228,6 +235,11 @@ export const updateProduct = async (req, res) => {
     }
 
     delete data.existingImages;
+
+    // Until admin approves at least once, vendors cannot force storefront publish.
+    if (data.submissionStatus === 'published' && !existing.isAdminApproved) {
+      data.submissionStatus = 'pending_approval';
+    }
 
     const product = await Product.findOneAndUpdate(
       { _id: id, vendorId: req.vendor._id },
@@ -316,7 +328,8 @@ export const getMarketLowRentalTenures = async (req, res) => {
 
     const baseQuery = {
       type: 'Rental',
-      submissionStatus: { $in: ['published', 'pending_approval'] },
+      submissionStatus: 'published',
+      isAdminApproved: { $ne: false },
       vendorId: { $ne: vendorId },
     };
 

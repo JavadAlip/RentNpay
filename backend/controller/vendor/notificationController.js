@@ -29,7 +29,7 @@ export async function getVendorNotifications(req, res) {
       Product.find({ vendorId })
         .sort({ createdAt: -1 })
         .limit(20)
-        .select('productName createdAt')
+        .select('productName createdAt isAdminApproved adminApprovedAt')
         .lean(),
       Product.find({ vendorId }).distinct('_id'),
     ]);
@@ -73,14 +73,23 @@ export async function getVendorNotifications(req, res) {
     }
 
     for (const p of myProducts) {
-      if (!p.createdAt) continue;
-      items.push({
-        id: `product-${p._id}`,
-        type: 'product',
-        title: 'New product live',
-        detail: `“${p.productName || 'Product'}” is on your catalog.`,
-        at: p.createdAt,
-      });
+      if (p?.isAdminApproved && p?.adminApprovedAt) {
+        items.push({
+          id: `product-approved-${p._id}`,
+          type: 'product_approved',
+          title: 'Product approved',
+          detail: `Admin approved your product “${p.productName || 'Product'}”. It is now live.`,
+          at: p.adminApprovedAt,
+        });
+      } else if (p.createdAt) {
+        items.push({
+          id: `product-${p._id}`,
+          type: 'product',
+          title: 'Product submitted',
+          detail: `“${p.productName || 'Product'}” is submitted for admin approval.`,
+          at: p.createdAt,
+        });
+      }
     }
 
     for (const o of orders) {

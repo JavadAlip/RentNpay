@@ -4058,11 +4058,11 @@ export default function VendorProductAddModal({
           </button>
           <button
             type="button"
-            onClick={() => submit('published')}
+            onClick={() => submit(mode === 'edit' ? 'published' : 'pending_approval')}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Send className="h-4 w-4" />
-            {mode === 'edit' ? 'Update Product' : 'Publish'}
+            {mode === 'edit' ? 'Update Product' : 'Submit for Approval'}
           </button>
         </div>
       </div>

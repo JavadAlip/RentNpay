@@ -145,6 +145,20 @@ const productSchema = new mongoose.Schema(
       enum: ['draft', 'pending_approval', 'published'],
       default: 'published',
     },
+    /** Admin moderation gate for vendor-created listings. */
+    isAdminApproved: {
+      type: Boolean,
+      default: true,
+    },
+    adminApprovedAt: {
+      type: Date,
+      default: null,
+    },
+    adminApprovedBy: {
+      type: String,
+      default: '',
+      trim: true,
+    },
 
     stock: {
       type: Number,

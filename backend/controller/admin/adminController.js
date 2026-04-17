@@ -526,7 +526,8 @@ export const getAllProducts = async (req, res) => {
       const match = {
         type: 'Sell',
         vendorId: { $exists: true, $ne: null },
-        $nor: [{ submissionStatus: 'draft' }],
+        submissionStatus: 'published',
+        isAdminApproved: { $ne: false },
       };
       const rows = await Product.find(match)
         .populate('vendorId', '_id')
@@ -563,10 +564,11 @@ export const getAllProducts = async (req, res) => {
     if (search) query.productName = { $regex: search, $options: 'i' };
     if (category) query.category = category;
 
-    /** Public website: same vendor Product rows as dashboard; hide only drafts (pending & published both visible). */
+    /** Public website: show only admin-approved published listings. */
     if (storefront === '1' || storefront === 'true') {
       query.vendorId = { $exists: true, $ne: null };
-      query.$nor = [{ submissionStatus: 'draft' }];
+      query.submissionStatus = 'published';
+      query.isAdminApproved = { $ne: false };
     }
 
     const total = await Product.countDocuments(query);
@@ -612,5 +614,137 @@ export const getAllProducts = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+function resolveApprovalStatusLabel(product) {
+  if (product?.submissionStatus === 'published' && product?.isAdminApproved) {
+    return 'approved';
+  }
+  if (product?.submissionStatus === 'draft') return 'draft';
+  return 'pending_approval';
+}
+
+export const getProductApprovalQueue = async (req, res) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const status = String(req.query.status || 'pending').trim().toLowerCase();
+
+    const query = { vendorId: { $exists: true, $ne: null } };
+    if (search) {
+      query.$or = [
+        { productName: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { subCategory: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (status === 'approved') {
+      query.submissionStatus = 'published';
+      query.isAdminApproved = { $ne: false };
+    } else if (status === 'draft') {
+      query.submissionStatus = 'draft';
+    } else {
+      query.submissionStatus = 'pending_approval';
+    }
+
+    const products = await Product.find(query)
+      .populate('vendorId', 'fullName emailAddress')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const vendorIds = [
+      ...new Set(
+        (products || [])
+          .map((p) => String(p?.vendorId?._id || p?.vendorId || ''))
+          .filter(Boolean),
+      ),
+    ];
+    const kycRows = await VendorKyc.find({ vendorId: { $in: vendorIds } })
+      .select('vendorId businessDetails.shopName storeManagement.stores')
+      .lean();
+    const kycMap = new Map(kycRows.map((x) => [String(x.vendorId), x]));
+    const pickPrimaryStore = (stores = []) =>
+      stores.find((s) => s?.isDefault && s?.isActive !== false) ||
+      stores.find((s) => s?.isActive !== false) ||
+      stores[0] ||
+      null;
+
+    const queue = (products || [])
+      .filter((p) => p.vendorId)
+      .map((p) => {
+        const vid = String(p?.vendorId?._id || p?.vendorId || '');
+        const kyc = kycMap.get(vid);
+        const store = pickPrimaryStore(kyc?.storeManagement?.stores || []);
+        const vendorLabel =
+          String(store?.storeName || '').trim() ||
+          String(kyc?.businessDetails?.shopName || '').trim() ||
+          String(p?.vendorId?.fullName || '').trim() ||
+          'Vendor';
+        return {
+          _id: String(p._id),
+          productName: p.productName || 'Product',
+          image:
+            (Array.isArray(p.images) && p.images[0]) ||
+            p.image ||
+            'https://placehold.co/120x80/e5e7eb/6b7280?text=IMG',
+          category: p.category || '',
+          subCategory: p.subCategory || '',
+          type: p.type || '',
+          createdAt: p.createdAt,
+          submissionStatus: p.submissionStatus || 'draft',
+          approvalStatus: resolveApprovalStatusLabel(p),
+          vendor: {
+            _id: vid,
+            fullName: p?.vendorId?.fullName || '',
+            emailAddress: p?.vendorId?.emailAddress || '',
+            label: vendorLabel,
+          },
+          stock: Number(p.stock || 0),
+          condition: p.condition || '',
+          brand: p.brand || '',
+          description: p.description || p.shortDescription || '',
+          shortDescription: p.shortDescription || '',
+          specifications: p.specifications || {},
+          rentalConfigurations: Array.isArray(p.rentalConfigurations)
+            ? p.rentalConfigurations
+            : [],
+          refundableDeposit: Number(p.refundableDeposit || 0),
+          salesConfiguration: p.salesConfiguration || {},
+          adminApprovedAt: p.adminApprovedAt || null,
+        };
+      });
+
+    const counts = {
+      pending: queue.filter((x) => x.approvalStatus === 'pending_approval').length,
+      approved: queue.filter((x) => x.approvalStatus === 'approved').length,
+      draft: queue.filter((x) => x.approvalStatus === 'draft').length,
+    };
+
+    return res.json({ queue, counts });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const approveProductAndGoLive = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    product.isAdminApproved = true;
+    product.submissionStatus = 'published';
+    product.adminApprovedAt = new Date();
+    product.adminApprovedBy = String(req?.admin?.email || 'admin');
+    await product.save();
+
+    return res.json({
+      message: 'Product approved and published to storefront.',
+      productId: String(product._id),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
