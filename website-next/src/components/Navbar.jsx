@@ -35,7 +35,6 @@ import {
 
 const DELIVERY_STORAGE_KEY = 'rn_delivery_location';
 
-
 function formatNotifTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -454,48 +453,53 @@ const Navbar = () => {
     }
   }, []);
 
-  const applyDeliveryLocation = useCallback((label, lat, lon) => {
-    const next = {
-      label: String(label || '').trim() || 'Choose your location',
-      lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-      lon: Number.isFinite(Number(lon)) ? Number(lon) : null,
-    };
-    setDeliveryLocation(next);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(next));
-      window.dispatchEvent(
-        new CustomEvent('rn_delivery_location_changed', { detail: next }),
-      );
-    }
-    if (isAuthenticated && cartItems.length) {
-      const productIds = Array.from(
-        new Set(cartItems.map((i) => String(i?.productId || '')).filter(Boolean)),
-      );
-      if (productIds.length && next.lat != null && next.lon != null) {
-        apiGetCheckoutPickupStores(productIds, {
-          userLat: next.lat,
-          userLng: next.lon,
-        })
-          .then((res) => {
-            const validProductIds = new Set(
-              (res.data?.stores || [])
-                .flatMap((store) => store?.products || [])
-                .map((p) => String(p?.productId || ''))
-                .filter(Boolean),
-            );
-            cartItems.forEach((item) => {
-              const id = String(item?.productId || '');
-              if (!id || validProductIds.has(id)) return;
-              dispatch(removeFromCart(id));
-            });
-          })
-          .catch(() => {
-            /* keep cart unchanged on API error */
-          });
+  const applyDeliveryLocation = useCallback(
+    (label, lat, lon) => {
+      const next = {
+        label: String(label || '').trim() || 'Choose your location',
+        lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
+        lon: Number.isFinite(Number(lon)) ? Number(lon) : null,
+      };
+      setDeliveryLocation(next);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(next));
+        window.dispatchEvent(
+          new CustomEvent('rn_delivery_location_changed', { detail: next }),
+        );
       }
-    }
-    return next;
-  }, [isAuthenticated, cartItems, dispatch]);
+      if (isAuthenticated && cartItems.length) {
+        const productIds = Array.from(
+          new Set(
+            cartItems.map((i) => String(i?.productId || '')).filter(Boolean),
+          ),
+        );
+        if (productIds.length && next.lat != null && next.lon != null) {
+          apiGetCheckoutPickupStores(productIds, {
+            userLat: next.lat,
+            userLng: next.lon,
+          })
+            .then((res) => {
+              const validProductIds = new Set(
+                (res.data?.stores || [])
+                  .flatMap((store) => store?.products || [])
+                  .map((p) => String(p?.productId || ''))
+                  .filter(Boolean),
+              );
+              cartItems.forEach((item) => {
+                const id = String(item?.productId || '');
+                if (!id || validProductIds.has(id)) return;
+                dispatch(removeFromCart(id));
+              });
+            })
+            .catch(() => {
+              /* keep cart unchanged on API error */
+            });
+        }
+      }
+      return next;
+    },
+    [isAuthenticated, cartItems, dispatch],
+  );
 
   // Keep cart UI in sync when user logs in/out without a full refresh.
   // (Cart state is stored in localStorage, scoped per user.)
@@ -689,7 +693,9 @@ const Navbar = () => {
               lon: Number(x.lon),
             }))
           : [];
-        setLocationOptions(out.filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon)));
+        setLocationOptions(
+          out.filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon)),
+        );
       } catch {
         setLocationOptions([]);
       } finally {
@@ -757,7 +763,9 @@ const Navbar = () => {
     setLoadingSavedAddresses(true);
     try {
       const res = await apiGetMyAddresses();
-      setSavedAddresses(Array.isArray(res.data?.addresses) ? res.data.addresses : []);
+      setSavedAddresses(
+        Array.isArray(res.data?.addresses) ? res.data.addresses : [],
+      );
     } catch {
       setSavedAddresses([]);
       setLocationError('Could not load saved addresses.');
@@ -1030,11 +1038,11 @@ const Navbar = () => {
                       />
                     </button>
 
-                    {/* ✅ Dropdown */}
+                    {/*  Dropdown */}
                     {showProfileDropdown && (
                       <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
                         {/* User info */}
-                        <div className="px-4 py-3 border-b border-gray-100">
+                        {/* <div className="px-4 py-3 border-b border-gray-100">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
                               {firstLetter}
@@ -1048,7 +1056,7 @@ const Navbar = () => {
                               </p>
                             </div>
                           </div>
-                        </div>
+                        </div> */}
 
                         {/* Menu items */}
                         <Link
@@ -1056,8 +1064,16 @@ const Navbar = () => {
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <User size={15} />
+                          <User size={15} className="text-orange-500" />
                           My Profile
+                        </Link>
+                        <Link
+                          href="/my-address"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <MapPin size={15} className="text-orange-500" />
+                          My Address
                         </Link>
 
                         <Link
@@ -1193,6 +1209,14 @@ const Navbar = () => {
                   <User size={15} />
                   My Profile
                 </Link>
+                <Link
+                  href="/my-address"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  <MapPin size={15} className="text-orange-500" />
+                  My Address
+                </Link>
 
                 <Link
                   href="/orders"
@@ -1275,7 +1299,9 @@ const Navbar = () => {
                   />
                 </div>
                 {locationSearching ? (
-                  <p className="mt-2 text-xs text-gray-500">Searching locations...</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Searching locations...
+                  </p>
                 ) : null}
                 {locationOptions.length > 0 ? (
                   <ul className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 divide-y">
@@ -1310,14 +1336,20 @@ const Navbar = () => {
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-xs sm:text-sm text-gray-700 py-2.5 sm:py-3 hover:bg-gray-50"
               >
                 <User className="w-4 h-4" />
-                {isAuthenticated ? 'Use saved addresses' : 'Login for saved addresses'}
+                {isAuthenticated
+                  ? 'Use saved addresses'
+                  : 'Login for saved addresses'}
               </button>
               {showSavedAddresses ? (
                 <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 max-h-44 overflow-y-auto">
                   {loadingSavedAddresses ? (
-                    <p className="px-3 py-2 text-xs text-gray-500">Loading saved addresses...</p>
+                    <p className="px-3 py-2 text-xs text-gray-500">
+                      Loading saved addresses...
+                    </p>
                   ) : savedAddresses.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-gray-500">No saved addresses yet.</p>
+                    <p className="px-3 py-2 text-xs text-gray-500">
+                      No saved addresses yet.
+                    </p>
                   ) : (
                     <ul className="divide-y divide-gray-200">
                       {savedAddresses.map((addr) => {
@@ -1334,7 +1366,9 @@ const Navbar = () => {
                               <p className="text-xs sm:text-sm font-medium text-gray-800">
                                 {addr.label || 'Address'}
                               </p>
-                              <p className="text-[11px] text-gray-600 mt-0.5">{line}</p>
+                              <p className="text-[11px] text-gray-600 mt-0.5">
+                                {line}
+                              </p>
                             </button>
                           </li>
                         );
@@ -1344,12 +1378,15 @@ const Navbar = () => {
                 </div>
               ) : null}
               {locationError ? (
-                <p className="mt-3 text-xs text-red-600 text-center">{locationError}</p>
+                <p className="mt-3 text-xs text-red-600 text-center">
+                  {locationError}
+                </p>
               ) : null}
               <div className="mt-4 flex items-start justify-center gap-1.5 text-[10px] sm:text-xs text-gray-500 text-center px-3">
                 <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-[1px]" />
                 <p>
-                  We deliver within <span className="font-bold text-gray-800">50km radius</span>{' '}
+                  We deliver within{' '}
+                  <span className="font-bold text-gray-800">50km radius</span>{' '}
                   from your location
                 </p>
               </div>
