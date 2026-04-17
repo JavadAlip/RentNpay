@@ -29,12 +29,6 @@ function ticketMessage(report) {
   return `${label}: ${desc}`;
 }
 
-function isVendorLine(line, vendorIdStr) {
-  const p = line?.product;
-  if (!p || typeof p === 'string') return false;
-  return String(p.vendorId) === vendorIdStr;
-}
-
 function getTicketStatus(report) {
   const st = String(report?.status || 'open').toLowerCase();
   return st === 'resolved' ? 'solved' : 'pending';
@@ -72,29 +66,17 @@ async function resolveAssignedStoreName(productDoc) {
   if (primary && String(primary.storeName || '').trim()) {
     return String(primary.storeName).trim();
   }
-  if (
-    kyc.businessDetails &&
-    String(kyc.businessDetails.shopName || '').trim()
-  ) {
+  if (kyc.businessDetails && String(kyc.businessDetails.shopName || '').trim()) {
     return String(kyc.businessDetails.shopName).trim();
   }
   return '';
 }
 
-/** Flatten issue reports for this vendor’s rental lines across orders. */
-export const getVendorTickets = async (req, res) => {
+// ── Admin: list all tickets across all vendors ────────────────────────────────
+export const getAdminTickets = async (req, res) => {
   try {
-    const vendorId = req.vendor._id;
-    const vendorIdStr = String(vendorId);
-    const productIds = await Product.find({ vendorId }).distinct('_id');
-    if (!productIds.length) {
-      return res.json({
-        tickets: [],
-        summary: { total: 0, pending: 0, solved: 0 },
-      });
-    }
-
-    const orders = await Order.find({ 'products.product': { $in: productIds } })
+    // Load orders that have any issueReports in their product lines.
+    const orders = await Order.find({ 'products.issueReports.0': { $exists: true } })
       .populate([
         { path: 'user', select: 'fullName emailAddress' },
         {
@@ -106,16 +88,13 @@ export const getVendorTickets = async (req, res) => {
       .lean();
 
     const tickets = [];
+
     for (const order of orders) {
-      const customerName = order.user?.fullName || 'Customer';
+      const customerName = order.user?.fullName || order.name || 'Customer';
       for (const line of order.products || []) {
-        if (!isVendorLine(line, vendorIdStr)) continue;
         const p = line.product;
+        if (!p || typeof p === 'string') continue;
         const reports = line.issueReports || [];
-        const ownerName =
-          (p.logisticsVerification &&
-            p.logisticsVerification.inventoryOwnerName) ||
-          '';
         for (const ir of reports) {
           if (!ir) continue;
           const st = String(ir.status || 'open').toLowerCase();
@@ -131,7 +110,7 @@ export const getVendorTickets = async (req, res) => {
             status: getTicketStatus(ir),
             vendorStatus: st,
             createdAt: ir.createdAt || order.createdAt,
-            assignedStore: String(assignedStoreName || ownerName || '').trim(),
+            assignedStore: String(assignedStoreName || '').trim(),
             photos: Array.isArray(ir.photos) ? ir.photos : [],
             issueType: ir.issueType,
           });
@@ -146,13 +125,14 @@ export const getVendorTickets = async (req, res) => {
     const total = tickets.length;
     const solved = tickets.filter((t) => t.status === 'solved').length;
     const pending = total - solved;
-    res.json({ tickets, summary: { total, pending, solved } });
+    return res.json({ tickets, summary: { total, pending, solved } });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 
-export const getVendorTicketById = async (req, res) => {
+// ── Admin: get one ticket by order + issue ───────────────────────────────────
+export const getAdminTicketById = async (req, res) => {
   try {
     const { orderId, issueId } = req.params;
     const order = await Order.findById(orderId)
@@ -166,7 +146,6 @@ export const getVendorTicketById = async (req, res) => {
       .lean();
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    const vendorIdStr = String(req.vendor._id);
     const userId = String(order?.user?._id || '');
 
     let kyc = null;
@@ -191,17 +170,14 @@ export const getVendorTicketById = async (req, res) => {
     let ticket = null;
 
     for (const line of order.products || []) {
-      if (!isVendorLine(line, vendorIdStr)) continue;
       const p = line.product;
-      const ownerName =
-        (p.logisticsVerification &&
-          p.logisticsVerification.inventoryOwnerName) ||
-        '';
-      const assignedStoreName = await resolveAssignedStoreName(p);
+      if (!p || typeof p === 'string') continue;
       const report = (line.issueReports || []).find(
         (x) => String(x?._id) === String(issueId),
       );
       if (!report) continue;
+
+      const assignedStoreName = await resolveAssignedStoreName(p);
 
       ticket = {
         _id: String(report._id),
@@ -215,7 +191,7 @@ export const getVendorTicketById = async (req, res) => {
         status: getTicketStatus(report),
         vendorStatus: String(report.status || 'open').toLowerCase(),
         createdAt: report.createdAt || order.createdAt,
-        assignedStore: String(assignedStoreName || ownerName || '').trim(),
+        assignedStore: String(assignedStoreName || '').trim(),
         address: resolvedAddress,
         issueType: String(report.issueType || 'other'),
         issueDescription: String(report.description || '').trim(),
@@ -235,48 +211,3 @@ export const getVendorTicketById = async (req, res) => {
   }
 };
 
-export const updateVendorTicketStatus = async (req, res) => {
-  try {
-    const { orderId, issueId } = req.params;
-    const next = String(req.body?.status || '').toLowerCase();
-    if (!['resolved', 'open', 'in_progress'].includes(next)) {
-      return res
-        .status(400)
-        .json({ message: 'status must be resolved, open, or in_progress' });
-    }
-
-    const order = await Order.findById(orderId).populate({
-      path: 'products.product',
-      select: 'vendorId',
-    });
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    const vendorIdStr = String(req.vendor._id);
-    let updated = null;
-
-    for (const line of order.products || []) {
-      if (!isVendorLine(line, vendorIdStr)) continue;
-      const rep = (line.issueReports || []).find(
-        (x) => String(x._id) === String(issueId),
-      );
-      if (rep) {
-        rep.status = next;
-        updated = rep;
-        break;
-      }
-    }
-
-    if (!updated) {
-      return res.status(404).json({ message: 'Ticket not found' });
-    }
-
-    await order.save();
-    res.json({
-      ok: true,
-      status: updated.status,
-      ticketId: String(updated._id),
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};

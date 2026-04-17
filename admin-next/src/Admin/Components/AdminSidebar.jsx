@@ -39,6 +39,11 @@ const AdminSidebar = () => {
     label: 'Custom Listings',
   };
 
+  const systemTicketsChild = {
+    to: '/system/tickets',
+    label: 'Tickets',
+  };
+
   useEffect(() => {
     const token =
       typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
@@ -216,17 +221,31 @@ const AdminSidebar = () => {
               ) : null}
             </button>
             {sidebarOpen && systemOpen ? (
-              <Link
-                href={systemChild.to}
-                onClick={() => setMobileOpen(false)}
-                className={`mt-1 ml-2 block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                  pathname === systemChild.to
-                    ? 'bg-orange-50 text-orange-600 font-medium'
-                    : ''
-                }`}
-              >
-                {systemChild.label}
-              </Link>
+              <div className="mt-1 ml-2 space-y-0.5">
+                <Link
+                  href={systemChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === systemChild.to
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {systemChild.label}
+                </Link>
+                <Link
+                  href={systemTicketsChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === systemTicketsChild.to ||
+                    pathname?.startsWith('/system/tickets')
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {systemTicketsChild.label}
+                </Link>
+              </div>
             ) : null}
           </div>
         </nav>

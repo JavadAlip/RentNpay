@@ -110,6 +110,21 @@ export const apiUpdateVendorTicketStatus = (orderId, issueId, status, token) =>
     },
   );
 
+// ── ADMIN TICKETS (READ-ONLY) ────────────────────────────────────────────────
+export const apiAdminGetTickets = (token) =>
+  API.get('/admin/tickets', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiAdminGetTicketById = (orderId, issueId, token) =>
+  API.get(`/admin/tickets/${orderId}/${issueId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiGetVendorOrders = (token) =>
   API.get('/vendor/orders', {
     headers: {

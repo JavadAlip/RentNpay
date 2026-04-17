@@ -47,6 +47,10 @@ import {
   patchSellListingTemplateActive,
 } from '../controller/admin/sellListingTemplateController.js';
 import { getWishlistAnalytics } from '../controller/admin/wishlistController.js';
+import {
+  getAdminTickets,
+  getAdminTicketById,
+} from '../controller/admin/ticketAdminController.js';
 import { adminAuth } from '../middleware/auth.js';
 const router = express.Router();
 import upload from '../middleware/upload.js';
@@ -152,6 +156,10 @@ router.get('/get-users', adminAuth, getAllUsers);
 router.get('/get-users/:id', adminAuth, getUserDetails);
 router.get('/products', getAllProducts);
 router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
+
+// Tickets (read-only admin view)
+router.get('/tickets', adminAuth, getAdminTickets);
+router.get('/tickets/:orderId/:issueId', adminAuth, getAdminTicketById);
 
 // Vendor KYC approvals
 router.get('/kyc/queue', adminAuth, getVendorKycQueue);
