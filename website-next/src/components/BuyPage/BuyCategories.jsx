@@ -79,7 +79,7 @@ const BuyCategories = () => {
 
           <button
             type="button"
-            onClick={() => router.push('/products')}
+            onClick={() => router.push('/products?type=Sell')}
             className="bg-black text-white px-5 py-2 rounded-full text-sm w-fit"
           >
             View All Categories
@@ -93,7 +93,9 @@ const BuyCategories = () => {
               key={item._id || item.slug || index}
               className="text-center cursor-pointer group"
               onClick={() =>
-                router.push(`/buy?category=${encodeURIComponent(item.name || '')}`)
+                router.push(
+                  `/products?type=Sell&category=${encodeURIComponent(item.name || '')}`,
+                )
               }
             >
               <div className="bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
