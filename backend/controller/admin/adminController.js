@@ -259,9 +259,13 @@ export const getVendorDetails = async (req, res) => {
     });
 
     const activeProducts = products.filter((p) => Number(p.stock || 0) > 0).length;
+    const activeOrders = orders.filter(
+      (o) => !['cancelled'].includes(String(o.status || '').toLowerCase()),
+    ).length;
     const summary = {
       totalEarnings,
       activeProducts,
+      activeOrders,
       pendingSettlement,
       totalProducts: products.length,
     };
@@ -302,6 +306,27 @@ export const getVendorDetails = async (req, res) => {
       );
     }
 
+    const storesForAddr = kycRecord?.storeManagement?.stores || [];
+    const defaultStore =
+      storesForAddr.find((s) => s.isDefault) || storesForAddr[0] || null;
+    const businessAddress =
+      String(defaultStore?.completeAddress || '').trim() ||
+      String(kycRecord?.permanentAddress || '').trim() ||
+      '';
+
+    const productRentPerMonth = (p) => {
+      const tiers = p.rentalConfigurations || [];
+      const t = tiers[0];
+      if (!t) return 0;
+      const cr = Number(t.customerRent || 0);
+      if (cr > 0) return Math.round(cr);
+      const ppd = Number(t.pricePerDay || 0);
+      return ppd > 0 ? Math.round(ppd * 30) : 0;
+    };
+
+    const lastTx = transactions[0];
+    const lastSettlementDate = lastTx?.date || null;
+
     res.json({
       vendor: {
         _id: vendor._id,
@@ -313,6 +338,8 @@ export const getVendorDetails = async (req, res) => {
         createdAt: vendor.createdAt,
         vendorCode: `VEN-${String(vendor._id).slice(-4).toUpperCase()}`,
       },
+      kycApplicationStatus: kycRecord?.status || null,
+      businessAddress,
       summary,
       products: products.map((p) => ({
         _id: p._id,
@@ -323,12 +350,14 @@ export const getVendorDetails = async (req, res) => {
         stock: p.stock,
         status: p.status,
         image: p.image,
+        rentPerMonth: productRentPerMonth(p),
       })),
       kycDocuments,
       financials: {
         totalEarnings,
         pendingSettlement,
         lastSettlement: Math.round(totalEarnings * 0.03),
+        lastSettlementDate,
       },
       recentTransactions: transactions.slice(0, 8),
       loanHistory: [],
