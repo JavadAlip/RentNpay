@@ -7,6 +7,62 @@ import Link from 'next/link';
 import { apiCreateVendorProfile } from '@/service/api';
 import { toast } from 'react-toastify';
 
+function StorefrontHeaderIcon() {
+  return (
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
+      <svg
+        className="h-6 w-6 text-white"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <path
+          d="M4 10V19C4 19.5523 4.44772 20 5 20H9V14H15V20H19C19.5523 20 20 19.5523 20 19V10"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M3 9L5 4H19L21 9"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M3 9H21V10C21 11.6569 19.6569 13 18 13C16.3431 13 15 11.6569 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 11.6569 7.65685 13 6 13C4.34315 13 3 11.6569 3 10V9Z"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function VerifiedOrangeTick() {
+  return (
+    <span
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm"
+      title="Verified"
+      aria-label="Verified"
+    >
+      <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden>
+        <path
+          d="M2.5 6L5 8.5L9.5 3.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 const AllVendors = () => {
   const dispatch = useDispatch();
   const { vendors, vendorsLoading, error } = useSelector((state) => state.admin);
@@ -14,6 +70,7 @@ const AllVendors = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [actionMenuId, setActionMenuId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -58,6 +115,25 @@ const AllVendors = () => {
   useEffect(() => {
     setPage(1);
   }, [query, activeFilter]);
+
+  useEffect(() => {
+    if (actionMenuId == null) return undefined;
+    const close = (e) => {
+      const root = document.querySelector(
+        `[data-vendor-action-menu="${CSS.escape(String(actionMenuId))}"]`,
+      );
+      if (root && !root.contains(e.target)) setActionMenuId(null);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setActionMenuId(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [actionMenuId]);
 
   const stats = useMemo(() => {
     const list = vendors || [];
@@ -126,11 +202,14 @@ const AllVendors = () => {
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900">All Partners & Vendors</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage vendor profiles, verification status, and inventory
-            </p>
+          <div className="flex items-start gap-3 sm:gap-4">
+            <StorefrontHeaderIcon />
+            <div className="min-w-0 pt-0.5">
+              <h1 className="text-3xl font-semibold text-gray-900">All Partners & Vendors</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Manage vendor profiles, verification status, and inventory
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -204,8 +283,8 @@ const AllVendors = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr className="text-gray-500">
@@ -213,7 +292,7 @@ const AllVendors = () => {
                 <th className="px-4 py-3 text-left font-medium">Products</th>
                 <th className="px-4 py-3 text-left font-medium">Domain / Vertical</th>
                 <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
+                <th className="px-4 py-3 text-center font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -232,7 +311,10 @@ const AllVendors = () => {
                           {initials}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{v.fullName}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-gray-900">{v.fullName}</p>
+                            {v.kycStatus === 'approved' ? <VerifiedOrangeTick /> : null}
+                          </div>
                           <p className="text-xs text-gray-500">
                             #VEN-{String(v._id).slice(-3).toUpperCase()}
                           </p>
@@ -247,30 +329,53 @@ const AllVendors = () => {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-900">{v.fullName}</p>
-                      <p className="text-xs text-gray-500">{v.emailAddress}</p>
-                      <span
-                        className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] border ${
-                          v.kycStatus === 'approved'
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                            : v.kycStatus === 'rejected'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}
-                      >
-                        {v.kycStatus === 'approved'
-                          ? 'Verified'
-                          : v.kycStatus === 'rejected'
-                            ? 'Rejected'
-                            : 'Pending KYC'}
-                      </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/all-vendors/${v._id}`}
-                        className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Details
-                      </Link>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex justify-center items-center">
+                        <div
+                          className="relative inline-flex"
+                          data-vendor-action-menu={String(v._id)}
+                        >
+                          <button
+                            type="button"
+                            aria-expanded={actionMenuId === String(v._id)}
+                            aria-haspopup="menu"
+                            aria-label="Vendor actions"
+                            onClick={() =>
+                              setActionMenuId((id) =>
+                                id === String(v._id) ? null : String(v._id),
+                              )
+                            }
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                          >
+                            <svg
+                              className="h-5 w-5 shrink-0"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              aria-hidden
+                            >
+                              <circle cx="12" cy="6" r="1.5" />
+                              <circle cx="12" cy="12" r="1.5" />
+                              <circle cx="12" cy="18" r="1.5" />
+                            </svg>
+                          </button>
+                        {actionMenuId === String(v._id) ? (
+                          <div
+                            role="menu"
+                            className="absolute left-1/2 top-full z-20 mt-1 min-w-[9rem] -translate-x-1/2 rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                          >
+                            <Link
+                              role="menuitem"
+                              href={`/all-vendors/${v._id}`}
+                              onClick={() => setActionMenuId(null)}
+                              className="block px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                            >
+                              Details
+                            </Link>
+                          </div>
+                        ) : null}
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );
