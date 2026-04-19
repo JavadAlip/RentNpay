@@ -171,6 +171,9 @@ export async function buildIssueTicketsFromOrders(ordersLean) {
           orderId: String(order._id),
           productId,
           queryId: formatQueryId(ir),
+          issueCategory:
+            ISSUE_TYPE_LABEL[String(ir.issueType || '').trim()] ||
+            'Product issue',
           customerName,
           productName,
           message: ticketMessage(ir),

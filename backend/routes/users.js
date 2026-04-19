@@ -20,6 +20,7 @@ import {
 } from '../controller/user/wishlistController.js';
 import { getMyUserKyc, submitMyUserKyc } from '../controller/user/kycController.js';
 import { getUserNotifications } from '../controller/user/notificationController.js';
+import { getMySupportTickets } from '../controller/user/ticketController.js';
 
 const router = express.Router();
 
@@ -42,6 +43,9 @@ router.post('/wishlist/toggle', userAuth, toggleWishlist);
 
 // notifications (activity feed)
 router.get('/notifications', userAuth, getUserNotifications);
+
+// support tickets (issue reports on my orders — Help Center)
+router.get('/support-tickets', userAuth, getMySupportTickets);
 
 // user kyc
 router.get('/kyc', userAuth, getMyUserKyc);

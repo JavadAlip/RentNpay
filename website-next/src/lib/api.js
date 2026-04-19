@@ -125,6 +125,9 @@ export const apiSubmitMyIssueReport = (id, data) => {
 // ── USER NOTIFICATIONS ───────────────────────
 export const apiGetUserNotifications = () => api.get('/users/notifications');
 
+// ── HELP CENTER (support tickets from my orders) ───────────────────────────
+export const apiGetMySupportTickets = () => api.get('/users/support-tickets');
+
 // ── WISHLIST ────────────────────────────────
 export const apiGetMyWishlist = () => api.get('/users/wishlist');
 export const apiToggleWishlist = (productId) =>
