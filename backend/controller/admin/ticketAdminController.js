@@ -131,6 +131,64 @@ export const getAdminTickets = async (req, res) => {
   }
 };
 
+/**
+ * Issue rows from orders (e.g. one customer's orders). Same shape as entries in
+ * `getAdminTickets` for consistent admin UI.
+ * @param {object[]} ordersLean — lean orders with populated `products.product` and optional `user`
+ */
+export async function buildIssueTicketsFromOrders(ordersLean) {
+  const tickets = [];
+  for (const order of ordersLean || []) {
+    const customerName = order.user?.fullName || order.name || 'Customer';
+    for (const line of order.products || []) {
+      const reports = line.issueReports || [];
+      if (!reports.length) continue;
+
+      const p = line.product;
+      const populatedProduct =
+        p &&
+        typeof p === 'object' &&
+        (p.vendorId != null || typeof p.productName === 'string');
+
+      const productName = populatedProduct ? String(p.productName || 'Product') : 'Product';
+      const productId =
+        populatedProduct && p._id
+          ? String(p._id)
+          : typeof p === 'string'
+            ? p
+            : p && typeof p === 'object' && p._id
+              ? String(p._id)
+              : '';
+      const assignedStoreName = populatedProduct
+        ? await resolveAssignedStoreName(p)
+        : '';
+
+      for (const ir of reports) {
+        if (!ir) continue;
+        const st = String(ir.status || 'open').toLowerCase();
+        tickets.push({
+          _id: String(ir._id),
+          orderId: String(order._id),
+          productId,
+          queryId: formatQueryId(ir),
+          customerName,
+          productName,
+          message: ticketMessage(ir),
+          status: getTicketStatus(ir),
+          vendorStatus: st,
+          createdAt: ir.createdAt || order.createdAt,
+          assignedStore: String(assignedStoreName || '').trim(),
+        });
+      }
+    }
+  }
+  tickets.sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  return tickets;
+}
+
 // ── Admin: get one ticket by order + issue ───────────────────────────────────
 export const getAdminTicketById = async (req, res) => {
   try {

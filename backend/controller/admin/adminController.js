@@ -8,6 +8,8 @@ import Order from '../../models/Order.js';
 import VendorKyc from '../../models/VendorKyc.js';
 import UserKyc from '../../models/UserKyc.js';
 import Address from '../../models/Address.js';
+import { buildMyRentalsStyleActiveRows } from '../../utils/userRentalHubActiveRows.js';
+import { buildIssueTicketsFromOrders } from './ticketAdminController.js';
 
 function toRad(v) {
   return (Number(v) * Math.PI) / 180;
@@ -496,17 +498,42 @@ export const getAllUsers = async (req, res) => {
 export const getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(id).select('fullName emailAddress createdAt');
+    const user = await User.findById(id).select(
+      'fullName emailAddress createdAt customerNumber',
+    );
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const orders = await Order.find({ user: id })
-      .populate('products.product', 'productName image category type')
-      .sort({ createdAt: -1 });
+    const userObjectId = mongoose.Types.ObjectId.isValid(String(id))
+      ? new mongoose.Types.ObjectId(String(id))
+      : null;
+    const userOrderFilter = userObjectId ? { user: userObjectId } : { user: id };
 
-    const today = new Date();
-    const activeRentals = [];
+    const populateOrderPaths = [
+      { path: 'user', select: 'fullName emailAddress' },
+      {
+        path: 'products.product',
+        select:
+          'productName image category type rentalConfigurations refundableDeposit vendorId logisticsVerification',
+      },
+    ];
+
+    const [orders, kycLean, issueOrders] = await Promise.all([
+      Order.find(userOrderFilter).populate(populateOrderPaths).sort({ createdAt: -1 }).lean(),
+      UserKyc.findOne({ userId: userObjectId || id }).lean(),
+      Order.find({
+        ...userOrderFilter,
+        'products.issueReports.0': { $exists: true },
+      })
+        .populate(populateOrderPaths)
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    const activeRentals = buildMyRentalsStyleActiveRows(orders);
+    const supportTickets = await buildIssueTicketsFromOrders(issueOrders);
+
     const orderHistory = [];
     let totalAmount = 0;
     let totalRentAmount = 0;
@@ -533,46 +560,26 @@ export const getUserDetails = async (req, res) => {
       totalDeposit += Math.round(orderAmount * 0.1);
       totalShipping += Math.round(orderAmount * 0.02);
 
+      const firstLine = (order.products || [])[0];
+      const firstProd = firstLine?.product;
+      const isSell =
+        String(firstLine?.productType || '').toLowerCase() === 'sell' ||
+        (firstProd &&
+          typeof firstProd === 'object' &&
+          String(firstProd.type || '').toLowerCase() === 'sell');
+
       orderHistory.push({
         _id: order._id,
         date: order.createdAt,
         amount: orderAmount,
         status: order.status,
+        type: isSell ? 'Buy' : 'Rent',
         description:
           order.products
             ?.map((p) => p.product?.productName)
             .filter(Boolean)
             .join(', ') || 'Rental order',
       });
-
-      if (endAt >= today && !['cancelled', 'delivered'].includes(String(order.status))) {
-        (order.products || []).forEach((item) => {
-          const totalMonths = rentalDuration;
-          const elapsedMonths = Math.max(
-            0,
-            Math.min(
-              totalMonths,
-              Math.floor(
-                (today.getTime() - createdAt.getTime()) / (30 * 24 * 60 * 60 * 1000),
-              ),
-            ),
-          );
-          const monthlyAmount =
-            Number(item.pricePerDay || 0) * Number(item.quantity || 0);
-          activeRentals.push({
-            orderId: order._id,
-            productName: item.product?.productName || 'Product',
-            startDate: createdAt,
-            endDate: endAt,
-            totalMonths,
-            elapsedMonths,
-            monthsLeft: Math.max(0, totalMonths - elapsedMonths),
-            monthlyAmount,
-            rentAmount: monthlyAmount * totalMonths,
-            deposit: Math.round(monthlyAmount * 0.1),
-          });
-        });
-      }
     });
 
     const tenureMonths = Math.max(
@@ -582,13 +589,32 @@ export const getUserDetails = async (req, res) => {
       ),
     );
 
+    const customerNumber = user.customerNumber;
+    const customerCode =
+      customerNumber != null && customerNumber > 0
+        ? `CUST-${String(customerNumber).padStart(3, '0')}`
+        : `CUST-${String(user._id).slice(-6).toUpperCase()}`;
+
+    const customerKyc = kycLean
+      ? {
+          status: kycLean.status,
+          submittedAt: kycLean.submittedAt,
+          reviewedAt: kycLean.reviewedAt,
+          contactNumber: String(kycLean.contactNumber || '').trim(),
+          aadhaarFront: kycLean.aadhaarFront || '',
+          aadhaarBack: kycLean.aadhaarBack || '',
+          panCard: kycLean.panCard || '',
+        }
+      : null;
+
     res.json({
       user: {
         _id: user._id,
         fullName: user.fullName,
         emailAddress: user.emailAddress,
         createdAt: user.createdAt,
-        customerCode: `CUST-${String(user._id).slice(-4).toUpperCase()}`,
+        customerCode,
+        customerNumber: customerNumber ?? null,
       },
       summary: {
         tenureMonths,
@@ -603,8 +629,9 @@ export const getUserDetails = async (req, res) => {
       },
       activeRentals,
       orderHistory,
+      customerKyc,
       kycDocuments: [],
-      supportTickets: [],
+      supportTickets,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
