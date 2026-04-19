@@ -6,6 +6,8 @@ import Product from '../../models/Product.js';
 import User from '../../models/userAuthModel.js';
 import Order from '../../models/Order.js';
 import VendorKyc from '../../models/VendorKyc.js';
+import UserKyc from '../../models/UserKyc.js';
+import Address from '../../models/Address.js';
 
 function toRad(v) {
   return (Number(v) * Math.PI) / 180;
@@ -334,6 +336,82 @@ export const getVendorDetails = async (req, res) => {
   }
 };
 
+/** Sell vs rental from line snapshot and/or populated catalog product. */
+function lineIsSell(line) {
+  const t = String(line?.productType || '').trim().toLowerCase();
+  if (t === 'sell') return true;
+  const p = line?.product;
+  if (p && typeof p === 'object') {
+    const pt = String(p.type || '').trim().toLowerCase();
+    if (pt === 'sell') return true;
+  }
+  return false;
+}
+
+/** Brand-new sell purchases only; everything else (Refurbished, Like New, …) → used bucket. */
+function sellSpendIsBrandNew(conditionRaw) {
+  const c = String(conditionRaw || '').trim().toLowerCase();
+  return c === 'brand new' || c === 'brandnew';
+}
+
+/**
+ * Per line: checkout stores the customer line total in `pricePerDay` × `quantity`
+ * (full-tenure rent for rentals, sale price × qty for buys).
+ */
+function lineGoodsTotal(line) {
+  const qty = Math.max(1, Number(line?.quantity || 1));
+  return Number(line?.pricePerDay || 0) * qty;
+}
+
+function summarizeUserOrders(orders = []) {
+  let ordersCount = 0;
+  let itemsCount = 0;
+  let newBuy = 0;
+  let usedBuy = 0;
+  let rent = 0;
+  let deposit = 0;
+  let shipping = 0;
+
+  for (const order of orders) {
+    const lines = order.products || [];
+    if (!lines.length) continue;
+    ordersCount += 1;
+
+    for (const line of lines) {
+      itemsCount += Math.max(1, Number(line?.quantity || 1));
+      const amt = lineGoodsTotal(line);
+
+      if (lineIsSell(line)) {
+        const p = line.product;
+        const cond = p && typeof p === 'object' ? String(p.condition || '').trim() : '';
+        if (sellSpendIsBrandNew(cond)) newBuy += amt;
+        else usedBuy += amt;
+      } else {
+        rent += amt;
+        deposit += Number(line.refundableDeposit || 0);
+      }
+    }
+
+    shipping += 99;
+  }
+
+  // At-home product service (AC/fridge visits): not implemented — always 0 for API/UI.
+  const service = 0;
+  const lifetimeValue = rent + newBuy + usedBuy + deposit + shipping;
+
+  return {
+    ordersCount,
+    itemsCount,
+    service,
+    newBuy,
+    usedBuy,
+    rent,
+    deposit,
+    shipping,
+    lifetimeValue,
+  };
+}
+
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({})
@@ -341,43 +419,71 @@ export const getAllUsers = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const userIds = users.map((u) => u._id);
-    const orderAgg = await Order.aggregate([
-      { $match: { user: { $in: userIds } } },
-      {
-        $project: {
-          user: 1,
-          orderItems: { $sum: '$products.quantity' },
-        },
-      },
-      {
-        $group: {
-          _id: '$user',
-          ordersCount: { $sum: 1 },
-          itemsCount: { $sum: '$orderItems' },
-        },
-      },
+    const [kycRows, orders, addressPhones, orderPhones] = await Promise.all([
+      UserKyc.find({ userId: { $in: userIds } })
+        .select('userId contactNumber')
+        .lean(),
+      Order.find({ user: { $in: userIds } })
+        .populate('products.product', 'type condition')
+        .lean(),
+      Address.aggregate([
+        { $match: { user: { $in: userIds } } },
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: '$user', phone: { $first: '$phone' } } },
+      ]),
+      Order.aggregate([
+        { $match: { user: { $in: userIds } } },
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: '$user', phone: { $first: '$phone' } } },
+      ]),
     ]);
 
-    const orderMap = new Map(
-      orderAgg.map((x) => [
-        String(x._id),
-        { ordersCount: x.ordersCount || 0, itemsCount: x.itemsCount || 0 },
-      ]),
+    const kycByUser = new Map(
+      kycRows.map((k) => [String(k.userId), String(k.contactNumber || '').trim()]),
+    );
+    const addressPhoneByUser = new Map(
+      addressPhones.map((r) => [String(r._id), String(r.phone || '').trim()]),
+    );
+    const orderPhoneByUser = new Map(
+      orderPhones.map((r) => [String(r._id), String(r.phone || '').trim()]),
     );
 
+    const ordersByUser = new Map();
+    for (const id of userIds) {
+      ordersByUser.set(String(id), []);
+    }
+    for (const o of orders) {
+      const key = String(o.user);
+      if (!ordersByUser.has(key)) ordersByUser.set(key, []);
+      ordersByUser.get(key).push(o);
+    }
+
     const result = users.map((u) => {
-      const stat = orderMap.get(String(u._id)) || {
-        ordersCount: 0,
-        itemsCount: 0,
-      };
+      const uid = String(u._id);
+      const userOrders = ordersByUser.get(uid) || [];
+      const fin = summarizeUserOrders(userOrders);
+      const lifetimeValue =
+        fin.rent + fin.newBuy + fin.usedBuy + fin.deposit + fin.shipping;
       return {
         _id: u._id,
         fullName: u.fullName,
         emailAddress: u.emailAddress,
         createdAt: u.createdAt,
         customerNumber: u.customerNumber,
-        ordersCount: stat.ordersCount,
-        itemsCount: stat.itemsCount,
+        kycMobile:
+          kycByUser.get(uid) ||
+          addressPhoneByUser.get(uid) ||
+          orderPhoneByUser.get(uid) ||
+          '',
+        ordersCount: fin.ordersCount,
+        itemsCount: fin.itemsCount,
+        service: 0,
+        newBuy: fin.newBuy,
+        usedBuy: fin.usedBuy,
+        rent: fin.rent,
+        deposit: fin.deposit,
+        shipping: fin.shipping,
+        lifetimeValue,
       };
     });
 
