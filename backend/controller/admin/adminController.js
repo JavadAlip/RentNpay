@@ -519,7 +519,7 @@ export const getUserDetails = async (req, res) => {
       },
     ];
 
-    const [orders, kycLean, issueOrders] = await Promise.all([
+    const [orders, kycLean, issueOrders, addressDoc] = await Promise.all([
       Order.find(userOrderFilter).populate(populateOrderPaths).sort({ createdAt: -1 }).lean(),
       UserKyc.findOne({ userId: userObjectId || id }).lean(),
       Order.find({
@@ -529,7 +529,14 @@ export const getUserDetails = async (req, res) => {
         .populate(populateOrderPaths)
         .sort({ createdAt: -1 })
         .lean(),
+      Address.findOne({ user: userObjectId || id }).sort({ createdAt: -1 }).lean(),
     ]);
+
+    const orderPhone = orders.length ? String(orders[0].phone || '').trim() : '';
+    const resolvedProfilePhone =
+      String(kycLean?.contactNumber || '').trim() ||
+      String(addressDoc?.phone || '').trim() ||
+      orderPhone;
 
     const activeRentals = buildMyRentalsStyleActiveRows(orders);
     const supportTickets = await buildIssueTicketsFromOrders(issueOrders);
@@ -600,7 +607,7 @@ export const getUserDetails = async (req, res) => {
           status: kycLean.status,
           submittedAt: kycLean.submittedAt,
           reviewedAt: kycLean.reviewedAt,
-          contactNumber: String(kycLean.contactNumber || '').trim(),
+          contactNumber: resolvedProfilePhone,
           aadhaarFront: kycLean.aadhaarFront || '',
           aadhaarBack: kycLean.aadhaarBack || '',
           panCard: kycLean.panCard || '',
@@ -608,6 +615,7 @@ export const getUserDetails = async (req, res) => {
       : null;
 
     res.json({
+      profilePhone: resolvedProfilePhone,
       user: {
         _id: user._id,
         fullName: user.fullName,

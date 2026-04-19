@@ -143,6 +143,7 @@ export default function UserDetails({ userId }) {
     activeRentals,
     orderHistory,
     customerKyc,
+    profilePhone,
   } = data;
   const initials = String(user.fullName || 'U')
     .split(' ')
@@ -153,7 +154,8 @@ export default function UserDetails({ userId }) {
 
   const kycStatus = customerKyc?.status || 'not_submitted';
   const kycVerified = kycStatus === 'approved';
-  const phone = customerKyc?.contactNumber || '—';
+  const phone =
+    String(profilePhone || customerKyc?.contactNumber || '').trim() || '—';
 
   const kycDocs = [
     {
