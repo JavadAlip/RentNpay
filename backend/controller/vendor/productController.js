@@ -162,6 +162,8 @@ export const createProduct = async (req, res) => {
     }
 
     delete data.existingImages;
+    delete data.adminListingEnabled;
+    delete data.vendorListingEnabled;
 
     if (data.submissionStatus === 'published') {
       data.submissionStatus = 'pending_approval';
@@ -235,6 +237,8 @@ export const updateProduct = async (req, res) => {
     }
 
     delete data.existingImages;
+    delete data.adminListingEnabled;
+    delete data.vendorListingEnabled;
 
     // Until admin approves at least once, vendors cannot force storefront publish.
     if (data.submissionStatus === 'published' && !existing.isAdminApproved) {
@@ -253,6 +257,39 @@ export const updateProduct = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const patchVendorProductListingVisibility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const raw = req.body?.vendorListingEnabled;
+    const vendorListingEnabled = raw === true || raw === 'true';
+
+    const product = await Product.findOne({ _id: id, vendorId: req.vendor._id });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    if (!product.isAdminApproved) {
+      return res.status(400).json({
+        message: 'This listing is pending admin approval.',
+      });
+    }
+    if (product.submissionStatus !== 'published') {
+      return res.status(400).json({
+        message: 'Only published listings can be shown or hidden on the website.',
+      });
+    }
+
+    product.vendorListingEnabled = vendorListingEnabled;
+    await product.save();
+
+    return res.status(200).json({
+      message: 'Storefront visibility updated.',
+      product,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -330,6 +367,8 @@ export const getMarketLowRentalTenures = async (req, res) => {
       type: 'Rental',
       submissionStatus: 'published',
       isAdminApproved: { $ne: false },
+      adminListingEnabled: { $ne: false },
+      vendorListingEnabled: { $ne: false },
       vendorId: { $ne: vendorId },
     };
 

@@ -28,6 +28,14 @@ function distanceKm(aLat, aLon, bLat, bLon) {
   return R * c;
 }
 
+/** Public storefront: hide if admin or vendor turned listing off. */
+function storefrontListingVisibilityMatch() {
+  return {
+    adminListingEnabled: { $ne: false },
+    vendorListingEnabled: { $ne: false },
+  };
+}
+
 function pickPrimaryStore(stores = []) {
   if (!Array.isArray(stores) || stores.length === 0) return null;
   return (
@@ -351,6 +359,10 @@ export const getVendorDetails = async (req, res) => {
         status: p.status,
         image: p.image,
         rentPerMonth: productRentPerMonth(p),
+        submissionStatus: p.submissionStatus,
+        isAdminApproved: p.isAdminApproved,
+        adminListingEnabled: p.adminListingEnabled,
+        vendorListingEnabled: p.vendorListingEnabled,
       })),
       kycDocuments,
       financials: {
@@ -675,6 +687,34 @@ export const getUserDetails = async (req, res) => {
   }
 };
 
+export const patchAdminProductListingVisibility = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const raw = req.body?.adminListingEnabled;
+    const adminListingEnabled = raw === true || raw === 'true';
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    if (adminListingEnabled && product.isAdminApproved === false) {
+      return res.status(400).json({
+        message: 'Approve the product before enabling it on the storefront.',
+      });
+    }
+
+    product.adminListingEnabled = adminListingEnabled;
+    await product.save();
+
+    return res.json({
+      message: 'Listing visibility updated.',
+      product,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const getAllProducts = async (req, res) => {
   try {
     const {
@@ -698,6 +738,7 @@ export const getAllProducts = async (req, res) => {
         vendorId: { $exists: true, $ne: null },
         submissionStatus: 'published',
         isAdminApproved: { $ne: false },
+        ...storefrontListingVisibilityMatch(),
       };
       const rows = await Product.find(match)
         .populate('vendorId', '_id')
@@ -739,6 +780,7 @@ export const getAllProducts = async (req, res) => {
       query.vendorId = { $exists: true, $ne: null };
       query.submissionStatus = 'published';
       query.isAdminApproved = { $ne: false };
+      Object.assign(query, storefrontListingVisibilityMatch());
     }
 
     const total = await Product.countDocuments(query);
@@ -908,6 +950,8 @@ export const approveProductAndGoLive = async (req, res) => {
     product.submissionStatus = 'published';
     product.adminApprovedAt = new Date();
     product.adminApprovedBy = String(req?.admin?.email || 'admin');
+    product.adminListingEnabled = true;
+    product.vendorListingEnabled = true;
     await product.save();
 
     return res.json({

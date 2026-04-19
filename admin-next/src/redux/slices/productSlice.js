@@ -4,6 +4,7 @@ import {
   apiGetMyProducts,
   apiUpdateProduct,
   apiDeleteProduct,
+  apiPatchVendorProductListingVisibility,
 } from '../../service/api';
 
 // ── CREATE PRODUCT ─────────────────────────
@@ -41,6 +42,23 @@ export const updateProduct = createAsyncThunk(
     try {
       const token = getState().vendor.token;
       const res = await apiUpdateProduct(id, formData, token);
+      return res.data.product;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  },
+);
+
+export const patchVendorListingVisibility = createAsyncThunk(
+  'product/patchVendorListing',
+  async ({ id, vendorListingEnabled }, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().vendor.token;
+      const res = await apiPatchVendorProductListingVisibility(
+        id,
+        { vendorListingEnabled },
+        token,
+      );
       return res.data.product;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -104,6 +122,14 @@ const productSlice = createSlice({
 
       // UPDATE
       .addCase(updateProduct.fulfilled, (state, action) => {
+        const index = state.products.findIndex(
+          (p) => p._id === action.payload._id,
+        );
+        if (index !== -1) {
+          state.products[index] = action.payload;
+        }
+      })
+      .addCase(patchVendorListingVisibility.fulfilled, (state, action) => {
         const index = state.products.findIndex(
           (p) => p._id === action.payload._id,
         );

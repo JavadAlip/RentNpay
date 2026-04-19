@@ -468,6 +468,22 @@ export const apiApproveProductAndGoLive = (productId, token) =>
     },
   );
 
+export const apiPatchAdminProductListingVisibility = (productId, body, token) =>
+  API.patch(`/admin/products/${productId}/listing-visibility`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+export const apiPatchVendorProductListingVisibility = (productId, body, token) =>
+  API.patch(`/vendor/product/${productId}/listing-visibility`, body, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
 // ── ADMIN ORDER APIs ─────────────────────────
 export const apiGetAllOrders = (token) =>
   API.get('/orders', {

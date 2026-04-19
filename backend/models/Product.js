@@ -150,6 +150,16 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** Admin can hide a listing from the public storefront without deleting it. */
+    adminListingEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    /** Vendor can hide an approved listing from the storefront; must stay in sync with admin visibility. */
+    vendorListingEnabled: {
+      type: Boolean,
+      default: true,
+    },
     adminApprovedAt: {
       type: Date,
       default: null,

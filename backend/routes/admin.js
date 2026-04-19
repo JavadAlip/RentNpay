@@ -10,6 +10,7 @@ import {
   getAllProducts,
   getProductApprovalQueue,
   approveProductAndGoLive,
+  patchAdminProductListingVisibility,
 } from '../controller/admin/adminController.js';
 import {
   getVendorKycQueue,
@@ -162,6 +163,11 @@ router.patch(
   '/product-approvals/:productId/approve',
   adminAuth,
   approveProductAndGoLive,
+);
+router.patch(
+  '/products/:productId/listing-visibility',
+  adminAuth,
+  patchAdminProductListingVisibility,
 );
 router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
 

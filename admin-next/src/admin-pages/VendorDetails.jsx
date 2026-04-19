@@ -4,9 +4,22 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { apiGetAdminVendorDetails, apiGetAdminVendorKycReview } from '@/service/api';
+import {
+  apiGetAdminVendorDetails,
+  apiGetAdminVendorKycReview,
+  apiPatchAdminProductListingVisibility,
+} from '@/service/api';
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+/** Shown on website: approved + published + both admin and vendor switches on. */
+function isProductLiveOnStorefront(p) {
+  if (!p || p.isAdminApproved === false) return false;
+  if (String(p.submissionStatus || '').trim() !== 'published') return false;
+  if (p.adminListingEnabled === false) return false;
+  if (p.vendorListingEnabled === false) return false;
+  return true;
+}
 const parsePrice = (raw) => {
   const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
   return Number.isFinite(n) ? n : 0;
@@ -25,7 +38,8 @@ function buildKycDocumentsFromKyc(kyc) {
   const panUrl = kyc.panPhoto || '';
   const stores = kyc.storeManagement?.stores || [];
   const shopUrl =
-    stores.find((s) => String(s.shopFrontPhotoUrl || '').trim())?.shopFrontPhotoUrl || '';
+    stores.find((s) => String(s.shopFrontPhotoUrl || '').trim())
+      ?.shopFrontPhotoUrl || '';
   const doc = (docId, title, url) => ({
     id: docId,
     title,
@@ -154,7 +168,9 @@ function downloadVendorProfileExcel(data, kycDocsForExport) {
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const name = safeExportFileName(data.vendor?.fullName || data.vendor?.vendorCode);
+  const name = safeExportFileName(
+    data.vendor?.fullName || data.vendor?.vendorCode,
+  );
   a.href = url;
   a.download = `${name}_profile.xls`;
   document.body.appendChild(a);
@@ -228,8 +244,10 @@ function StorefrontHeroIcon() {
 }
 
 function stockStatusClass(status) {
-  if (status === 'Active') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (status === 'Low Stock') return 'bg-amber-50 text-amber-800 border-amber-200';
+  if (status === 'Active')
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (status === 'Low Stock')
+    return 'bg-amber-50 text-amber-800 border-amber-200';
   return 'bg-rose-50 text-rose-700 border-rose-200';
 }
 
@@ -248,6 +266,7 @@ export default function VendorDetails({ vendorId }) {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [kycPreviewUrl, setKycPreviewUrl] = useState(null);
+  const [listingToggleId, setListingToggleId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -294,7 +313,9 @@ export default function VendorDetails({ vendorId }) {
         if (mounted) setData(payload);
       } catch (err) {
         if (!mounted) return;
-        setError(err.response?.data?.message || 'Failed to load vendor details.');
+        setError(
+          err.response?.data?.message || 'Failed to load vendor details.',
+        );
       } finally {
         if (mounted) setLoading(false);
       }
@@ -362,8 +383,7 @@ export default function VendorDetails({ vendorId }) {
   const { vendor, summary, financials, recentTransactions, loanHistory } = data;
   const kycAppStatus = data.kycApplicationStatus;
   const businessAddress = String(data.businessAddress || '').trim();
-  const kycApproved =
-    kycAppStatus === 'approved' || vendor.isVerified === true;
+  const kycApproved = kycAppStatus === 'approved' || vendor.isVerified === true;
   const kycRejected = kycAppStatus === 'rejected';
   const joinedLabel = vendor.createdAt
     ? `Joined ${new Date(vendor.createdAt).toLocaleDateString('en-IN', {
@@ -391,6 +411,65 @@ export default function VendorDetails({ vendorId }) {
     urls.forEach((u) => window.open(u, '_blank', 'noopener,noreferrer'));
   };
 
+  const handleAdminListingToggle = async (p) => {
+    if (!p?._id) return;
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    if (!token) {
+      toast.error('Please log in again.');
+      return;
+    }
+    if (p.isAdminApproved === false) {
+      toast.error('Approve this product before it can appear on the website.');
+      return;
+    }
+    if (String(p.submissionStatus || '').trim() !== 'published') {
+      toast.info('Only published listings can be shown on the storefront.');
+      return;
+    }
+    const adminOn = p.adminListingEnabled !== false;
+    const vendorOn = p.vendorListingEnabled !== false;
+    const live = adminOn && vendorOn;
+    let nextAdmin = adminOn;
+    if (live) nextAdmin = false;
+    else if (!adminOn) nextAdmin = true;
+    else {
+      toast.info(
+        'The vendor has turned off this listing on their side. They need to enable it again before it can go live.',
+      );
+      return;
+    }
+
+    setListingToggleId(String(p._id));
+    try {
+      await apiPatchAdminProductListingVisibility(
+        p._id,
+        { adminListingEnabled: nextAdmin },
+        token,
+      );
+      setData((prev) => {
+        if (!prev?.products) return prev;
+        return {
+          ...prev,
+          products: prev.products.map((x) =>
+            String(x._id) === String(p._id)
+              ? { ...x, adminListingEnabled: nextAdmin }
+              : x,
+          ),
+        };
+      });
+      toast.success(
+        nextAdmin
+          ? 'Admin storefront visibility enabled.'
+          : 'Listing hidden from the public website.',
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update listing.');
+    } finally {
+      setListingToggleId(null);
+    }
+  };
+
   const statsRow = (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -408,7 +487,13 @@ export default function VendorDetails({ vendorId }) {
       </div>
       <div className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
             <path d="M4 10V19C4 19.55 4.45 20 5 20H9V14H15V20H19C19.55 20 20 19.55 20 19V10" />
             <path d="M3 9L5 4H19L21 9" />
           </svg>
@@ -424,13 +509,21 @@ export default function VendorDetails({ vendorId }) {
       </div>
       <div className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
             <circle cx="12" cy="12" r="9" />
             <path d="M12 7v5l3 2" />
           </svg>
         </div>
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Pending</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+            Pending
+          </p>
           <p className="mt-0.5 text-xl font-semibold text-gray-900 sm:text-2xl">
             {money(summary?.pendingSettlement)}
           </p>
@@ -438,13 +531,21 @@ export default function VendorDetails({ vendorId }) {
       </div>
       <div className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
             <rect x="4" y="6" width="16" height="14" rx="2" />
             <path d="M8 6V4h8v2" />
           </svg>
         </div>
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Products</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+            Products
+          </p>
           <p className="mt-0.5 text-xl font-semibold text-gray-900 sm:text-2xl">
             {(summary?.totalProducts || 0).toLocaleString('en-IN')}
           </p>
@@ -458,23 +559,33 @@ export default function VendorDetails({ vendorId }) {
       <h2 className="text-base font-semibold text-gray-900">Vendor details</h2>
       <div className="mt-4 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Business address</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            Business address
+          </p>
           <p className="mt-1 font-medium text-gray-900">
             {businessAddress || '—'}
           </p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Email address</p>
-          <p className="mt-1 font-medium text-gray-900">{vendor.emailAddress}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            Email address
+          </p>
+          <p className="mt-1 font-medium text-gray-900">
+            {vendor.emailAddress}
+          </p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Phone number</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            Phone number
+          </p>
           <p className="mt-1 font-medium text-gray-900">
             {vendor.mobileNumber ? String(vendor.mobileNumber) : '—'}
           </p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Member since</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            Member since
+          </p>
           <p className="mt-1 font-medium text-gray-900">
             {vendor.createdAt
               ? new Date(vendor.createdAt).toLocaleDateString('en-IN', {
@@ -494,18 +605,32 @@ export default function VendorDetails({ vendorId }) {
       <div className="flex flex-col gap-1 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <rect x="4" y="6" width="16" height="14" rx="2" />
               <path d="M8 6V4h8v2" />
             </svg>
           </span>
-          <h2 className="text-base font-semibold text-gray-900">Listed products</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            Listed products
+          </h2>
         </div>
       </div>
       <div className="border-b border-gray-100 px-4 py-3 sm:px-6">
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="11" cy="11" r="7" />
               <path d="M21 21l-4.3-4.3" />
             </svg>
@@ -532,26 +657,41 @@ export default function VendorDetails({ vendorId }) {
           </thead>
           <tbody>
             {filteredProducts.map((p) => {
-              const toggledOn = p.status !== 'Out of Stock';
+              const toggledOn = isProductLiveOnStorefront(p);
+              const canToggleListing =
+                p.isAdminApproved !== false &&
+                String(p.submissionStatus || '').trim() === 'published';
+              const busy = listingToggleId === String(p._id);
               return (
-                <tr key={p._id} className="border-t border-gray-100 hover:bg-gray-50/80">
+                <tr
+                  key={p._id}
+                  className="border-t border-gray-100 hover:bg-gray-50/80"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
                         {p.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={p.image}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400">
                             —
                           </div>
                         )}
                       </div>
-                      <span className="font-semibold text-gray-900">{p.productName}</span>
+                      <span className="font-semibold text-gray-900">
+                        {p.productName}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-700">{p.category}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{money(parsePrice(p.price))}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">
+                    {money(parsePrice(p.price))}
+                  </td>
                   <td className="px-4 py-3 font-semibold text-gray-900">
                     {money(Number(p.rentPerMonth) || 0)}
                   </td>
@@ -563,25 +703,37 @@ export default function VendorDetails({ vendorId }) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-                        toggledOn ? 'bg-orange-500' : 'bg-gray-300'
+                    <button
+                      type="button"
+                      disabled={!canToggleListing || busy}
+                      onClick={() => handleAdminListingToggle(p)}
+                      title={
+                        !canToggleListing
+                          ? 'Approve and publish before controlling storefront visibility'
+                          : toggledOn
+                            ? 'Visible on website — click to hide'
+                            : 'Hidden from website — click to allow (vendor must also have it on)'
+                      }
+                      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                        toggledOn ? 'bg-emerald-500' : 'bg-gray-300'
                       }`}
-                      aria-hidden
                     >
                       <span
                         className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
                           toggledOn ? 'translate-x-[1.15rem]' : 'translate-x-0'
                         }`}
                       />
-                    </span>
+                    </button>
                   </td>
                 </tr>
               );
             })}
             {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                <td
+                  colSpan={6}
+                  className="px-4 py-10 text-center text-gray-500"
+                >
                   No products found.
                 </td>
               </tr>
@@ -597,12 +749,20 @@ export default function VendorDetails({ vendorId }) {
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-4 sm:px-6">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
             </svg>
           </span>
-          <h2 className="text-base font-semibold text-gray-900">KYC documents</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            KYC documents
+          </h2>
         </div>
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
           {kycDocs.map((doc) => {
@@ -617,16 +777,30 @@ export default function VendorDetails({ vendorId }) {
                   {hasFile ? (
                     urlLooksLikePdf(doc.url) ? (
                       <div className="flex flex-col items-center gap-1 px-3 text-center">
-                        <span className="text-xs font-medium text-gray-600">PDF document</span>
-                        <span className="text-[11px] text-gray-400">{doc.title}</span>
+                        <span className="text-xs font-medium text-gray-600">
+                          PDF document
+                        </span>
+                        <span className="text-[11px] text-gray-400">
+                          {doc.title}
+                        </span>
                       </div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={doc.url} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={doc.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     )
                   ) : (
                     <div className="flex flex-col items-center gap-1 text-gray-400">
-                      <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg
+                        className="h-10 w-10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                      >
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <path d="M14 2v6h6" />
                       </svg>
@@ -639,14 +813,24 @@ export default function VendorDetails({ vendorId }) {
                     <p className="font-semibold text-gray-900">{doc.title}</p>
                     <span
                       className={`shrink-0 text-xs font-semibold ${
-                        verifiedDoc ? 'text-emerald-600' : hasFile ? 'text-gray-600' : 'text-amber-600'
+                        verifiedDoc
+                          ? 'text-emerald-600'
+                          : hasFile
+                            ? 'text-gray-600'
+                            : 'text-amber-600'
                       }`}
                     >
-                      {verifiedDoc ? 'Verified' : hasFile ? 'Uploaded' : 'Pending'}
+                      {verifiedDoc
+                        ? 'Verified'
+                        : hasFile
+                          ? 'Uploaded'
+                          : 'Pending'}
                     </span>
                   </div>
                   {uploadedDateLabel ? (
-                    <p className="text-xs text-gray-500">Uploaded: {uploadedDateLabel}</p>
+                    <p className="text-xs text-gray-500">
+                      Uploaded: {uploadedDateLabel}
+                    </p>
                   ) : (
                     <p className="text-xs text-gray-400">—</p>
                   )}
@@ -661,7 +845,13 @@ export default function VendorDetails({ vendorId }) {
                           : 'cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
@@ -671,10 +861,18 @@ export default function VendorDetails({ vendorId }) {
                       type="button"
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2 text-xs font-semibold text-white hover:bg-orange-600"
                       onClick={() =>
-                        toast.info('Ask the vendor to re-upload from their KYC flow, or use the KYC review page.')
+                        toast.info(
+                          'Ask the vendor to re-upload from their KYC flow, or use the KYC review page.',
+                        )
                       }
                     >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
@@ -695,10 +893,18 @@ export default function VendorDetails({ vendorId }) {
             type="button"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
             onClick={() =>
-              toast.info('Use Admin → KYC review for this vendor to approve application.')
+              toast.info(
+                'Use Admin → KYC review for this vendor to approve application.',
+              )
             }
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
               <path d="M20 6L9 17l-5-5" />
             </svg>
             Approve KYC
@@ -707,10 +913,18 @@ export default function VendorDetails({ vendorId }) {
             type="button"
             className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-rose-300 bg-white px-5 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50"
             onClick={() =>
-              toast.info('Use Admin → KYC review for this vendor to reject application.')
+              toast.info(
+                'Use Admin → KYC review for this vendor to reject application.',
+              )
             }
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M15 9l-6 6M9 9l6 6" />
             </svg>
@@ -721,7 +935,13 @@ export default function VendorDetails({ vendorId }) {
             onClick={downloadAllKyc}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
             Download all
@@ -737,33 +957,48 @@ export default function VendorDetails({ vendorId }) {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
           <span className="text-sm font-semibold">₹</span>
         </span>
-        <h2 className="text-base font-semibold text-gray-900">Financials & settlements</h2>
+        <h2 className="text-base font-semibold text-gray-900">
+          Financials & settlements
+        </h2>
       </div>
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Financial summary</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Financial summary
+        </p>
         <div className="mt-4 grid grid-cols-1 gap-6 border-t border-gray-100 pt-4 md:grid-cols-3">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
               Total lifetime earnings
             </p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{money(financials?.totalEarnings)}</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {money(financials?.totalEarnings)}
+            </p>
           </div>
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
               Pending settlements
             </p>
-            <p className="mt-1 text-2xl font-bold text-orange-500">{money(financials?.pendingSettlement)}</p>
+            <p className="mt-1 text-2xl font-bold text-orange-500">
+              {money(financials?.pendingSettlement)}
+            </p>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Last settlement</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{money(financials?.lastSettlement)}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+              Last settlement
+            </p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {money(financials?.lastSettlement)}
+            </p>
             {financials?.lastSettlementDate ? (
               <p className="mt-1 text-xs text-gray-500">
-                {new Date(financials.lastSettlementDate).toLocaleDateString('en-IN', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
+                {new Date(financials.lastSettlementDate).toLocaleDateString(
+                  'en-IN',
+                  {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  },
+                )}
               </p>
             ) : null}
           </div>
@@ -771,14 +1006,22 @@ export default function VendorDetails({ vendorId }) {
       </div>
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-base font-semibold text-gray-900">Recent transactions</h3>
+          <h3 className="text-base font-semibold text-gray-900">
+            Recent transactions
+          </h3>
           <button
             type="button"
             className="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-700"
             onClick={() => toast.info('Full ledger view is not wired yet.')}
           >
             View all
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
             </svg>
           </button>
@@ -791,7 +1034,11 @@ export default function VendorDetails({ vendorId }) {
             >
               <p className="text-gray-600">
                 <span className="font-medium text-gray-800">
-                  {t.date ? new Date(t.date).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—'}
+                  {t.date
+                    ? new Date(t.date).toLocaleDateString('en-IN', {
+                        dateStyle: 'medium',
+                      })
+                    : '—'}
                 </span>
                 <span className="text-gray-400"> · </span>
                 {t.description}
@@ -801,7 +1048,8 @@ export default function VendorDetails({ vendorId }) {
           ))}
           {!recentTransactions?.length ? (
             <p className="text-sm text-gray-400">
-              Financial transaction history and settlement details will appear here.
+              Financial transaction history and settlement details will appear
+              here.
             </p>
           ) : null}
         </div>
@@ -813,7 +1061,13 @@ export default function VendorDetails({ vendorId }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
             <rect x="2" y="5" width="20" height="14" rx="2" />
             <path d="M2 10h20" />
           </svg>
@@ -835,14 +1089,29 @@ export default function VendorDetails({ vendorId }) {
             </thead>
             <tbody>
               {(loanHistory || []).map((row) => (
-                <tr key={row._id || row.loanId} className="border-t border-gray-100">
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.loanId || row._id}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {row.date ? new Date(row.date).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—'}
+                <tr
+                  key={row._id || row.loanId}
+                  className="border-t border-gray-100"
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {row.loanId || row._id}
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{money(row.principal)}</td>
-                  <td className="px-4 py-3 text-gray-800">{money(row.remaining)}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.nextEmiDate || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {row.date
+                      ? new Date(row.date).toLocaleDateString('en-IN', {
+                          dateStyle: 'medium',
+                        })
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {money(row.principal)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-800">
+                    {money(row.remaining)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {row.nextEmiDate || '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${loanStatusClass(row.status)}`}
@@ -854,7 +1123,10 @@ export default function VendorDetails({ vendorId }) {
               ))}
               {!loanHistory?.length ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-10 text-center text-sm text-gray-400"
+                  >
                     No loan history records yet.
                   </td>
                 </tr>
@@ -886,7 +1158,13 @@ export default function VendorDetails({ vendorId }) {
         href="/all-vendors"
         className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-orange-600"
       >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
         Back to vendors
@@ -898,30 +1176,52 @@ export default function VendorDetails({ vendorId }) {
             <StorefrontHeroIcon />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{vendor.fullName}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {vendor.fullName}
+                </h1>
                 {kycApproved ? <VerifiedOrangeTick /> : null}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-500">#{vendor.vendorCode}</span>
+                <span className="text-sm text-gray-500">
+                  #{vendor.vendorCode}
+                </span>
                 {kycBadge}
               </div>
               <div className="mt-4 flex flex-col gap-3 text-sm text-gray-600 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
                 <span className="inline-flex items-center gap-2">
-                  <svg className="h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg
+                    className="h-4 w-4 shrink-0 text-gray-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
                     <rect x="2" y="4" width="20" height="16" rx="2" />
                     <path d="M22 7l-10 6L2 7" />
                   </svg>
                   {vendor.emailAddress}
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <svg className="h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg
+                    className="h-4 w-4 shrink-0 text-gray-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
                   {vendor.mobileNumber ? String(vendor.mobileNumber) : '—'}
                 </span>
                 {joinedLabel ? (
                   <span className="inline-flex items-center gap-2">
-                    <svg className="h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <svg
+                      className="h-4 w-4 shrink-0 text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
                       <rect x="3" y="4" width="18" height="18" rx="2" />
                       <path d="M16 2v4M8 2v4M3 10h18" />
                     </svg>
@@ -983,11 +1283,15 @@ export default function VendorDetails({ vendorId }) {
         </div>
       )}
 
-      {activeTab === 'products' && <div className="space-y-6">{productsSection}</div>}
+      {activeTab === 'products' && (
+        <div className="space-y-6">{productsSection}</div>
+      )}
 
       {activeTab === 'kyc' && <div className="space-y-6">{kycSection}</div>}
 
-      {activeTab === 'financials' && <div className="space-y-6">{financialsSection}</div>}
+      {activeTab === 'financials' && (
+        <div className="space-y-6">{financialsSection}</div>
+      )}
 
       {activeTab === 'loans' && <div className="space-y-6">{loansSection}</div>}
 

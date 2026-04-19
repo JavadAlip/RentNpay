@@ -8,6 +8,7 @@ import {
   deleteProduct,
   getProductById,
   getMarketLowRentalTenures,
+  patchVendorProductListingVisibility,
 } from '../controller/vendor/productController.js';
 import {
   getListingTemplateForVendor,
@@ -86,6 +87,12 @@ router.put(
   vendorAuth,
   upload.array('images', 5),
   updateProduct,
+);
+
+router.patch(
+  '/product/:id/listing-visibility',
+  vendorAuth,
+  patchVendorProductListingVisibility,
 );
 
 // Delete

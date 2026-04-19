@@ -10,6 +10,7 @@ import {
   createProduct,
   deleteProduct,
   getMyProducts,
+  patchVendorListingVisibility,
   updateProduct,
 } from '../../../redux/slices/productSlice';
 import VendorProductAddModal from '../../Components/Modals/VendorProductAddModal';
@@ -40,6 +41,14 @@ function tierRentAmount(tier) {
     return Number.isFinite(v) && v > 0 ? v : 0;
   };
   return n('customerRent') || n('pricePerDay') || n('vendorRent') || 0;
+}
+
+function isProductLiveOnStorefront(p) {
+  if (!p || p.isAdminApproved === false) return false;
+  if (String(p.submissionStatus || '').trim() !== 'published') return false;
+  if (p.adminListingEnabled === false) return false;
+  if (p.vendorListingEnabled === false) return false;
+  return true;
 }
 
 /** Subtitle under product name: 3d / 3mo from rental tiers, else legacy `price` */
@@ -370,21 +379,27 @@ const Products = () => {
       toast.info('This listing is pending admin approval.');
       return;
     }
-    const currentlyActive =
-      product.submissionStatus === 'published' && product.isAdminApproved;
-    const nextSubmission = currentlyActive ? 'draft' : 'published';
-    const payload = buildProductFormData(product, {
-      submissionStatus: nextSubmission,
-    });
+    if (String(product.submissionStatus || '').trim() !== 'published') {
+      toast.info('Only published listings can be shown on the website.');
+      return;
+    }
+    const adminOn = product.adminListingEnabled !== false;
+    if (!adminOn) {
+      toast.info('Admin has turned off this listing on the storefront.');
+      return;
+    }
+    const live = isProductLiveOnStorefront(product);
+    const nextVendor = !live;
 
     const resultAction = await dispatch(
-      updateProduct({ id: product._id, formData: payload }),
+      patchVendorListingVisibility({
+        id: product._id,
+        vendorListingEnabled: nextVendor,
+      }),
     );
-    if (updateProduct.fulfilled.match(resultAction)) {
+    if (patchVendorListingVisibility.fulfilled.match(resultAction)) {
       toast.success(
-        currentlyActive
-          ? 'Product hidden from website'
-          : 'Product visible on website',
+        nextVendor ? 'Product visible on website' : 'Product hidden from website',
       );
     } else {
       toast.error(
@@ -522,10 +537,13 @@ const Products = () => {
                           : status === 'Low Stock'
                             ? 'bg-yellow-100 text-yellow-600'
                             : 'bg-green-100 text-green-600';
-                      const isActiveOnStorefront =
-                        p.submissionStatus === 'published' &&
-                        p.isAdminApproved !== false;
+                      const isActiveOnStorefront = isProductLiveOnStorefront(p);
                       const isApprovalPending = p.isAdminApproved === false;
+                      const adminListingOn = p.adminListingEnabled !== false;
+                      const storefrontToggleDisabled =
+                        isApprovalPending ||
+                        String(p.submissionStatus || '').trim() !== 'published' ||
+                        !adminListingOn;
                       const createTypeLabel =
                         p.createdVia === 'template' ? 'automatic' : 'manual';
 
@@ -598,20 +616,25 @@ const Products = () => {
                               type="button"
                               role="switch"
                               aria-checked={isActiveOnStorefront}
-                              aria-disabled={isApprovalPending}
+                              aria-disabled={storefrontToggleDisabled}
                               onClick={() => handleToggleActive(p)}
                               className={`relative inline-flex h-6 w-11 rounded-full transition ${
                                 isActiveOnStorefront
                                   ? 'bg-emerald-500'
                                   : 'bg-gray-300'
                               }`}
-                              disabled={isApprovalPending}
+                              disabled={storefrontToggleDisabled}
                               title={
                                 isApprovalPending
                                   ? 'Pending admin approval'
-                                  : isActiveOnStorefront
-                                  ? 'Visible on storefront'
-                                  : 'Hidden from storefront'
+                                  : String(p.submissionStatus || '').trim() !==
+                                      'published'
+                                    ? 'Publish listing before showing on website'
+                                    : !adminListingOn
+                                      ? 'Admin has disabled this listing on the storefront'
+                                      : isActiveOnStorefront
+                                        ? 'Visible on storefront'
+                                        : 'Hidden from storefront'
                               }
                             >
                               <span
