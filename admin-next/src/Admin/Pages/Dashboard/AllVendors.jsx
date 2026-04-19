@@ -202,11 +202,13 @@ const AllVendors = () => {
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-4 sm:flex-1 sm:min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <StorefrontHeaderIcon />
-            <div className="min-w-0 sm:flex-1 sm:text-center">
-              <h1 className="text-3xl font-semibold text-gray-900">All Partners & Vendors</h1>
-              <p className="text-sm text-gray-500 mt-1">
+            <div className="min-w-0 text-left">
+              <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+                All Partners & Vendors
+              </h1>
+              <p className="mt-1 text-sm leading-relaxed text-gray-500">
                 Manage vendor profiles, verification status, and inventory
               </p>
             </div>
@@ -214,7 +216,7 @@ const AllVendors = () => {
           <button
             type="button"
             onClick={openCreate}
-            className="shrink-0 self-center sm:self-auto px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
+            className="shrink-0 self-end sm:self-auto px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
           >
             + Create Vendor Profile
           </button>
