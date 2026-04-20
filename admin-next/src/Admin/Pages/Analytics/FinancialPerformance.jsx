@@ -699,21 +699,19 @@ const FinancialPerformance = () => {
           ].map((card) => (
             <div
               key={card.label}
-              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-start gap-4"
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
             >
               <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${card.iconBg}`}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center ${card.iconBg}`}
               >
                 <card.icon className="w-5 h-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-gray-400 tracking-wide uppercase">
-                  {card.label}
-                </p>
-                <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900 truncate">
-                  {card.value}
-                </p>
-              </div>
+              <p className="mt-4 text-[11px] font-medium text-gray-400 tracking-wide uppercase">
+                {card.label}
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">
+                {card.value}
+              </p>
             </div>
           ))}
         </div>
