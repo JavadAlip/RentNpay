@@ -33,6 +33,10 @@ const AdminSidebar = () => {
     to: '/analytics/order-analytics',
     label: 'Order Analytics',
   };
+  const analyticsCitiesChild = {
+    to: '/analytics/cities',
+    label: 'Cities',
+  };
   const links = [
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
@@ -191,6 +195,18 @@ const AdminSidebar = () => {
                   }`}
                 >
                   {analyticsOrdersChild.label}
+                </Link>
+                <Link
+                  href={analyticsCitiesChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === analyticsCitiesChild.to ||
+                    pathname?.startsWith(`${analyticsCitiesChild.to}/`)
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {analyticsCitiesChild.label}
                 </Link>
               </div>
             ) : null}
