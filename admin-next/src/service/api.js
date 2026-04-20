@@ -403,6 +403,13 @@ export const apiGetAllVendors = (token) =>
     },
   });
 
+export const apiGetAdminStores = (token) =>
+  API.get('/admin/stores', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiCreateVendorProfile = (data, token) =>
   API.post('/admin/create-vendor', data, {
     headers: {

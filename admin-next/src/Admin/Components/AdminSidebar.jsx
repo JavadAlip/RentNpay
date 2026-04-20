@@ -40,6 +40,7 @@ const AdminSidebar = () => {
   const links = [
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
+    { to: '/stores', label: 'Stores' },
     { to: '/cart', label: 'Cart' },
     { to: '/wishlist', label: 'Wishlist' },
     { to: '/orders', label: 'Orders' },

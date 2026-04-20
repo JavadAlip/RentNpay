@@ -3,6 +3,7 @@ import {
   adminLogin,
   adminLogout,
   getAllVendors,
+  getAdminStores,
   createVendorProfile,
   getVendorDetails,
   getAllUsers,
@@ -153,6 +154,7 @@ router.patch(
 );
 
 router.get('/get-vendors', adminAuth, getAllVendors);
+router.get('/stores', adminAuth, getAdminStores);
 router.post('/create-vendor', adminAuth, createVendorProfile);
 router.get('/get-vendors/:id', adminAuth, getVendorDetails);
 router.get('/get-users', adminAuth, getAllUsers);

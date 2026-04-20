@@ -171,6 +171,77 @@ export const getAllVendors = async (req, res) => {
   }
 };
 
+const extractCityFromStore = (store = {}) => {
+  const mapAddress = String(store.mapAddress || '').trim();
+  if (mapAddress) {
+    const parts = mapAddress
+      .split(',')
+      .map((x) => String(x || '').trim())
+      .filter(Boolean);
+    if (parts.length >= 3) return parts[parts.length - 3];
+    if (parts.length >= 2) return parts[parts.length - 2];
+    return parts[0] || 'Unknown';
+  }
+
+  const address = String(store.completeAddress || '').trim();
+  if (!address) return 'Unknown';
+  const tokens = address
+    .split(',')
+    .map((x) => String(x || '').trim())
+    .filter(Boolean);
+  if (tokens.length >= 2) return tokens[tokens.length - 2];
+  return tokens[0] || 'Unknown';
+};
+
+const storeRadiusLabel = (store = {}) => {
+  if (store.serviceModePanIndia || store.deliveryZoneType === 'pan-india') {
+    return 'Pan-India';
+  }
+  const km = Number(store.serviceRadiusKm || 0);
+  const safeKm = Number.isFinite(km) && km > 0 ? Math.round(km) : 15;
+  return `${safeKm} km (Local)`;
+};
+
+export const getAdminStores = async (req, res) => {
+  try {
+    const rows = await VendorKyc.find({})
+      .populate('vendorId', 'fullName')
+      .select('vendorId storeManagement.stores')
+      .lean();
+
+    let seq = 1;
+    const stores = [];
+    for (const kyc of rows || []) {
+      const vendorObjId = kyc?.vendorId?._id ? String(kyc.vendorId._id) : '';
+      if (!vendorObjId) continue;
+      const vendorName = String(kyc?.vendorId?.fullName || 'Vendor').trim();
+      const vendorCode = `VEN-${vendorObjId.slice(-3).toUpperCase()}`;
+      const list = Array.isArray(kyc?.storeManagement?.stores)
+        ? kyc.storeManagement.stores
+        : [];
+      for (let i = 0; i < list.length; i += 1) {
+        const s = list[i] || {};
+        stores.push({
+          _id: `${vendorObjId}_${i}`,
+          id: `STR-${String(seq).padStart(3, '0')}`,
+          name: String(s.storeName || `Store ${i + 1}`).trim(),
+          vendor: vendorName,
+          vendorId: vendorCode,
+          city: extractCityFromStore(s),
+          pin: String(s.pincode || '').trim() || '—',
+          radius: storeRadiusLabel(s),
+          status: s.isActive === false ? 'disabled' : 'enabled',
+        });
+        seq += 1;
+      }
+    }
+
+    res.json({ stores });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const createVendorProfile = async (req, res) => {
   try {
     const { fullName, emailAddress, password } = req.body;
