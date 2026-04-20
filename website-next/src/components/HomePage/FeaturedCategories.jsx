@@ -94,7 +94,7 @@ const FeaturedCategories = () => {
                   <button
                     type="button"
                     onClick={() => router.push(getCategoryRedirect(item))}
-                    className="w-full bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md transition flex items-center justify-center"
+                    className="w-full bg-white border-2 border-gray-300 rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition flex items-center justify-center"
                   >
                     <img
                       src={item.image || mainimg}

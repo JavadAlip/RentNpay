@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiGetCategories } from '../../lib/api';
 import { useRouter } from 'next/navigation';
 
 const RentalCategories = () => {
-  const sliderRef = useRef(null);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -23,11 +21,6 @@ const RentalCategories = () => {
       .catch(() => setCategories([]))
       .finally(() => setLoading(false));
   }, []);
-
-  const scrollLeft = () =>
-    sliderRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
-  const scrollRight = () =>
-    sliderRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
 
   return (
     <section className="w-full py-16 px-4 bg-gray-50">
@@ -51,18 +44,15 @@ const RentalCategories = () => {
           </button>
         </div>
 
-        {/* Slider */}
+        {/* Categories Grid */}
         <div className="relative">
-          <div
-            ref={sliderRef}
-            className="flex gap-6 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5 md:gap-6">
             {loading ? (
               // Skeleton loaders
-              Array.from({ length: 6 }).map((_, i) => (
+              Array.from({ length: 10 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex-none w-[180px] sm:w-[210px] md:w-[220px] lg:w-[240px] text-center animate-pulse"
+                  className="text-center animate-pulse"
                 >
                   <div className="bg-gray-200 rounded-xl h-[170px] sm:h-[190px] md:h-[200px] w-full" />
                   <div className="mt-3 h-4 bg-gray-200 rounded w-3/4 mx-auto" />
@@ -79,9 +69,9 @@ const RentalCategories = () => {
                       `/products?type=Rental&category=${encodeURIComponent(item.name || '')}`,
                     )
                   }
-                  className="flex-none w-[180px] sm:w-[210px] md:w-[220px] lg:w-[240px] text-center cursor-pointer group"
+                  className="text-center cursor-pointer group"
                 >
-                  <div className="bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
+                  <div className="bg-white border-2 border-gray-300 rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
                     <img
                       src={item.image || mainimg}
                       alt={item.name}
@@ -100,23 +90,6 @@ const RentalCategories = () => {
             )}
           </div>
 
-          {/* Arrows */}
-          {!loading && categories.length > 0 && (
-            <div className="flex items-center justify-center gap-3 mt-8">
-              <button
-                onClick={scrollLeft}
-                className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={scrollRight}
-                className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </section>

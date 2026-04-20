@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGetCategories } from '@/lib/api';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { IMG_SUB as mainimg } from '@/lib/assetPlaceholders';
 import { useRouter } from 'next/navigation';
 
@@ -16,10 +15,7 @@ const fallbackImageByIndex = (i) =>
     '1542291026-7eec264c27ff',
   ][i % 6]}?auto=format&fit=crop&w=500&q=80`;
 
-const ITEMS_PER_PAGE = 12;
-
 const BuyCategories = () => {
-  const [page, setPage] = useState(0);
   const [categories, setCategories] = useState([]);
   const router = useRouter();
 
@@ -44,23 +40,7 @@ const BuyCategories = () => {
     };
   }, []);
 
-  const start = page * ITEMS_PER_PAGE;
-  const visibleItems = useMemo(
-    () => categories.slice(start, start + ITEMS_PER_PAGE),
-    [categories, start],
-  );
-
-  const next = () => {
-    if (start + ITEMS_PER_PAGE < categories.length) {
-      setPage(page + 1);
-    }
-  };
-
-  const prev = () => {
-    if (page > 0) {
-      setPage(page - 1);
-    }
-  };
+  const visibleItems = useMemo(() => categories, [categories]);
 
   return (
     <section className="w-full py-16 px-4 bg-gray-50">
@@ -98,7 +78,7 @@ const BuyCategories = () => {
                 )
               }
             >
-              <div className="bg-white border rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
+              <div className="bg-white border-2 border-gray-300 rounded-xl h-[170px] sm:h-[190px] md:h-[200px] p-4 sm:p-5 hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center">
                 <img
                   src={item.image || fallbackImageByIndex(index) || mainimg}
                   alt={item.name}
@@ -122,22 +102,6 @@ const BuyCategories = () => {
           ) : null}
         </div>
 
-        {/* Arrows */}
-        <div className="flex items-center justify-center gap-3 mt-10">
-          <button
-            onClick={prev}
-            className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          <button
-            onClick={next}
-            className="p-2 border border-gray-300 text-gray-700 rounded-full hover:bg-black hover:text-white transition-colors"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
       </div>
     </section>
   );
