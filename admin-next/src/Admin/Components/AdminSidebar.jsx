@@ -22,8 +22,13 @@ const AdminSidebar = () => {
   };
 
   const [systemOpen, setSystemOpen] = useState(true);
+  const [analyticsOpen, setAnalyticsOpen] = useState(true);
 
   const dashboardLink = { to: '/dashboard', label: 'Dashboard' };
+  const analyticsFinancialChild = {
+    to: '/analytics/financial-performance',
+    label: 'Financial Performance',
+  };
   const links = [
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
@@ -47,6 +52,10 @@ const AdminSidebar = () => {
     to: '/system/approval',
     label: 'Approval',
   };
+
+  useEffect(() => {
+    if (pathname?.startsWith('/analytics')) setAnalyticsOpen(true);
+  }, [pathname]);
 
   useEffect(() => {
     const token =
@@ -132,6 +141,44 @@ const AdminSidebar = () => {
               {sidebarOpen ? dashboardLink.label : dashboardLink.label.charAt(0)}
             </span>
           </Link>
+
+          <div className="mx-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setAnalyticsOpen((v) => !v)}
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                pathname?.startsWith('/analytics')
+                  ? 'bg-orange-50 text-orange-600 font-medium'
+                  : ''
+              }`}
+              title="Analytics"
+            >
+              <span className="inline-flex items-center gap-2">
+                {sidebarOpen ? 'Analytics' : 'A'}
+              </span>
+              {sidebarOpen ? (
+                <span className="text-xs text-gray-400">
+                  {analyticsOpen ? '▼' : '▶'}
+                </span>
+              ) : null}
+            </button>
+            {sidebarOpen && analyticsOpen ? (
+              <div className="mt-1 ml-2 space-y-0.5">
+                <Link
+                  href={analyticsFinancialChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === analyticsFinancialChild.to ||
+                    pathname?.startsWith(`${analyticsFinancialChild.to}/`)
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {analyticsFinancialChild.label}
+                </Link>
+              </div>
+            ) : null}
+          </div>
 
           <div className="mx-2 mt-1">
             <button

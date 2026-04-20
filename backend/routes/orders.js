@@ -517,7 +517,10 @@ router.get('/', adminAuth, async (req, res) => {
   try {
     const orders = await Order.find({})
       .populate('user', 'fullName emailAddress')
-      .populate('products.product', 'productName image type')
+      .populate(
+        'products.product',
+        'productName image type category subCategory',
+      )
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
