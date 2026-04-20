@@ -29,6 +29,10 @@ const AdminSidebar = () => {
     to: '/analytics/financial-performance',
     label: 'Financial Performance',
   };
+  const analyticsOrdersChild = {
+    to: '/analytics/order-analytics',
+    label: 'Order Analytics',
+  };
   const links = [
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
@@ -175,6 +179,18 @@ const AdminSidebar = () => {
                   }`}
                 >
                   {analyticsFinancialChild.label}
+                </Link>
+                <Link
+                  href={analyticsOrdersChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === analyticsOrdersChild.to ||
+                    pathname?.startsWith(`${analyticsOrdersChild.to}/`)
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {analyticsOrdersChild.label}
                 </Link>
               </div>
             ) : null}
