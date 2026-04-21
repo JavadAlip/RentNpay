@@ -14,7 +14,10 @@ import {
   getListingTemplateForVendor,
   listListingTemplatesForVendor,
 } from '../controller/vendor/listingTemplateBrowseController.js';
-import { getVendorCustomersSummary } from '../controller/vendor/customerController.js';
+import {
+  getVendorCustomersSummary,
+  getVendorCustomerDetails,
+} from '../controller/vendor/customerController.js';
 import {
   deleteVendorOffer,
   getPublicActiveOffers,
@@ -99,6 +102,7 @@ router.patch(
 router.delete('/delete-product/:id', vendorAuth, deleteProduct);
 router.get('/product/:id', getProductById);
 router.get('/customers', vendorAuth, getVendorCustomersSummary);
+router.get('/customers/:userId', vendorAuth, getVendorCustomerDetails);
 router.get('/orders', vendorAuth, getVendorOrders);
 router.get('/orders/:id/pack', vendorAuth, getVendorOrderPackDetail);
 router.put('/orders/:id/mark-shipped', vendorAuth, vendorMarkOrderShipped);

@@ -84,6 +84,13 @@ export const apiGetVendorCustomers = (token) =>
     },
   });
 
+export const apiGetVendorCustomerDetails = (userId, token) =>
+  API.get(`/vendor/customers/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiGetVendorTickets = (token) =>
   API.get('/vendor/tickets', {
     headers: {
