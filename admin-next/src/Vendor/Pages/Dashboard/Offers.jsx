@@ -11,7 +11,7 @@ import {
   apiUpsertVendorOffer,
 } from '@/service/api';
 import { toast } from 'react-toastify';
-import { Heart, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { Heart, Search, ShoppingCart, Trash2, Truck } from 'lucide-react';
 
 const STICKERS = [
   '',
@@ -54,6 +54,14 @@ const resolveDiscountPercent = (basePrice, draft = {}, offer = {}) => {
     return Math.min(100, Math.max(0, (n / basePrice) * 100));
   }
   return Math.min(100, Math.max(0, n));
+};
+const getDeliveryEtaLabel = (product) => {
+  const lv = product?.logisticsVerification || {};
+  const n = Number(lv.deliveryTimelineValue);
+  const unit = String(lv.deliveryTimelineUnit || 'Days').toLowerCase();
+  if (!Number.isFinite(n) || n <= 0) return 'Varies';
+  if (unit === 'hours') return `${n} hour${n !== 1 ? 's' : ''}`;
+  return `${n} day${n !== 1 ? 's' : ''}`;
 };
 
 export default function VendorOffersPage() {
@@ -316,6 +324,7 @@ export default function VendorOffersPage() {
   const previewActive = preview
     ? (previewDraft?.isActive ?? previewOffer?.isActive ?? false)
     : false;
+  const previewDeliveryEta = getDeliveryEtaLabel(preview);
   const previewFinal = Math.max(
     0,
     Math.round(previewBase - (previewBase * previewDiscount) / 100),
@@ -638,8 +647,9 @@ export default function VendorOffersPage() {
                             {previewSticker}
                           </span>
                         ) : null}
-                        <span className="absolute bottom-3 left-3 inline-flex items-center rounded-full bg-white/95 text-blue-700 text-[10px] font-medium px-2 py-0.5">
-                          2-4 days
+                        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/95 text-blue-700 text-[10px] font-medium px-2 py-0.5">
+                          <Truck className="w-3 h-3" />
+                          {previewDeliveryEta}
                         </span>
                         <button
                           type="button"
