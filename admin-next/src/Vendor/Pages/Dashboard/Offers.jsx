@@ -11,6 +11,7 @@ import {
   apiUpsertVendorOffer,
 } from '@/service/api';
 import { toast } from 'react-toastify';
+import { Heart, Search, ShoppingCart, Trash2 } from 'lucide-react';
 
 const STICKERS = ['', 'Bestseller', 'Limited Deal', 'New Arrival', 'Hot Deal'];
 
@@ -20,11 +21,32 @@ const parsePrice = (raw) => {
 };
 
 const rupee = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+const formatPercent = (n) => {
+  const num = Number(n || 0);
+  if (!Number.isFinite(num) || num <= 0) return '0%';
+  const rounded = Math.round(num * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+};
+
 const toDateInputValue = (dateLike) => {
   if (!dateLike) return '';
   const d = new Date(dateLike);
   if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 10);
+};
+
+const resolveDiscountPercent = (basePrice, draft = {}, offer = {}) => {
+  const safeDraft = draft || {};
+  const safeOffer = offer || {};
+  const mode = safeDraft.discountType || 'percent';
+  const rawValue =
+    safeDraft.discountPercent ?? safeOffer.discountPercent ?? '';
+  const n = Number(rawValue || 0);
+  if (!Number.isFinite(n) || n <= 0 || basePrice <= 0) return 0;
+  if (mode === 'amount') {
+    return Math.min(100, Math.max(0, (n / basePrice) * 100));
+  }
+  return Math.min(100, Math.max(0, n));
 };
 
 export default function VendorOffersPage() {
@@ -35,6 +57,7 @@ export default function VendorOffersPage() {
   const [search, setSearch] = useState('');
   const [savingId, setSavingId] = useState('');
   const [selectedPreviewProductId, setSelectedPreviewProductId] = useState('');
+  const [draftByProduct, setDraftByProduct] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [form, setForm] = useState({
@@ -66,8 +89,25 @@ export default function VendorOffersPage() {
       offers.forEach((o) => {
         map[String(o.productId?._id || o.productId)] = o;
       });
+      const drafts = {};
+      (prods || [])
+        .filter((p) => p.type === 'Rental')
+        .forEach((p) => {
+          const id = String(p._id);
+          const offer = map[id] || {};
+          drafts[id] = {
+            discountPercent:
+              offer.discountPercent != null
+                ? String(offer.discountPercent)
+                : '',
+            discountType: 'percent',
+            sticker: offer.sticker || '',
+            isActive: offer.isActive ?? false,
+          };
+        });
       setProducts(prods);
       setOffersByProduct(map);
+      setDraftByProduct(drafts);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load offers data');
     } finally {
@@ -152,6 +192,47 @@ export default function VendorOffersPage() {
     }
   };
 
+  const applyInlineOffer = async (productId) => {
+    const product = rows.find((p) => String(p._id) === String(productId));
+    const basePrice = parsePrice(product?.price);
+    const draft = draftByProduct[productId] || {};
+    const mode = draft.discountType || 'percent';
+    const raw = Number(draft.discountPercent || 0);
+    if (mode === 'amount') {
+      if (!raw || raw <= 0) {
+        toast.error('Discount amount must be greater than 0');
+        return;
+      }
+      if (!basePrice || raw > basePrice) {
+        toast.error('Discount amount cannot be more than product price');
+        return;
+      }
+    } else if (!raw || raw < 1 || raw > 100) {
+      toast.error('Discount percent must be between 1 and 100');
+      return;
+    }
+    const discountPercent = resolveDiscountPercent(basePrice, draft, {});
+
+    setSavingId(productId);
+    try {
+      await apiUpsertVendorOffer(
+        {
+          productId,
+          discountPercent,
+          sticker: draft.sticker || '',
+          isActive: draft.isActive ?? true,
+        },
+        authToken,
+      );
+      toast.success('Offer applied');
+      await loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save offer');
+    } finally {
+      setSavingId('');
+    }
+  };
+
   const submitOffer = async () => {
     const productId = String(form.productId || '');
     const discountPercent = Number(form.discountPercent || 0);
@@ -159,8 +240,8 @@ export default function VendorOffersPage() {
       toast.error('Please select a product');
       return;
     }
-    if (!discountPercent || discountPercent < 1 || discountPercent > 95) {
-      toast.error('Discount must be between 1 and 95');
+    if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
+      toast.error('Discount must be between 1 and 100');
       return;
     }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
@@ -195,8 +276,17 @@ export default function VendorOffersPage() {
     rows.find((p) => String(p._id) === String(selectedPreviewProductId)) ||
     null;
   const previewOffer = preview ? offersByProduct[String(preview._id)] : null;
+  const previewDraft = preview ? draftByProduct[String(preview._id)] : null;
   const previewBase = parsePrice(preview?.price);
-  const previewDiscount = Number(previewOffer?.discountPercent || 0);
+  const previewDiscount = resolveDiscountPercent(
+    previewBase,
+    previewDraft,
+    previewOffer,
+  );
+  const previewSticker = previewDraft?.sticker || previewOffer?.sticker || '';
+  const previewActive = preview
+    ? (previewDraft?.isActive ?? previewOffer?.isActive ?? false)
+    : false;
   const previewFinal = Math.max(
     0,
     Math.round(previewBase - (previewBase * previewDiscount) / 100),
@@ -219,7 +309,7 @@ export default function VendorOffersPage() {
             </div>
             <button
               onClick={openCreateModal}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm shadow"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium shadow-lg hover:bg-blue-700"
             >
               + Create New Offer
             </button>
@@ -228,12 +318,15 @@ export default function VendorOffersPage() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-100">
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search products or offers..."
-                  className="w-full md:max-w-sm px-3 py-2 border rounded-lg text-sm"
-                />
+                <div className="relative w-full md:max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search products or offers..."
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
               </div>
 
               {loading ? (
@@ -245,25 +338,22 @@ export default function VendorOffersPage() {
                   <table className="min-w-[980px] w-full text-sm">
                     <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
                       <tr>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Product Details
                         </th>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Original Price
                         </th>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Discount
                         </th>
-                        <th className="px-3 py-3 text-left font-medium">
-                          Duration
-                        </th>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Sticker
                         </th>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Final Price
                         </th>
-                        <th className="px-3 py-3 text-left font-medium">
+                        <th className="px-3 py-3 text-left text-[11px] uppercase tracking-wide font-medium">
                           Actions
                         </th>
                       </tr>
@@ -273,8 +363,11 @@ export default function VendorOffersPage() {
                         const id = String(p._id);
                         const base = parsePrice(p.price);
                         const offer = offersByProduct[id] || {};
-                        const discountPercent = Number(
-                          offer.discountPercent || 0,
+                        const draft = draftByProduct[id] || {};
+                        const discountPercent = resolveDiscountPercent(
+                          base,
+                          draft,
+                          offer,
                         );
                         const final = Math.max(
                           0,
@@ -303,23 +396,139 @@ export default function VendorOffersPage() {
                                   <p className="font-medium text-gray-900">
                                     {p.productName}
                                   </p>
-                                  <p className="text-xs text-gray-500">
-                                    {p.category}
-                                  </p>
+                                  <div className="mt-0.5 flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDraftByProduct((prev) => ({
+                                          ...prev,
+                                          [id]: {
+                                            ...(prev[id] || {}),
+                                            isActive: !(
+                                              prev[id]?.isActive ??
+                                              offer.isActive ??
+                                              false
+                                            ),
+                                          },
+                                        }));
+                                      }}
+                                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition ${
+                                        (draft.isActive ?? offer.isActive)
+                                          ? 'bg-orange-500'
+                                          : 'bg-gray-300'
+                                      }`}
+                                      aria-label="Toggle offer active state"
+                                    >
+                                      <span
+                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
+                                          (draft.isActive ?? offer.isActive)
+                                            ? 'translate-x-3.5'
+                                            : 'translate-x-0.5'
+                                        }`}
+                                      />
+                                    </button>
+                                    <p className="text-[11px] text-gray-500">
+                                      {draft.sticker ||
+                                        offer.sticker ||
+                                        p.category}
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 py-3">{rupee(base)}</td>
                             <td className="px-3 py-3">
-                              {discountPercent ? `${discountPercent}%` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-xs text-gray-600">
-                              {start || end
-                                ? `${start || 'Any'} - ${end || 'Any'}`
-                                : 'Always on'}
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDraftByProduct((prev) => ({
+                                      ...prev,
+                                      [id]: {
+                                        ...(prev[id] || {}),
+                                        discountType: 'percent',
+                                      },
+                                    }));
+                                  }}
+                                  className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold ${
+                                    (draft.discountType || 'percent') === 'percent'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-200 text-gray-600'
+                                  }`}
+                                >
+                                  %
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDraftByProduct((prev) => ({
+                                      ...prev,
+                                      [id]: {
+                                        ...(prev[id] || {}),
+                                        discountType: 'amount',
+                                      },
+                                    }));
+                                  }}
+                                  className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold ${
+                                    draft.discountType === 'amount'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-200 text-gray-600'
+                                  }`}
+                                >
+                                  ₹
+                                </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={
+                                    draft.discountType === 'amount'
+                                      ? Math.max(1, base)
+                                      : 100
+                                  }
+                                  value={draft.discountPercent ?? ''}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) =>
+                                    setDraftByProduct((prev) => ({
+                                      ...prev,
+                                      [id]: {
+                                        ...(prev[id] || {}),
+                                        discountPercent: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  placeholder={
+                                    draft.discountType === 'amount'
+                                      ? '₹ amount'
+                                      : '% off'
+                                  }
+                                  className="w-16 px-2 py-1.5 border border-gray-200 rounded text-xs"
+                                />
+                              </div>
                             </td>
                             <td className="px-3 py-3">
-                              {offer.sticker || '-'}
+                              <select
+                                value={draft.sticker ?? ''}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  setDraftByProduct((prev) => ({
+                                    ...prev,
+                                    [id]: {
+                                      ...(prev[id] || {}),
+                                      sticker: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="w-24 px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white"
+                              >
+                                {STICKERS.map((s) => (
+                                  <option key={s || 'none'} value={s}>
+                                    {s || 'None'}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="px-3 py-3 text-emerald-600 font-semibold">
                               {discountPercent ? rupee(final) : '-'}
@@ -327,18 +536,28 @@ export default function VendorOffersPage() {
                             <td className="px-3 py-3">
                               <div className="flex flex-col gap-1">
                                 <button
-                                  onClick={() => openEditModal(id)}
-                                  className="px-3 py-1 rounded-full bg-blue-600 text-white text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    applyInlineOffer(id);
+                                  }}
+                                  disabled={savingId === id}
+                                  className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs disabled:opacity-60"
                                 >
-                                  {offer?._id ? 'Edit' : 'Create'}
+                                  {savingId === id ? 'Saving...' : 'Apply'}
                                 </button>
                                 {offer?._id ? (
                                   <button
-                                    onClick={() => removeOffer(id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeOffer(id);
+                                    }}
                                     disabled={savingId === id}
-                                    className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                                    className="inline-flex items-center gap-1 text-red-600 text-xs font-medium disabled:opacity-50"
+                                    aria-label="Delete offer"
+                                    title="Delete offer"
                                   >
-                                    Remove
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Remove{' '}
                                   </button>
                                 ) : null}
                               </div>
@@ -353,41 +572,77 @@ export default function VendorOffersPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-800">
+              <div className="bg-white rounded-2xl border border-blue-200 overflow-hidden">
+                <div className="p-4 border-b border-blue-200 bg-blue-50/70">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     Customer Preview
                   </h3>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     How this offer will appear to customers
                   </p>
                 </div>
                 {preview ? (
                   <div className="p-4">
-                    <div className="rounded-xl border overflow-hidden">
-                      <img
-                        src={preview.image}
-                        alt=""
-                        className="w-full h-44 object-cover"
-                      />
-                      <div className="p-3">
-                        <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                    <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                      <div className="relative">
+                        <img
+                          src={preview.image}
+                          alt=""
+                          className="w-full h-52 object-cover"
+                        />
+                        {previewActive && previewSticker ? (
+                          <span className="absolute top-3 left-3 inline-flex items-center rounded-full bg-orange-500 text-white text-[10px] font-medium px-2 py-0.5">
+                            {previewSticker}
+                          </span>
+                        ) : null}
+                        <span className="absolute bottom-3 left-3 inline-flex items-center rounded-full bg-white/95 text-blue-700 text-[10px] font-medium px-2 py-0.5">
+                          2-4 days
+                        </span>
+                        <button
+                          type="button"
+                          className="absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-gray-500 border border-gray-200"
+                          aria-label="Wishlist"
+                        >
+                          <Heart className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="p-3.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[22px] leading-none font-semibold text-gray-900">
+                            LG
+                          </p>
+                          <span className="inline-flex items-center rounded-full bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5">
+                            4.3 ★
+                          </span>
+                        </div>
+                        <p className="mt-1 text-base font-medium text-gray-900 line-clamp-1">
                           {preview.productName}
                         </p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-lg font-semibold text-gray-900">
-                            {previewDiscount
-                              ? rupee(previewFinal)
-                              : rupee(previewBase)}
-                          </span>
-                          {previewDiscount ? (
-                            <span className="text-xs text-gray-400 line-through">
-                              {rupee(previewBase)}
+                        <span className="mt-2 inline-flex rounded-full border border-gray-200 text-[10px] text-gray-500 px-2 py-0.5">
+                          {preview.condition || 'Refurbished'}
+                        </span>
+                        <div className="mt-3 flex items-end justify-between gap-2">
+                          <div className="flex items-end gap-1.5">
+                            <span className="text-[28px] leading-none font-semibold text-gray-900">
+                              {previewDiscount
+                                ? rupee(previewFinal)
+                                : rupee(previewBase)}
                             </span>
-                          ) : null}
+                            {previewDiscount ? (
+                              <span className="text-xs text-gray-400 line-through mb-1">
+                                {rupee(previewBase)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="inline-flex rounded-full border border-gray-200 text-[10px] text-gray-500 px-2 py-0.5 mb-1">
+                            {previewDiscount
+                              ? `${formatPercent(previewDiscount)} Off`
+                              : 'No offer'}
+                          </span>
                         </div>
-                        <button className="mt-3 w-full py-2 rounded-lg bg-orange-500 text-white text-sm">
-                          Rent Now
+                        <button className="mt-4 w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium inline-flex items-center justify-center gap-1.5">
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          Buy Now
                         </button>
                       </div>
                     </div>
@@ -410,7 +665,7 @@ export default function VendorOffersPage() {
                 <div className="mt-1 flex justify-between">
                   <span>Customer Saves:</span>
                   <span className="font-medium text-emerald-700">
-                    {previewDiscount}%
+                    {formatPercent(previewDiscount)}
                   </span>
                 </div>
               </div>
@@ -466,7 +721,7 @@ export default function VendorOffersPage() {
                     <input
                       type="number"
                       min={1}
-                      max={95}
+                      max={100}
                       value={form.discountPercent}
                       onChange={(e) =>
                         setForm((prev) => ({
@@ -474,7 +729,7 @@ export default function VendorOffersPage() {
                           discountPercent: e.target.value,
                         }))
                       }
-                      placeholder="Enter discount percentage (1-95)"
+                      placeholder="Enter discount percentage (1-100)"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
                   </div>

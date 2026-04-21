@@ -25,6 +25,13 @@ import {
   MapPin,
 } from 'lucide-react';
 
+const formatPercent = (n) => {
+  const num = Number(n || 0);
+  if (!Number.isFinite(num) || num <= 0) return '0%';
+  const rounded = Math.round(num * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+};
+
 const Trending = () => {
   const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
   const [page, setPage] = useState(0);
@@ -339,7 +346,7 @@ const Trending = () => {
 
                       {hasOffer ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full border text-[11px] font-medium text-[#F97316] border-[#F97316] bg-orange-50 whitespace-nowrap">
-                          {discount}% Off
+                          {formatPercent(discount)} Off
                         </span>
                       ) : null}
                     </div>
