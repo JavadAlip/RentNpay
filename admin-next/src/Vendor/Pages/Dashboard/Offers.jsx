@@ -13,7 +13,15 @@ import {
 import { toast } from 'react-toastify';
 import { Heart, Search, ShoppingCart, Trash2 } from 'lucide-react';
 
-const STICKERS = ['', 'Bestseller', 'Limited Deal', 'New Arrival', 'Hot Deal'];
+const STICKERS = [
+  '',
+  'Limited Deal',
+  'Festival Offer',
+  'Bestseller',
+  'Hot Sale',
+  'Clearance',
+  'New Arrival',
+];
 
 const parsePrice = (raw) => {
   const n = parseInt(String(raw || '').replace(/[^0-9]/g, ''), 10);
@@ -39,8 +47,7 @@ const resolveDiscountPercent = (basePrice, draft = {}, offer = {}) => {
   const safeDraft = draft || {};
   const safeOffer = offer || {};
   const mode = safeDraft.discountType || 'percent';
-  const rawValue =
-    safeDraft.discountPercent ?? safeOffer.discountPercent ?? '';
+  const rawValue = safeDraft.discountPercent ?? safeOffer.discountPercent ?? '';
   const n = Number(rawValue || 0);
   if (!Number.isFinite(n) || n <= 0 || basePrice <= 0) return 0;
   if (mode === 'amount') {
@@ -63,6 +70,7 @@ export default function VendorOffersPage() {
   const [form, setForm] = useState({
     productId: '',
     discountPercent: '',
+    discountType: 'percent',
     sticker: '',
     startDate: '',
     endDate: '',
@@ -153,6 +161,7 @@ export default function VendorOffersPage() {
     setForm({
       productId: '',
       discountPercent: '',
+      discountType: 'percent',
       sticker: '',
       startDate: '',
       endDate: '',
@@ -167,6 +176,7 @@ export default function VendorOffersPage() {
     setForm({
       productId,
       discountPercent: offer.discountPercent ?? '',
+      discountType: 'percent',
       sticker: offer.sticker || '',
       startDate: toDateInputValue(offer.startDate),
       endDate: toDateInputValue(offer.endDate),
@@ -235,13 +245,32 @@ export default function VendorOffersPage() {
 
   const submitOffer = async () => {
     const productId = String(form.productId || '');
-    const discountPercent = Number(form.discountPercent || 0);
+    const selected = rentalProducts.find((p) => String(p._id) === productId);
+    const basePrice = parsePrice(selected?.price);
+    const raw = Number(form.discountPercent || 0);
+    const discountPercent =
+      form.discountType === 'amount'
+        ? Math.min(100, Math.max(0, (raw / Math.max(1, basePrice)) * 100))
+        : raw;
     if (!productId) {
       toast.error('Please select a product');
       return;
     }
-    if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
-      toast.error('Discount must be between 1 and 100');
+    if (form.discountType === 'amount') {
+      if (!raw || raw <= 0) {
+        toast.error('Flat amount must be greater than 0');
+        return;
+      }
+      if (!basePrice || raw > basePrice) {
+        toast.error('Flat amount cannot exceed product price');
+        return;
+      }
+    } else if (
+      !discountPercent ||
+      discountPercent < 1 ||
+      discountPercent > 100
+    ) {
+      toast.error('Discount percent must be between 1 and 100');
       return;
     }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
@@ -291,6 +320,19 @@ export default function VendorOffersPage() {
     0,
     Math.round(previewBase - (previewBase * previewDiscount) / 100),
   );
+  const formProduct = rentalProducts.find(
+    (p) => String(p._id) === String(form.productId),
+  );
+  const formBase = parsePrice(formProduct?.price);
+  const formRaw = Number(form.discountPercent || 0);
+  const formDiscountPercent =
+    form.discountType === 'amount'
+      ? Math.min(100, Math.max(0, (formRaw / Math.max(1, formBase)) * 100))
+      : Math.min(100, Math.max(0, formRaw));
+  const formDiscountAmount = Math.round((formBase * formDiscountPercent) / 100);
+  const formDiscounted = Math.max(0, formBase - formDiscountAmount);
+  const platformCommission = Math.round(formDiscounted * 0.12);
+  const vendorPayout = Math.max(0, formDiscounted - platformCommission);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -453,7 +495,8 @@ export default function VendorOffersPage() {
                                     }));
                                   }}
                                   className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold ${
-                                    (draft.discountType || 'percent') === 'percent'
+                                    (draft.discountType || 'percent') ===
+                                    'percent'
                                       ? 'bg-blue-600 text-white'
                                       : 'bg-gray-200 text-gray-600'
                                   }`}
@@ -674,24 +717,29 @@ export default function VendorOffersPage() {
 
           {isModalOpen ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-              <div className="w-full max-w-xl rounded-2xl bg-white border border-gray-200 shadow-2xl">
+              <div className="w-full max-w-xl max-h-[86vh] rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                  <h3 className="text-base font-semibold text-gray-900">
-                    {modalMode === 'create'
-                      ? 'Create New Offer'
-                      : 'Update Offer'}
-                  </h3>
+                  <div>
+                    <h3 className="text-2xl font-semibold text-gray-900">
+                      {modalMode === 'create'
+                        ? 'Create New Offer'
+                        : 'Update Offer'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Create a promotional offer for your products
+                    </p>
+                  </div>
                   <button
                     onClick={closeModal}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="text-sm text-gray-500 hover:text-gray-700 h-8 w-8 rounded-lg border border-gray-200"
                   >
-                    Close
+                    ×
                   </button>
                 </div>
 
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">
+                    <p className="text-xs font-medium text-gray-700 mb-2">
                       Step 1: Select Product
                     </p>
                     <select
@@ -712,31 +760,120 @@ export default function VendorOffersPage() {
                         </option>
                       ))}
                     </select>
+                    {formProduct ? (
+                      <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 flex items-center gap-3">
+                        <img
+                          src={formProduct.image}
+                          alt=""
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {formProduct.productName}
+                          </p>
+                          <p className="text-xs text-blue-700">
+                            {rupee(formBase)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">
-                      Step 2: Discount Offer
+                    <p className="text-xs font-medium text-gray-700 mb-2">
+                      Step 2: Set Your Offer
                     </p>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={form.discountPercent}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          discountPercent: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter discount percentage (1-100)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            discountType: 'percent',
+                          }))
+                        }
+                        className={`rounded-lg py-2 text-xs font-medium border ${
+                          form.discountType === 'percent'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        Percentage (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            discountType: 'amount',
+                          }))
+                        }
+                        className={`rounded-lg py-2 text-xs font-medium border ${
+                          form.discountType === 'amount'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        Flat Amount (₹)
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        max={
+                          form.discountType === 'amount'
+                            ? Math.max(1, formBase)
+                            : 100
+                        }
+                        value={form.discountPercent}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            discountPercent: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          form.discountType === 'amount' ? 'Amount' : 'Percent'
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                        {form.discountType === 'amount' ? '₹' : '%'}
+                      </span>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-emerald-200 bg-[#F0FDF4] p-3">
+                      <p className="text-xs font-semibold text-gray-800 mb-2">
+                        Live Calculator
+                      </p>
+                      <div className="text-xs text-gray-600 space-y-1.5">
+                        <div className="flex justify-between">
+                          <span>Discounted Price</span>
+                          <span className="font-medium text-gray-900">
+                            {rupee(formDiscounted)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Platform Commission (12%)</span>
+                          <span className="font-medium text-rose-600">
+                            -{rupee(platformCommission)}
+                          </span>
+                        </div>
+                        <div className="pt-1.5 mt-1 border-t border-emerald-200 flex justify-between">
+                          <span className="font-semibold text-gray-800">
+                            Vendor Final Payout:
+                          </span>
+                          <span className="font-semibold text-emerald-700">
+                            {rupee(vendorPayout)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">
-                      Step 3: Marketing Label
+                    <p className="text-xs font-medium text-gray-700 mb-2">
+                      Step 3: Marketing Labels
                     </p>
                     <select
                       value={form.sticker}
@@ -754,49 +891,65 @@ export default function VendorOffersPage() {
                         </option>
                       ))}
                     </select>
+                    <p className="mt-2 text-[11px] text-gray-400">
+                      Preview:{' '}
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 bg-orange-50 text-orange-600 border border-orange-100">
+                        {form.sticker || 'None'}
+                      </span>
+                    </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">
-                      Step 4: Duration (Optional)
+                    <p className="text-xs font-medium text-gray-700 mb-2">
+                      Step 4: Duration
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="date"
-                        value={form.startDate}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            startDate: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="date"
-                        value={form.endDate}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            endDate: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
+                      <div>
+                        <p className="text-[11px] text-gray-500 mb-1">
+                          Start Date
+                        </p>
+                        <input
+                          type="date"
+                          value={form.startDate}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              startDate: e.target.value,
+                            }))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-gray-500 mb-1">
+                          End Date
+                        </p>
+                        <input
+                          type="date"
+                          value={form.endDate}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              endDate: e.target.value,
+                            }))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-2">
+                  <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
                     <button
                       onClick={closeModal}
-                      className="px-4 py-2 rounded-lg border border-gray-300 text-sm"
+                      className="px-8 py-2 rounded-xl border border-gray-300 text-sm"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={submitOffer}
                       disabled={savingId === form.productId}
-                      className="px-4 py-2 rounded-lg bg-[#F97316] text-white text-sm disabled:opacity-60"
+                      className="px-8 py-2 rounded-xl bg-blue-600 text-white text-sm disabled:opacity-60"
                     >
                       {savingId === form.productId
                         ? 'Saving...'
