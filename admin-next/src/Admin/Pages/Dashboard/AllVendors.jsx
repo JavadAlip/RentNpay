@@ -46,11 +46,11 @@ function StorefrontHeaderIcon() {
 function VerifiedOrangeTick() {
   return (
     <span
-      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm"
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm"
       title="Verified"
       aria-label="Verified"
     >
-      <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden>
+      <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" aria-hidden>
         <path
           d="M2.5 6L5 8.5L9.5 3.5"
           stroke="currentColor"
