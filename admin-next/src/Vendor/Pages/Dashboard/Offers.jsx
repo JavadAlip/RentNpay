@@ -65,6 +65,7 @@ const getDeliveryEtaLabel = (product) => {
 };
 
 export default function VendorOffersPage() {
+  const pageSize = 10;
   const { user, token } = useSelector((s) => s.vendor);
   const [products, setProducts] = useState([]);
   const [offersByProduct, setOffersByProduct] = useState({});
@@ -73,6 +74,7 @@ export default function VendorOffersPage() {
   const [savingId, setSavingId] = useState('');
   const [selectedPreviewProductId, setSelectedPreviewProductId] = useState('');
   const [draftByProduct, setDraftByProduct] = useState({});
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [form, setForm] = useState({
@@ -145,6 +147,18 @@ export default function VendorOffersPage() {
         .includes(q),
     );
   }, [products, search]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const rentalProducts = useMemo(
     () => products.filter((p) => p.type === 'Rental'),
@@ -385,6 +399,7 @@ export default function VendorOffersPage() {
                   <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <table className="min-w-[980px] w-full text-sm">
                     <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
@@ -410,7 +425,7 @@ export default function VendorOffersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((p) => {
+                      {pagedRows.map((p) => {
                         const id = String(p._id);
                         const base = parsePrice(p.price);
                         const offer = offersByProduct[id] || {};
@@ -617,9 +632,49 @@ export default function VendorOffersPage() {
                           </tr>
                         );
                       })}
+                      {pagedRows.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-4 py-10 text-center text-gray-500"
+                          >
+                            No products found.
+                          </td>
+                        </tr>
+                      ) : null}
                     </tbody>
                   </table>
                 </div>
+                {rows.length > 0 ? (
+                  <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                    <span>
+                      Showing {(currentPage - 1) * pageSize + 1}-
+                      {Math.min(currentPage * pageSize, rows.length)} of {rows.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-2.5 py-1 rounded border border-gray-200 text-gray-600 disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <span className="font-medium text-gray-700">
+                        {currentPage}/{totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-2.5 py-1 rounded border border-gray-200 text-gray-600 disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                </>
               )}
             </div>
 

@@ -463,6 +463,28 @@ export const apiGetAllAdminProducts = (token, query = '') =>
     },
   });
 
+export const apiGetAdminOffers = (token) =>
+  API.get('/admin/offers', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const apiUpsertAdminOffer = (data, token) =>
+  API.post('/admin/offers', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+export const apiDeleteAdminOffer = (id, token) =>
+  API.delete(`/admin/offers/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const apiGetProductApprovalQueue = (token, params = {}) =>
   API.get('/admin/product-approvals', {
     params,

@@ -55,6 +55,11 @@ import {
   getAdminTickets,
   getAdminTicketById,
 } from '../controller/admin/ticketAdminController.js';
+import {
+  getAdminOffers,
+  upsertAdminOffer,
+  deleteAdminOffer,
+} from '../controller/admin/offerAdminController.js';
 import { adminAuth } from '../middleware/auth.js';
 const router = express.Router();
 import upload from '../middleware/upload.js';
@@ -172,6 +177,9 @@ router.patch(
   patchAdminProductListingVisibility,
 );
 router.get('/wishlist/analytics', adminAuth, getWishlistAnalytics);
+router.get('/offers', adminAuth, getAdminOffers);
+router.post('/offers', adminAuth, upsertAdminOffer);
+router.delete('/offers/:id', adminAuth, deleteAdminOffer);
 
 // Tickets (read-only admin view)
 router.get('/tickets', adminAuth, getAdminTickets);

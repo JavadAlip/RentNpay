@@ -38,6 +38,7 @@ const AdminSidebar = () => {
     label: 'Cities',
   };
   const links = [
+    { to: '/products-offers', label: 'Products & Offers' },
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
     { to: '/stores', label: 'Stores' },
