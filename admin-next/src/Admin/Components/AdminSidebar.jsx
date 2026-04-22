@@ -47,6 +47,7 @@ const AdminSidebar = () => {
     { to: '/cart', label: 'Cart' },
     { to: '/wishlist', label: 'Wishlist' },
     { to: '/orders', label: 'Orders' },
+    { to: '/reminders', label: 'Reminders' },
     { to: '/all-vendors', label: 'Vendors' },
     { to: '/users', label: 'Users' },
   ];

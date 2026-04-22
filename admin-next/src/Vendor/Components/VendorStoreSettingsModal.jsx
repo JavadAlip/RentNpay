@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Store, X } from 'lucide-react';
+import { Camera, ImagePlus, MapPin, ShieldCheck, Store, X } from 'lucide-react';
 import serviceModeHeadingIcon from '@/assets/icons/service-mode.png';
 import shopHeadingIcon from '@/assets/icons/shop.png';
 import walkInHeadingIcon from '@/assets/icons/walkin.png';
@@ -9,8 +9,31 @@ import {
   validateDraftStoreComplete,
 } from '../utils/vendorStoreDraft';
 
-const iconSrc = (mod) =>
-  typeof mod === 'string' ? mod : mod?.src || '';
+const iconSrc = (mod) => (typeof mod === 'string' ? mod : mod?.src || '');
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const buildCoverageEmbedUrl = (latRaw, lngRaw, radiusKmRaw) => {
+  const lat = toNum(latRaw);
+  const lng = toNum(lngRaw);
+  const radiusKm = Math.max(1, Number(radiusKmRaw || 1));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+
+  // Approximate km radius into map bounds around selected store point.
+  const latDelta = radiusKm / 111;
+  const lngDelta =
+    radiusKm / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+
+  const minLng = lng - lngDelta;
+  const minLat = lat - latDelta;
+  const maxLng = lng + lngDelta;
+  const maxLat = lat + latDelta;
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${lat}%2C${lng}`;
+};
 
 export default function VendorStoreSettingsModal({
   open,
@@ -35,6 +58,27 @@ export default function VendorStoreSettingsModal({
       : [];
     return files.map((f) => (f instanceof File ? URL.createObjectURL(f) : ''));
   }, [draftStore?.additionalPhotoFiles]);
+
+  const pinPreviewMapUrl = useMemo(() => {
+    if (draftStore.mapLat && draftStore.mapLng) {
+      return buildCoverageEmbedUrl(draftStore.mapLat, draftStore.mapLng, 2);
+    }
+    return 'https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.8%2C73.2%2C19.2&layer=mapnik';
+  }, [draftStore.mapLat, draftStore.mapLng]);
+
+  const coveragePreviewMapUrl = useMemo(() => {
+    if (draftStore.deliveryZoneType !== 'hyper-local') return '';
+    return buildCoverageEmbedUrl(
+      draftStore.mapLat,
+      draftStore.mapLng,
+      draftStore.serviceRadiusKm,
+    );
+  }, [
+    draftStore.deliveryZoneType,
+    draftStore.mapLat,
+    draftStore.mapLng,
+    draftStore.serviceRadiusKm,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -69,7 +113,8 @@ export default function VendorStoreSettingsModal({
     const lat = Number(place?.lat || 0);
     const lng = Number(place?.lon || 0);
     const display = String(place?.display_name || '');
-    const mapLink = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
+    const mapLink =
+      lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
     setDraftStore((prev) => ({
       ...prev,
       mapLocation: mapLink,
@@ -187,16 +232,40 @@ export default function VendorStoreSettingsModal({
                     <p className="text-xs font-semibold text-gray-700">
                       Pin Location on Map
                     </p>
-                    <div className="mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                      <iframe
-                        title="Map Preview"
-                        className="h-44 w-full"
-                        src={
-                          draftStore.mapLat && draftStore.mapLng
-                            ? `https://www.openstreetmap.org/export/embed.html?bbox=${draftStore.mapLng - 0.02}%2C${draftStore.mapLat - 0.02}%2C${draftStore.mapLng + 0.02}%2C${draftStore.mapLat + 0.02}&layer=mapnik&marker=${draftStore.mapLat}%2C${draftStore.mapLng}`
-                            : 'https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.8%2C73.2%2C19.2&layer=mapnik'
-                        }
-                      />
+                    <div className="mt-2 rounded-2xl border border-blue-100 bg-blue-50/40 p-5">
+                      {draftStore.mapLat && draftStore.mapLng ? (
+                        <div className="overflow-hidden rounded-xl border border-blue-200 bg-white">
+                          <iframe
+                            title="Selected location preview"
+                            className="h-40 w-full"
+                            src={pinPreviewMapUrl}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex min-h-[140px] flex-col items-center justify-center text-center">
+                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                            <MapPin className="h-5 w-5" />
+                          </span>
+                          <p className="mt-3 text-sm font-semibold text-gray-700">
+                            Interactive Map Widget
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMapQuery(
+                                draftStore.mapAddress ||
+                                  draftStore.completeAddress ||
+                                  '',
+                              );
+                              setMapResults([]);
+                              setIsMapModalOpen(true);
+                            }}
+                            className="mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                          >
+                            Open Map Selector
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <button
@@ -210,9 +279,9 @@ export default function VendorStoreSettingsModal({
                           setMapResults([]);
                           setIsMapModalOpen(true);
                         }}
-                        className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
                       >
-                        Search &amp; Select Location
+                        Change Selected Location
                       </button>
                       {draftStore.mapAddress ? (
                         <p className="text-xs text-gray-600 sm:flex-1 sm:truncate">
@@ -225,47 +294,64 @@ export default function VendorStoreSettingsModal({
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-base font-bold text-gray-900">
-                    Store Photos
-                  </p>
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="inline-flex items-center gap-2 text-base font-bold text-gray-900">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                        <Camera className="h-3.5 w-3.5" />
+                      </span>
+                      Store Photos
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Upload clear photos of your store for verification
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    <ShieldCheck className="h-3 w-3" />
                     For Verified Badge
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-700">
                       Store Front (with Signboard){' '}
                       <span className="text-red-500">*</span>
                     </label>
-                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
-                        Upload Photo
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null;
-                            setDraftStore((p) => ({
-                              ...p,
-                              shopFrontPhotoName: f?.name || '',
-                              shopFrontPhotoFile: f,
-                            }));
-                          }}
-                        />
-                      </label>
-                      <div className="flex-1 text-xs text-gray-600">
-                        {draftStore.shopFrontPhotoName ? (
-                          <span className="font-medium text-gray-900">
-                            {draftStore.shopFrontPhotoName}
-                          </span>
-                        ) : (
-                          <span>No file chosen</span>
-                        )}
-                      </div>
-                    </div>
+                    <label className="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-amber-300 bg-amber-50/40 px-4 py-6 text-center hover:bg-amber-50">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white">
+                        <Camera className="h-5 w-5" />
+                      </span>
+                      <span className="mt-3 text-sm font-semibold text-gray-900">
+                        Upload Store Front Photo
+                      </span>
+                      <span className="mt-1 text-xs text-gray-500">
+                        Clear photo showing shop name board
+                      </span>
+                      <span className="mt-1 text-[11px] font-medium text-amber-700">
+                        Required for "Physically Verified" badge
+                      </span>
+                      <span className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700">
+                        {draftStore.shopFrontPhotoName || 'Choose Photo'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
+                          setDraftStore((p) => ({
+                            ...p,
+                            shopFrontPhotoName: f?.name || '',
+                            shopFrontPhotoFile: f,
+                          }));
+                        }}
+                      />
+                    </label>
+                    {draftStore.shopFrontPhotoName ? (
+                      <p className="mt-2 truncate text-xs text-gray-600">
+                        Selected: {draftStore.shopFrontPhotoName}
+                      </p>
+                    ) : null}
                     {draftStore.shopFrontPhotoUrl &&
                     !draftStore.shopFrontPhotoFile ? (
                       <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
@@ -277,13 +363,20 @@ export default function VendorStoreSettingsModal({
                       </div>
                     ) : null}
                   </div>
+
                   <div>
                     <label className="text-xs font-semibold text-gray-700">
-                      Additional Photos (optional)
+                      Additional Store Photos (Optional)
                     </label>
-                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
-                        Upload Photos
+                    <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                      <label className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 text-center hover:bg-gray-100">
+                        <ImagePlus className="h-5 w-5 text-gray-500" />
+                        <span className="mt-2 text-sm font-semibold text-gray-700">
+                          Add Photo
+                        </span>
+                        <span className="mt-1 px-3 text-[11px] text-gray-500">
+                          Upload interior shots, products display, etc.
+                        </span>
                         <input
                           type="file"
                           accept="image/*"
@@ -292,7 +385,8 @@ export default function VendorStoreSettingsModal({
                           onChange={(e) => {
                             const picked = Array.from(e.target.files || []);
                             setDraftStore((p) => {
-                              const aligned = alignStoreAdditionalPhotoArrays(p);
+                              const aligned =
+                                alignStoreAdditionalPhotoArrays(p);
                               const nextNames = [...aligned.names];
                               const nextUrls = [...aligned.urls];
                               const nextFiles = [...aligned.files];
@@ -311,70 +405,63 @@ export default function VendorStoreSettingsModal({
                           }}
                         />
                       </label>
-                      <p className="text-xs text-gray-600">
-                        {draftStore.additionalPhotoNames?.length
-                          ? `${draftStore.additionalPhotoNames.length} file(s) selected`
-                          : 'No files chosen'}
-                      </p>
-                    </div>
-                    {draftStore.additionalPhotoNames?.length ? (
-                      <div className="mt-3 space-y-2">
-                        {draftStore.additionalPhotoNames.map((name, idx) => {
-                          const blobUrl = additionalPhotoBlobUrls[idx] || '';
-                          const remoteUrl =
-                            draftStore.additionalPhotoUrls?.[idx] || '';
-                          const preview = blobUrl || remoteUrl;
-                          return (
-                            <div
-                              key={`extra-${idx}`}
-                              className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-center"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold text-gray-900">
-                                  {name || `Photo ${idx + 1}`}
-                                </p>
-                                <p className="text-[11px] text-gray-500">
-                                  Additional store photo
-                                </p>
+                      {draftStore.additionalPhotoNames?.map((name, idx) => {
+                        const blobUrl = additionalPhotoBlobUrls[idx] || '';
+                        const remoteUrl =
+                          draftStore.additionalPhotoUrls?.[idx] || '';
+                        const preview = blobUrl || remoteUrl;
+                        return (
+                          <div
+                            key={`extra-grid-${idx}`}
+                            className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white"
+                          >
+                            {preview ? (
+                              <img
+                                src={preview}
+                                alt=""
+                                className="h-40 w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-40 items-center justify-center px-2 text-center text-xs text-gray-500">
+                                {name || `Photo ${idx + 1}`}
                               </div>
-                              {preview ? (
-                                <div className="h-16 w-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                                  <img
-                                    src={preview}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                  />
-                                </div>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setDraftStore((p) => {
-                                    const aligned =
-                                      alignStoreAdditionalPhotoArrays(p);
-                                    const nextNames = [...aligned.names];
-                                    const nextUrls = [...aligned.urls];
-                                    const nextFiles = [...aligned.files];
-                                    nextNames.splice(idx, 1);
-                                    nextUrls.splice(idx, 1);
-                                    nextFiles.splice(idx, 1);
-                                    return {
-                                      ...p,
-                                      additionalPhotoNames: nextNames,
-                                      additionalPhotoUrls: nextUrls,
-                                      additionalPhotoFiles: nextFiles,
-                                    };
-                                  })
-                                }
-                                className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
-                              >
-                                Remove
-                              </button>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                              <p className="truncate text-[11px] font-medium text-white">
+                                {name || `Photo ${idx + 1}`}
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraftStore((p) => {
+                                  const aligned =
+                                    alignStoreAdditionalPhotoArrays(p);
+                                  const nextNames = [...aligned.names];
+                                  const nextUrls = [...aligned.urls];
+                                  const nextFiles = [...aligned.files];
+                                  nextNames.splice(idx, 1);
+                                  nextUrls.splice(idx, 1);
+                                  nextFiles.splice(idx, 1);
+                                  return {
+                                    ...p,
+                                    additionalPhotoNames: nextNames,
+                                    additionalPhotoUrls: nextUrls,
+                                    additionalPhotoFiles: nextFiles,
+                                  };
+                                })
+                              }
+                              className="absolute right-2 top-2 inline-flex rounded-lg border border-red-200 bg-white/95 px-2 py-1 text-[11px] font-semibold text-red-600 opacity-100 hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-[11px] text-gray-500">
+                      Max 6 photos recommended.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -446,37 +533,53 @@ export default function VendorStoreSettingsModal({
                       </span>
                     </span>
                   </label>
-                  <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
-                    <div className="flex items-center justify-between text-xs text-gray-600">
-                      <span className="font-semibold text-gray-800">
-                        Service Radius
-                      </span>
-                      <span className="text-sm font-bold text-purple-700">
-                        {draftStore.serviceRadiusKm} km
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1}
-                      max={50}
-                      value={draftStore.serviceRadiusKm}
-                      onChange={(e) =>
-                        setDraftStore((p) => ({
-                          ...p,
-                          serviceRadiusKm: Number(e.target.value),
-                        }))
-                      }
-                      className="mt-2 w-full"
-                    />
-                    <div className="mt-3 flex h-32 items-center justify-center rounded-xl border border-dashed border-purple-200 bg-white text-center text-xs text-purple-700">
-                      Coverage map preview
-                      {draftStore.deliveryZoneType === 'hyper-local' ? (
-                        <span className="ml-1">
-                          ({draftStore.serviceRadiusKm} km radius)
+                  {draftStore.deliveryZoneType === 'hyper-local' ? (
+                    <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span className="font-semibold text-gray-800">
+                          Service Radius
                         </span>
-                      ) : null}
+                        <span className="text-sm font-bold text-purple-700">
+                          {draftStore.serviceRadiusKm} km
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={50}
+                        value={draftStore.serviceRadiusKm}
+                        onChange={(e) =>
+                          setDraftStore((p) => ({
+                            ...p,
+                            serviceRadiusKm: Number(e.target.value),
+                          }))
+                        }
+                        className="mt-2 w-full"
+                      />
+                      <div className="mt-3 overflow-hidden rounded-xl border border-purple-200 bg-white">
+                        {coveragePreviewMapUrl ? (
+                          <iframe
+                            title="Coverage map preview"
+                            className="h-40 w-full"
+                            src={coveragePreviewMapUrl}
+                          />
+                        ) : (
+                          <div className="flex h-40 items-center justify-center px-3 text-center text-xs text-purple-700">
+                            Select store location first to preview{' '}
+                            {draftStore.serviceRadiusKm} km coverage.
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-purple-200 bg-white">
+                      <iframe
+                        title="Pan India map preview"
+                        className="h-40 w-full"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=67.0%2C6.0%2C98.0%2C37.5&layer=mapnik"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -524,7 +627,9 @@ export default function VendorStoreSettingsModal({
                         })
                       }
                       className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition ${
-                        draftStore.allowsWalkIn ? 'bg-emerald-500' : 'bg-gray-300'
+                        draftStore.allowsWalkIn
+                          ? 'bg-emerald-500'
+                          : 'bg-gray-300'
                       }`}
                       aria-label="Toggle walk-in customers"
                     >
@@ -662,11 +767,7 @@ export default function VendorStoreSettingsModal({
               <iframe
                 title="Map Preview"
                 className="h-64 w-full"
-                src={
-                  draftStore.mapLat && draftStore.mapLng
-                    ? `https://www.openstreetmap.org/export/embed.html?bbox=${draftStore.mapLng - 0.02}%2C${draftStore.mapLat - 0.02}%2C${draftStore.mapLng + 0.02}%2C${draftStore.mapLat + 0.02}&layer=mapnik&marker=${draftStore.mapLat}%2C${draftStore.mapLng}`
-                    : 'https://www.openstreetmap.org/export/embed.html?bbox=72.7%2C18.8%2C73.2%2C19.2&layer=mapnik'
-                }
+                src={pinPreviewMapUrl}
               />
             </div>
             <div className="mt-3 space-y-2">
