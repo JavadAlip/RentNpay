@@ -2,8 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { apiGetAllOrders } from '@/service/api';
+import totalOrdersIcon from '@/assets/icons/total-cart.png';
+import activeCartsIcon from '@/assets/icons/cart.png';
+import avgCartIcon from '@/assets/icons/avg-cart.png';
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+const iconSrc = (icon) => (typeof icon === 'string' ? icon : icon?.src || '');
 
 const badgeClassByType = (type) => {
   const t = String(type || '').toLowerCase();
@@ -25,11 +29,15 @@ export default function Cart() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [selectedCart, setSelectedCart] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     const fetchOrders = async () => {
       const token =
-        typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+        typeof window !== 'undefined'
+          ? localStorage.getItem('adminToken')
+          : null;
       if (!token) {
         setError('Please login again to continue.');
         setLoading(false);
@@ -93,10 +101,42 @@ export default function Cart() {
     });
   }, [cartRows, query]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query]);
+
+  const pagination = useMemo(() => {
+    const totalItems = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    const page = Math.min(currentPage, totalPages);
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+
+    return {
+      page,
+      totalItems,
+      totalPages,
+      rows: filteredRows.slice(start, end),
+      start: totalItems ? start + 1 : 0,
+      end: Math.min(end, totalItems),
+    };
+  }, [filteredRows, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > pagination.totalPages) {
+      setCurrentPage(pagination.totalPages);
+    }
+  }, [currentPage, pagination.totalPages]);
+
   const stats = useMemo(() => {
     const activeCarts = filteredRows.length;
-    const totalCartValue = filteredRows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-    const avgCartValue = activeCarts ? Math.round(totalCartValue / activeCarts) : 0;
+    const totalCartValue = filteredRows.reduce(
+      (sum, r) => sum + Number(r.amount || 0),
+      0,
+    );
+    const avgCartValue = activeCarts
+      ? Math.round(totalCartValue / activeCarts)
+      : 0;
     return { activeCarts, totalCartValue, avgCartValue };
   }, [filteredRows]);
 
@@ -111,12 +151,13 @@ export default function Cart() {
       deposit,
       shipping,
       totalQuote: productAmount + deposit + shipping,
-      initials: String(selectedCart.customerName || 'U')
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((x) => x[0]?.toUpperCase() || '')
-        .join('') || 'U',
+      initials:
+        String(selectedCart.customerName || 'U')
+          .trim()
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((x) => x[0]?.toUpperCase() || '')
+          .join('') || 'U',
     };
   }, [selectedCart]);
 
@@ -140,20 +181,48 @@ export default function Cart() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white rounded-2xl border border-blue-100 p-4">
+            {/* <div className="bg-white rounded-2xl border border-blue-100 p-4">
               <p className="text-xs text-gray-500">Active Carts</p>
               <p className="text-4xl font-semibold text-blue-600 mt-1">
                 {stats.activeCarts}
               </p>
+            </div> */}
+            <div className="bg-white rounded-2xl border border-blue-100 p-4">
+              <div className="flex items-center gap-2">
+                <img
+                  src={iconSrc(activeCartsIcon)}
+                  alt="cart"
+                  className="w-9 h-9 object-contain"
+                />
+                <p className="text-xs text-gray-500">Active Carts</p>
+              </div>
+
+              <p className="text-4xl font-semibold text-blue-600 mt-2">
+                {stats.activeCarts}
+              </p>
             </div>
             <div className="bg-white rounded-2xl border border-emerald-100 p-4">
-              <p className="text-xs text-gray-500">Total Cart Value</p>
+              <div className="flex items-center gap-2">
+                <img
+                  src={iconSrc(totalOrdersIcon)}
+                  alt="total cart"
+                  className="w-9 h-9 object-contain"
+                />
+                <p className="text-xs text-gray-500">Total Cart Value</p>
+              </div>
               <p className="text-4xl font-semibold text-emerald-600 mt-1">
                 {money(stats.totalCartValue)}
               </p>
             </div>
             <div className="bg-white rounded-2xl border border-violet-100 p-4">
-              <p className="text-xs text-gray-500">Avg. Cart Value</p>
+              <div className="flex items-center gap-2">
+                <img
+                  src={iconSrc(avgCartIcon)}
+                  alt="average cart"
+                  className="w-9 h-9 object-contain"
+                />
+                <p className="text-xs text-gray-500">Avg. Cart Value</p>
+              </div>
               <p className="text-4xl font-semibold text-violet-600 mt-1">
                 {money(stats.avgCartValue)}
               </p>
@@ -175,15 +244,25 @@ export default function Cart() {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-gray-500">
                     <th className="px-4 py-3 text-left font-medium">SR. NO.</th>
-                    <th className="px-4 py-3 text-left font-medium">CUSTOMER INFO</th>
-                    <th className="px-4 py-3 text-left font-medium">CART DATE</th>
-                    <th className="px-4 py-3 text-left font-medium">PRODUCT TYPE</th>
-                    <th className="px-4 py-3 text-left font-medium">PRODUCT NAME</th>
-                    <th className="px-4 py-3 text-right font-medium">CART AMOUNT</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      CUSTOMER INFO
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      CART DATE
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      PRODUCT TYPE
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      PRODUCT NAME
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      CART AMOUNT
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row) => (
+                  {pagination.rows.map((row) => (
                     <tr
                       key={row.id}
                       className="border-t border-gray-100 cursor-pointer hover:bg-gray-50/80"
@@ -191,12 +270,16 @@ export default function Cart() {
                     >
                       <td className="px-4 py-3 text-gray-700">{row.srNo}</td>
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-gray-900">{row.customerName}</p>
+                        <p className="font-semibold text-gray-900">
+                          {row.customerName}
+                        </p>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {row.customerPhone || '—'}
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{row.cartDate}</td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {row.cartDate}
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex px-2.5 py-1 text-xs rounded-full border ${badgeClassByType(
@@ -217,7 +300,9 @@ export default function Cart() {
                           ) : (
                             <div className="w-8 h-8 rounded-md bg-gray-100 border border-gray-200" />
                           )}
-                          <span className="text-gray-800">{row.productName}</span>
+                          <span className="text-gray-800">
+                            {row.productName}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-900">
@@ -225,9 +310,12 @@ export default function Cart() {
                       </td>
                     </tr>
                   ))}
-                  {filteredRows.length === 0 ? (
+                  {pagination.totalItems === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-gray-500"
+                      >
                         No cart records found.
                       </td>
                     </tr>
@@ -240,6 +328,38 @@ export default function Cart() {
               <span>GRAND TOTAL</span>
               <span>{money(stats.totalCartValue)}</span>
             </div>
+
+            {pagination.totalItems > 0 ? (
+              <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-xs text-gray-500">
+                  Showing {pagination.start}-{pagination.end} of{' '}
+                  {pagination.totalItems} products
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={pagination.page === 1}
+                    className="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="min-w-8 text-center px-2.5 py-1.5 text-xs border border-orange-500 bg-orange-500 text-white rounded-lg">
+                    {pagination.page}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
+                    }
+                    disabled={pagination.page === pagination.totalPages}
+                    className="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </>
       )}
@@ -255,7 +375,9 @@ export default function Cart() {
           <aside className="absolute right-0 top-0 h-full w-full sm:w-[540px] bg-white shadow-2xl border-l border-gray-200 overflow-y-auto">
             <div className="px-5 py-4 border-b border-gray-200 flex items-start justify-between">
               <div>
-                <h3 className="text-2xl font-semibold text-gray-900">Cart Detail</h3>
+                <h3 className="text-2xl font-semibold text-gray-900">
+                  Cart Detail
+                </h3>
                 <p className="text-sm text-gray-500">
                   Review and manage abandoned cart recovery
                 </p>
@@ -280,15 +402,21 @@ export default function Cart() {
                     {detail.initials}
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-gray-900">{detail.customerName}</p>
-                    <p className="text-xs text-gray-500">{detail.customerPhone || '—'}</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {detail.customerName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {detail.customerPhone || '—'}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {detail.customerEmail || 'no-email@rentnpay.com'}
                     </p>
                   </div>
                 </div>
                 <a
-                  href={detail.customerPhone ? `tel:${detail.customerPhone}` : '#'}
+                  href={
+                    detail.customerPhone ? `tel:${detail.customerPhone}` : '#'
+                  }
                   onClick={(e) => {
                     if (!detail.customerPhone) e.preventDefault();
                   }}
@@ -313,7 +441,9 @@ export default function Cart() {
                     <div className="w-full h-48 bg-gray-100" />
                   )}
                 </div>
-                <p className="mt-3 text-2xl font-semibold text-gray-900">{detail.productName}</p>
+                <p className="mt-3 text-2xl font-semibold text-gray-900">
+                  {detail.productName}
+                </p>
                 <span
                   className={`mt-2 inline-flex px-2.5 py-1 text-xs rounded-full border ${badgeClassByType(
                     detail.productType,
@@ -324,13 +454,17 @@ export default function Cart() {
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
-                    <p className="text-[11px] text-gray-500 uppercase">Original Price</p>
+                    <p className="text-[11px] text-gray-500 uppercase">
+                      Original Price
+                    </p>
                     <p className="text-xl font-semibold text-gray-900 mt-1">
                       {money(detail.originalPrice || detail.productAmount)}
                     </p>
                   </div>
                   <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                    <p className="text-[11px] text-gray-500 uppercase">Current Cart Price</p>
+                    <p className="text-[11px] text-gray-500 uppercase">
+                      Current Cart Price
+                    </p>
                     <p className="text-xl font-semibold text-emerald-700 mt-1">
                       {money(detail.productAmount)}
                     </p>
@@ -345,11 +479,17 @@ export default function Cart() {
                 <div className="rounded-xl border border-gray-200 overflow-hidden divide-y">
                   <div className="px-3 py-2.5 flex items-center justify-between text-sm">
                     <span className="text-gray-600">Product Amount</span>
-                    <span className="font-semibold text-gray-900">{money(detail.productAmount)}</span>
+                    <span className="font-semibold text-gray-900">
+                      {money(detail.productAmount)}
+                    </span>
                   </div>
                   <div className="px-3 py-2.5 flex items-center justify-between text-sm bg-orange-50">
-                    <span className="text-orange-700">Security Deposit (Refundable)</span>
-                    <span className="font-semibold text-orange-700">{money(detail.deposit)}</span>
+                    <span className="text-orange-700">
+                      Security Deposit (Refundable)
+                    </span>
+                    <span className="font-semibold text-orange-700">
+                      {money(detail.deposit)}
+                    </span>
                   </div>
                   <div className="px-3 py-2.5 flex items-center justify-between text-sm">
                     <span className="text-gray-600">Estimated Shipping</span>
@@ -360,7 +500,9 @@ export default function Cart() {
                 </div>
 
                 <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">Total Full Quote</span>
+                  <span className="font-semibold text-gray-900">
+                    Total Full Quote
+                  </span>
                   <span className="text-2xl font-bold text-emerald-700">
                     {money(detail.totalQuote)}
                   </span>
@@ -373,4 +515,3 @@ export default function Cart() {
     </main>
   );
 }
-
