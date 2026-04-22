@@ -23,6 +23,7 @@ const AdminSidebar = () => {
 
   const [systemOpen, setSystemOpen] = useState(true);
   const [analyticsOpen, setAnalyticsOpen] = useState(true);
+  const [productsOffersOpen, setProductsOffersOpen] = useState(true);
 
   const dashboardLink = { to: '/dashboard', label: 'Dashboard' };
   const analyticsFinancialChild = {
@@ -37,8 +38,9 @@ const AdminSidebar = () => {
     to: '/analytics/cities',
     label: 'Cities',
   };
+  const offersChild = { to: '/products-offers', label: 'Offers' };
+  const globalProductsChild = { to: '/global-products', label: 'Global Product' };
   const links = [
-    { to: '/products-offers', label: 'Products & Offers' },
     // { to: '/products', label: 'Products' },
     { to: '/categories', label: 'Categories' },
     { to: '/stores', label: 'Stores' },
@@ -65,6 +67,11 @@ const AdminSidebar = () => {
 
   useEffect(() => {
     if (pathname?.startsWith('/analytics')) setAnalyticsOpen(true);
+  }, [pathname]);
+  useEffect(() => {
+    if (pathname === '/products-offers' || pathname?.startsWith('/global-products')) {
+      setProductsOffersOpen(true);
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -209,6 +216,54 @@ const AdminSidebar = () => {
                   }`}
                 >
                   {analyticsCitiesChild.label}
+                </Link>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mx-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setProductsOffersOpen((v) => !v)}
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                pathname === offersChild.to || pathname?.startsWith('/global-products')
+                  ? 'bg-orange-50 text-orange-600 font-medium'
+                  : ''
+              }`}
+              title="Products & Offers"
+            >
+              <span className="inline-flex items-center gap-2">
+                {sidebarOpen ? 'Products & Offers' : 'P'}
+              </span>
+              {sidebarOpen ? (
+                <span className="text-xs text-gray-400">
+                  {productsOffersOpen ? '▼' : '▶'}
+                </span>
+              ) : null}
+            </button>
+            {sidebarOpen && productsOffersOpen ? (
+              <div className="mt-1 ml-2 space-y-0.5">
+                <Link
+                  href={offersChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === offersChild.to
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {offersChild.label}
+                </Link>
+                <Link
+                  href={globalProductsChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === globalProductsChild.to
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {globalProductsChild.label}
                 </Link>
               </div>
             ) : null}

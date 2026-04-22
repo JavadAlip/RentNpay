@@ -128,7 +128,6 @@ export default function ProductsOffers() {
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
-
   useEffect(() => {
     setPage(1);
   }, [search]);
@@ -229,13 +228,11 @@ export default function ProductsOffers() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Product Offers & Promotions
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Products & Offers</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Create and manage promotional offers for products and services
+            Switch between offer management and global product inventory
           </p>
         </div>
         <button
@@ -246,11 +243,12 @@ export default function ProductsOffers() {
         </button>
       </div>
 
-      <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700">
-        Admin-Initiated Offers
-      </div>
+      <>
+          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700">
+            Admin-Initiated Offers
+          </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <div className="relative w-full sm:max-w-md">
@@ -659,6 +657,7 @@ export default function ProductsOffers() {
           </div>
         </div>
       </div>
+      </>
     </div>
   );
 }
