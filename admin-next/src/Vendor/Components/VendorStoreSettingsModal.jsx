@@ -328,7 +328,7 @@ export default function VendorStoreSettingsModal({
                         Clear photo showing shop name board
                       </span>
                       <span className="mt-1 text-[11px] font-medium text-amber-700">
-                        Required for "Physically Verified" badge
+                        {`Required for "Physically Verified" badge`}
                       </span>
                       <span className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700">
                         {draftStore.shopFrontPhotoName || 'Choose Photo'}
