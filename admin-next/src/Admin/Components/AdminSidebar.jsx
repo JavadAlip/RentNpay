@@ -6,6 +6,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { adminLogout } from '../../redux/slices/adminSlice';
 import { apiGetVendorKycQueue } from '@/service/api';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import dashboardIcon from '@/assets/icons/dashboard.png';
+import storeIcon from '@/assets/icons/store1.png';
+import cartIcon from '@/assets/icons/cart1.png';
+import ordersIcon from '@/assets/icons/orders1.png';
+import reminderIcon from '@/assets/icons/reminder1.png';
+import peopleIcon from '@/assets/icons/people.png';
+import kycIcon from '@/assets/icons/kyc1.png';
+import analyticsIcon from '@/assets/icons/analytics.png';
+import productOffersIcon from '@/assets/icons/prodcutoffers.png';
+import systemsIcon from '@/assets/icons/systems.png';
 
 const AdminSidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -13,7 +24,10 @@ const AdminSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
-  const [kycQueueCounts, setKycQueueCounts] = useState({ pending: 0, resubmitted: 0 });
+  const [kycQueueCounts, setKycQueueCounts] = useState({
+    pending: 0,
+    resubmitted: 0,
+  });
   const [kycOpen, setKycOpen] = useState(true);
 
   const logout = async () => {
@@ -39,17 +53,19 @@ const AdminSidebar = () => {
     label: 'Cities',
   };
   const offersChild = { to: '/products-offers', label: 'Offers' };
-  const globalProductsChild = { to: '/global-products', label: 'Global Product' };
+  const globalProductsChild = {
+    to: '/global-products',
+    label: 'Global Product',
+  };
   const links = [
     // { to: '/products', label: 'Products' },
-    { to: '/categories', label: 'Categories' },
-    { to: '/stores', label: 'Stores' },
-    { to: '/cart', label: 'Cart' },
-    { to: '/wishlist', label: 'Wishlist' },
-    { to: '/orders', label: 'Orders' },
-    { to: '/reminders', label: 'Reminders' },
-    { to: '/all-vendors', label: 'Vendors' },
-    { to: '/users', label: 'Users' },
+    { to: '/stores', label: 'Stores', icon: storeIcon },
+    { to: '/cart', label: 'Cart', icon: cartIcon },
+    { to: '/wishlist', label: 'Wishlist', icon: cartIcon },
+    { to: '/orders', label: 'Orders', icon: ordersIcon },
+    { to: '/reminders', label: 'Reminders', icon: reminderIcon },
+    { to: '/all-vendors', label: 'Vendors', icon: peopleIcon },
+    { to: '/users', label: 'Users', icon: peopleIcon },
   ];
 
   const systemChild = {
@@ -65,12 +81,19 @@ const AdminSidebar = () => {
     to: '/system/approval',
     label: 'Approval',
   };
+  const systemCategoriesChild = {
+    to: '/categories',
+    label: 'Categories',
+  };
 
   useEffect(() => {
     if (pathname?.startsWith('/analytics')) setAnalyticsOpen(true);
   }, [pathname]);
   useEffect(() => {
-    if (pathname === '/products-offers' || pathname?.startsWith('/global-products')) {
+    if (
+      pathname === '/products-offers' ||
+      pathname?.startsWith('/global-products')
+    ) {
       setProductsOffersOpen(true);
     }
   }, [pathname]);
@@ -145,41 +168,76 @@ const AdminSidebar = () => {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 space-y-1">
-          <Link
-            href={dashboardLink.to}
-            onClick={() => setMobileOpen(false)}
-            className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-              pathname === dashboardLink.to
-                ? 'bg-orange-50 text-orange-600 font-medium'
-                : ''
-            }`}
-            title={dashboardLink.label}
-          >
-            <span className="inline-flex items-center gap-2 min-w-0">
-              {sidebarOpen ? dashboardLink.label : dashboardLink.label.charAt(0)}
-            </span>
-          </Link>
+          {(() => {
+            const isDashboardActive = pathname === dashboardLink.to;
+            return (
+              <Link
+                href={dashboardLink.to}
+                onClick={() => setMobileOpen(false)}
+                className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600  ${
+                  isDashboardActive
+                    ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                    : ''
+                }`}
+                title={dashboardLink.label}
+              >
+                <span className="inline-flex items-center gap-2 min-w-0">
+                  <img
+                    src={dashboardIcon.src}
+                    alt="Dashboard"
+                    className={`w-4 h-4 shrink-0 ${isDashboardActive ? 'brightness-0 invert' : ''}`}
+                  />
+                  {sidebarOpen
+                    ? dashboardLink.label
+                    : dashboardLink.label.charAt(0)}
+                </span>
+              </Link>
+            );
+          })()}
 
           <div className="mx-2 mt-1">
+            {(() => {
+              const isAnalyticsActive = pathname?.startsWith('/analytics');
+              return (
             <button
               type="button"
               onClick={() => setAnalyticsOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                pathname?.startsWith('/analytics')
-                  ? 'bg-orange-50 text-orange-600 font-medium'
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                isAnalyticsActive
+                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
                   : ''
               }`}
               title="Analytics"
             >
               <span className="inline-flex items-center gap-2">
+                <img
+                  src={analyticsIcon.src}
+                  alt="Analytics"
+                  className={`w-4 h-4 shrink-0 ${isAnalyticsActive ? 'brightness-0 invert' : ''}`}
+                />
                 {sidebarOpen ? 'Analytics' : 'A'}
               </span>
-              {sidebarOpen ? (
+              {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {analyticsOpen ? '▼' : '▶'}
                 </span>
+              ) : null} */}
+              {sidebarOpen ? (
+                analyticsOpen ? (
+                  <ChevronDown
+                    size={18}
+                    className={isAnalyticsActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                ) : (
+                  <ChevronRight
+                    size={18}
+                    className={isAnalyticsActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                )
               ) : null}
             </button>
+              );
+            })()}
             {sidebarOpen && analyticsOpen ? (
               <div className="mt-1 ml-2 space-y-0.5">
                 <Link
@@ -223,25 +281,49 @@ const AdminSidebar = () => {
           </div>
 
           <div className="mx-2 mt-1">
+            {(() => {
+              const isProductsOffersActive =
+                pathname === offersChild.to || pathname?.startsWith('/global-products');
+              return (
             <button
               type="button"
               onClick={() => setProductsOffersOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                pathname === offersChild.to || pathname?.startsWith('/global-products')
-                  ? 'bg-orange-50 text-orange-600 font-medium'
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                isProductsOffersActive
+                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
                   : ''
               }`}
               title="Products & Offers"
             >
               <span className="inline-flex items-center gap-2">
+                <img
+                  src={productOffersIcon.src}
+                  alt="Products & Offers"
+                  className={`w-4 h-4 shrink-0 ${isProductsOffersActive ? 'brightness-0 invert' : ''}`}
+                />
                 {sidebarOpen ? 'Products & Offers' : 'P'}
               </span>
-              {sidebarOpen ? (
+              {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {productsOffersOpen ? '▼' : '▶'}
                 </span>
+              ) : null} */}
+              {sidebarOpen ? (
+                productsOffersOpen ? (
+                  <ChevronDown
+                    size={18}
+                    className={isProductsOffersActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                ) : (
+                  <ChevronRight
+                    size={18}
+                    className={isProductsOffersActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                )
               ) : null}
             </button>
+              );
+            })()}
             {sidebarOpen && productsOffersOpen ? (
               <div className="mt-1 ml-2 space-y-0.5">
                 <Link
@@ -271,17 +353,25 @@ const AdminSidebar = () => {
           </div>
 
           <div className="mx-2 mt-1">
+            {(() => {
+              const isKycActive = pathname?.startsWith('/kyc');
+              return (
             <button
               type="button"
               onClick={() => setKycOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                pathname?.startsWith('/kyc')
-                  ? 'bg-orange-50 text-orange-600 font-medium'
+              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                isKycActive
+                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
                   : ''
               }`}
               title="KYC"
             >
               <span className="inline-flex items-center gap-2">
+                <img
+                  src={kycIcon.src}
+                  alt="KYC"
+                  className={`w-4 h-4 shrink-0 ${isKycActive ? 'brightness-0 invert' : ''}`}
+                />
                 {sidebarOpen ? 'KYC' : 'K'}
                 {sidebarOpen &&
                 kycQueueCounts.pending + kycQueueCounts.resubmitted > 0 ? (
@@ -292,17 +382,33 @@ const AdminSidebar = () => {
                   </span>
                 ) : null}
               </span>
-              {sidebarOpen ? (
+              {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">{kycOpen ? '▼' : '▶'}</span>
+              ) : null} */}
+              {sidebarOpen ? (
+                kycOpen ? (
+                  <ChevronDown
+                    size={18}
+                    className={isKycActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                ) : (
+                  <ChevronRight
+                    size={18}
+                    className={isKycActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                )
               ) : null}
             </button>
+              );
+            })()}
             {sidebarOpen && kycOpen ? (
               <div className="mt-1 ml-2 space-y-0.5">
                 <Link
                   href="/kyc/vendor"
                   onClick={() => setMobileOpen(false)}
                   className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                    pathname === '/kyc/vendor' || pathname?.startsWith('/kyc/vendor/')
+                    pathname === '/kyc/vendor' ||
+                    pathname?.startsWith('/kyc/vendor/')
                       ? 'bg-orange-50 text-orange-600 font-medium'
                       : ''
                   }`}
@@ -332,11 +438,18 @@ const AdminSidebar = () => {
                 href={l.to}
                 onClick={() => setMobileOpen(false)}
                 className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                  isActive ? 'bg-orange-50 text-orange-600 font-medium' : ''
+                  isActive ? 'bg-[#FF7020] text-white font-medium shadow-sm' : ''
                 }`}
                 title={l.label}
               >
                 <span className="inline-flex items-center gap-2 min-w-0">
+                  {l.icon ? (
+                    <img
+                      src={l.icon.src}
+                      alt={l.label}
+                      className={`w-4 h-4 shrink-0 ${isActive ? 'brightness-0 invert' : ''}`}
+                    />
+                  ) : null}
                   {sidebarOpen ? l.label : l.label.charAt(0)}
                 </span>
               </Link>
@@ -344,23 +457,54 @@ const AdminSidebar = () => {
           })}
 
           <div className="mx-2 mt-2 pt-2 border-t border-gray-100">
+            {(() => {
+              const isSystemActive =
+                pathname === systemChild.to ||
+                pathname === systemTicketsChild.to ||
+                pathname?.startsWith('/system/tickets') ||
+                pathname === systemApprovalChild.to ||
+                pathname?.startsWith('/system/approval') ||
+                pathname === systemCategoriesChild.to;
+              return (
             <button
               type="button"
               onClick={() => setSystemOpen((v) => !v)}
               className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                pathname === systemChild.to
-                  ? 'bg-orange-50 text-orange-600 font-medium'
+                isSystemActive
+                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
                   : ''
               }`}
               title="System"
             >
-              <span>{sidebarOpen ? 'System' : 'S'}</span>
-              {sidebarOpen ? (
+              <span className="inline-flex items-center gap-2">
+                <img
+                  src={systemsIcon.src}
+                  alt="System"
+                  className={`w-4 h-4 shrink-0 ${isSystemActive ? 'brightness-0 invert' : ''}`}
+                />
+                {sidebarOpen ? 'System' : 'S'}
+              </span>
+              {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {systemOpen ? '▼' : '▶'}
                 </span>
+              ) : null} */}
+              {sidebarOpen ? (
+                systemOpen ? (
+                  <ChevronDown
+                    size={18}
+                    className={isSystemActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                ) : (
+                  <ChevronRight
+                    size={18}
+                    className={isSystemActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
+                  />
+                )
               ) : null}
             </button>
+              );
+            })()}
             {sidebarOpen && systemOpen ? (
               <div className="mt-1 ml-2 space-y-0.5">
                 <Link
@@ -397,6 +541,17 @@ const AdminSidebar = () => {
                   }`}
                 >
                   {systemApprovalChild.label}
+                </Link>
+                <Link
+                  href={systemCategoriesChild.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    pathname === systemCategoriesChild.to
+                      ? 'bg-orange-50 text-orange-600 font-medium'
+                      : ''
+                  }`}
+                >
+                  {systemCategoriesChild.label}
                 </Link>
               </div>
             ) : null}
