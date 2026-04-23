@@ -352,16 +352,16 @@ export default function AuthModal() {
                   {emailAddress}
                 </span>
               </p>
-
+              {/* 
               {devOtpRevealed ? (
                 <div className="mt-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
                   Test OTP auto-filled for this environment.
                 </div>
-              ) : null}
+              ) : null} */}
 
               <div className="mt-6">
                 <label className="text-sm font-medium text-gray-800 mb-2 block">
-                  One-time password
+                  One-time otp
                 </label>
                 <OtpInputs value={otp} onChange={setOtp} disabled={loading} />
               </div>

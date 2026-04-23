@@ -1,7 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import {
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  CreditCard,
+  Hash,
+  MapPin,
+  Phone,
+  Search,
+  User,
+  X,
+} from 'lucide-react';
 import { apiGetCustomerKycReview, apiReviewCustomerKyc } from '@/service/api';
 
 const getTone = (status) => {
@@ -24,6 +36,53 @@ const formatReviewDate = (d) => {
   });
 };
 
+function InfoRow({ icon: Icon, iconClass, label, children }) {
+  return (
+    <div className="flex gap-3">
+      <div
+        className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${iconClass}`}
+      >
+        <Icon className="w-4 h-4" aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-sm font-semibold text-gray-900 mt-0.5">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+function DocPreviewSlot({ label, src, onZoom }) {
+  return (
+    <div className="relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col min-h-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white">
+        <p className="text-xs font-semibold text-gray-800">{label}</p>
+        {src ? (
+          <button
+            type="button"
+            onClick={() => onZoom(src)}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Search className="w-3 h-3" aria-hidden />
+            Zoom
+          </button>
+        ) : null}
+      </div>
+      <div className="p-2 flex-1 flex items-center justify-center bg-white min-h-[180px] max-h-[260px] overflow-hidden">
+        {src ? (
+          <img
+            src={src}
+            alt={label}
+            className="max-w-full max-h-[240px] w-auto h-auto object-contain rounded-lg"
+          />
+        ) : (
+          <p className="text-xs text-gray-400">Not uploaded</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function KycCustomerReview({ userId: userIdProp }) {
   const params = useParams();
   const userId = userIdProp || params?.userId || params?.id;
@@ -32,11 +91,10 @@ export default function KycCustomerReview({ userId: userIdProp }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [kyc, setKyc] = useState(null);
-  const [documents, setDocuments] = useState([]);
-  const [activeKey, setActiveKey] = useState('aadhaarFront');
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
+  const [zoomSrc, setZoomSrc] = useState('');
   const [checks, setChecks] = useState({
     nameMatches: false,
     photoClear: false,
@@ -63,8 +121,6 @@ export default function KycCustomerReview({ userId: userIdProp }) {
       .then((res) => {
         const k = res.data?.kyc || null;
         setKyc(k);
-        setDocuments(Array.isArray(k?.documents) ? k.documents : []);
-        setActiveKey(k?.documents?.[0]?.key || 'aadhaarFront');
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load KYC review.');
@@ -72,12 +128,6 @@ export default function KycCustomerReview({ userId: userIdProp }) {
       .finally(() => setLoading(false));
   }, [userId]);
 
-  const activeDoc = useMemo(
-    () => documents.find((d) => d.key === activeKey) || null,
-    [documents, activeKey],
-  );
-
-  const activeSrc = activeDoc?.src || '';
   const canApprove =
     checks.nameMatches && checks.photoClear && checks.notExpired;
 
@@ -126,7 +176,6 @@ export default function KycCustomerReview({ userId: userIdProp }) {
       );
       setSuccessOpen(false);
       setComment('');
-      // re-fetch is optional; keep simple
       router.push('/kyc/customer');
     } catch (e) {
       setError(e.response?.data?.message || 'Failed to reject KYC.');
@@ -162,12 +211,23 @@ export default function KycCustomerReview({ userId: userIdProp }) {
   return (
     <div className="space-y-4 sm:space-y-5">
       <div>
+        <button
+          type="button"
+          onClick={() => router.push('/kyc/customer')}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 mb-2"
+        >
+          <ArrowLeft className="w-4 h-4" aria-hidden />
+          Back to KYC Dashboard
+        </button>
         <h1 className="text-2xl font-semibold text-gray-900">
-          Customer KYC Review
+          KYC Detail & Verification
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          {kyc.customerName} • {kyc.customerEmail}
+          Review customer documents and complete verification process
         </p>
+        {/* <p className="text-sm text-gray-600 mt-2">
+          {kyc.customerName} • {kyc.customerEmail}
+        </p> */}
       </div>
 
       {error ? (
@@ -177,11 +237,11 @@ export default function KycCustomerReview({ userId: userIdProp }) {
       ) : null}
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between gap-3">
+        {/* <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs text-gray-500">Status</p>
             <p
-              className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium capitalize ${getTone(kyc.status)}`}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium capitalize mt-1 ${getTone(kyc.status)}`}
             >
               {kyc.status}
             </p>
@@ -194,201 +254,297 @@ export default function KycCustomerReview({ userId: userIdProp }) {
           >
             Back to Queue
           </button>
-        </div>
+        </div> */}
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 sm:p-6">
-          <div className="xl:col-span-1 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
-            <p className="text-sm font-semibold text-gray-900">
-              Customer Information
-            </p>
-            <div className="mt-3 space-y-3 text-sm">
-              <p className="text-gray-700">
-                <span className="text-gray-500">Full Name:</span>{' '}
-                <span className="font-medium">{kyc.customerName || '—'}</span>
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+          {/* Top row: 50% Customer Information | 50% Document Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 min-h-0">
+              <p className="text-sm font-semibold text-gray-900">
+                Customer Information
               </p>
-              <p className="text-gray-700">
-                <span className="text-gray-500">Date of Birth:</span>{' '}
-                <span className="font-medium">
+              <div className="mt-4 space-y-4">
+                <InfoRow
+                  icon={User}
+                  iconClass="bg-sky-50 text-sky-600"
+                  label="Full Name"
+                >
+                  {kyc.customerName || '—'}
+                </InfoRow>
+                <InfoRow
+                  icon={Calendar}
+                  iconClass="bg-violet-50 text-violet-600"
+                  label="Date of Birth"
+                >
                   {kyc.dateOfBirth
                     ? new Date(kyc.dateOfBirth).toLocaleDateString('en-GB')
                     : '—'}
-                </span>
-              </p>
-              <p className="text-gray-700">
-                <span className="text-gray-500">Permanent Address:</span>{' '}
-                <span className="font-medium">
+                </InfoRow>
+                <InfoRow
+                  icon={MapPin}
+                  iconClass="bg-emerald-50 text-emerald-600"
+                  label="Permanent Address"
+                >
                   {kyc.permanentAddress || '—'}
-                </span>
-              </p>
-              <p className="text-gray-700">
-                <span className="text-gray-500">ID Type:</span>{' '}
-                <span className="font-medium">{kyc.idType || '—'}</span>
-              </p>
+                </InfoRow>
+                <InfoRow
+                  icon={CreditCard}
+                  iconClass="bg-orange-50 text-orange-600"
+                  label="ID Type"
+                >
+                  {kyc.idType || '—'}
+                </InfoRow>
+                <InfoRow
+                  icon={Phone}
+                  iconClass="bg-blue-50 text-blue-600"
+                  label="Contact Number"
+                >
+                  {kyc.contactNumber || '—'}
+                </InfoRow>
+                <InfoRow
+                  icon={Hash}
+                  iconClass="bg-pink-50 text-pink-600"
+                  label="Customer ID"
+                >
+                  {kyc.customerId || '—'}
+                </InfoRow>
+              </div>
 
-              <p className="text-gray-700">
-                <span className="text-gray-500">Contact Number:</span>{' '}
-                <span className="font-medium">{kyc.contactNumber || '—'}</span>
-              </p>
-              <p className="text-gray-700">
-                <span className="text-gray-500">Customer ID:</span>{' '}
-                <span className="font-medium">{kyc.customerId || '—'}</span>
-              </p>
+              {!isPending ? (
+                <div className="mt-5 rounded-xl border border-gray-200 bg-slate-50 p-4 text-sm text-gray-700">
+                  <p className="font-semibold text-gray-900">
+                    Read-only review
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    {kyc.status === 'approved'
+                      ? `This customer is verified. Reviewed ${formatReviewDate(kyc.reviewedAt)}.`
+                      : `This submission is ${kyc.status}. You can still view documents above.`}
+                  </p>
+                </div>
+              ) : null}
+
+              {kyc.rejectionReason ? (
+                <div className="mt-4 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
+                  <p className="font-semibold">Previous rejection:</p>
+                  <p className="mt-1">{kyc.rejectionReason}</p>
+                </div>
+              ) : null}
             </div>
 
-            {isPending ? (
-              <>
-                <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Verification Checklist
-                  </p>
-                  <div className="mt-2 space-y-2 text-xs text-gray-700">
-                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={checks.nameMatches}
-                        onChange={(e) =>
-                          setChecks((prev) => ({
-                            ...prev,
-                            nameMatches: e.target.checked,
-                          }))
-                        }
-                        className="accent-emerald-600"
-                      />
-                      <span>Name matches ID (manual check)</span>
-                    </label>
-                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={checks.photoClear}
-                        onChange={(e) =>
-                          setChecks((prev) => ({
-                            ...prev,
-                            photoClear: e.target.checked,
-                          }))
-                        }
-                        className="accent-emerald-600"
-                      />
-                      <span>Aadhaar/PAN photo is clear and readable</span>
-                    </label>
-                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={checks.notExpired}
-                        onChange={(e) =>
-                          setChecks((prev) => ({
-                            ...prev,
-                            notExpired: e.target.checked,
-                          }))
-                        }
-                        className="accent-emerald-600"
-                      />
-                      <span>Document is not expired (manual)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-xs font-medium text-gray-700">
-                    Rejection reason
-                    <span className="text-rose-600 font-normal"> (required to reject)</span>
-                  </label>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Explain why this KYC is being rejected (visible to the customer if you enable that later)."
-                    rows={3}
-                    className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 resize-y min-h-[72px] focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400"
-                  />
-                </div>
-
-                <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={handleReject}
-                    className="w-full py-2.5 rounded-xl bg-rose-500 text-white text-sm hover:bg-rose-600 disabled:opacity-60"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting || !canApprove}
-                    onClick={handleApprove}
-                    className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    Approve & Verify
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="mt-5 rounded-xl border border-gray-200 bg-slate-50 p-4 text-sm text-gray-700">
-                <p className="font-semibold text-gray-900">Read-only review</p>
-                <p className="mt-1 text-xs text-gray-600">
-                  {kyc.status === 'approved'
-                    ? `This customer is verified. Reviewed ${formatReviewDate(kyc.reviewedAt)}.`
-                    : `This submission is ${kyc.status}. You can still view documents below.`}
+            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col min-h-0">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900">
+                  Document Preview
                 </p>
               </div>
-            )}
-
-            {kyc.rejectionReason ? (
-              <div className="mt-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
-                <p className="font-semibold">Previous rejection:</p>
-                <p className="mt-1">{kyc.rejectionReason}</p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="xl:col-span-2 rounded-2xl border border-gray-200 overflow-hidden bg-slate-900 text-slate-100">
-            <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Document Preview</p>
+              <div className="p-4 space-y-3 flex-1 min-h-0 overflow-hidden">
+                <DocPreviewSlot
+                  label="Front Side"
+                  src={kyc.aadhaarFront}
+                  onZoom={setZoomSrc}
+                />
+                <DocPreviewSlot
+                  label="Back Side"
+                  src={kyc.aadhaarBack}
+                  onZoom={setZoomSrc}
+                />
               </div>
             </div>
+          </div>
 
-            <div className="border-t border-slate-700 bg-slate-900 px-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-3">
-                  <p className="text-xs text-slate-400 mb-2">Aadhaar — front</p>
-                  {kyc.aadhaarFront ? (
-                    <img
-                      src={kyc.aadhaarFront}
-                      alt="Aadhaar front"
-                      className="w-full max-h-[210px] object-contain rounded-lg bg-white"
+          {isPending ? (
+            <>
+              {/* Full-width Verification Checklist */}
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-gray-900">
+                  Verification Checklist
+                </p>
+                <div className="mt-3 space-y-3">
+                  <label className="flex gap-3 cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50/80 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checks.nameMatches}
+                      onChange={(e) =>
+                        setChecks((prev) => ({
+                          ...prev,
+                          nameMatches: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                     />
-                  ) : (
-                    <p className="text-xs text-slate-500">Not uploaded</p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-3">
-                  <p className="text-xs text-slate-400 mb-2">Aadhaar — back</p>
-                  {kyc.aadhaarBack ? (
-                    <img
-                      src={kyc.aadhaarBack}
-                      alt="Aadhaar back"
-                      className="w-full max-h-[210px] object-contain rounded-lg bg-white"
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">
+                        Name Matches ID
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">
+                        Verify that the name on document matches customer
+                        profile.
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex gap-3 cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50/80 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checks.photoClear}
+                      onChange={(e) =>
+                        setChecks((prev) => ({
+                          ...prev,
+                          photoClear: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                     />
-                  ) : (
-                    <p className="text-xs text-slate-500">Not uploaded</p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-3">
-                  <p className="text-xs text-slate-400 mb-2">PAN card</p>
-                  {kyc.panCard ? (
-                    <img
-                      src={kyc.panCard}
-                      alt="PAN"
-                      className="w-full max-h-[210px] object-contain rounded-lg bg-white"
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">
+                        Photo is Clear
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">
+                        Ensure document photo is clearly visible and readable.
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex gap-3 cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50/80 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checks.notExpired}
+                      onChange={(e) =>
+                        setChecks((prev) => ({
+                          ...prev,
+                          notExpired: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                     />
-                  ) : (
-                    <p className="text-xs text-slate-500">Not uploaded</p>
-                  )}
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">
+                        Document is Not Expired
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">
+                        Check that the document is currently valid.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
+
+              {/* Full-width Decision */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+                <p className="text-sm font-semibold text-gray-900">Decision</p>
+                {!canApprove ? (
+                  <div className="mt-4">
+                    <label className="block text-xs font-medium text-gray-700">
+                      Reason for Rejection
+                    </label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="e.g., Blurry photo, Document expired, Name mismatch..."
+                      rows={4}
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-300"
+                    />
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-2.5">
+                    {canApprove ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={handleReject}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border-2 border-rose-500 bg-white text-rose-600 text-xs font-semibold hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={handleApprove}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm disabled:opacity-50"
+                        >
+                          <CheckCircle2
+                            className="w-3.5 h-3.5 shrink-0"
+                            aria-hidden
+                          />
+                          Approve & Verify
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={handleReject}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border-2 border-rose-500 bg-white text-rose-600 text-xs font-semibold hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                          Submit Rejection
+                        </button>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={handleReject}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shadow-sm disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                          Confirm Rejection
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="lg:max-w-xs rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2.5 flex gap-2.5 shrink-0">
+                    <CheckCircle2
+                      className="w-4 h-4 text-sky-600 shrink-0 mt-0.5"
+                      aria-hidden
+                    />
+                    <div>
+                      <p className="text-xs font-semibold text-sky-900">
+                        Physically Verified Badge
+                      </p>
+                      <p className="text-[11px] text-sky-800/80 mt-0.5 leading-snug">
+                        Will be applied to customer profile upon approval
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {zoomSrc ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Document zoom"
+        >
+          <div className="relative max-w-5xl max-h-[90vh] w-full flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <p className="text-sm font-semibold text-gray-900">Preview</p>
+              <button
+                type="button"
+                onClick={() => setZoomSrc('')}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                aria-label="Close zoom"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-56px)] flex items-center justify-center bg-gray-900/5">
+              <img
+                src={zoomSrc}
+                alt="Document full size"
+                className="max-w-full max-h-[min(80vh,800px)] w-auto h-auto object-contain"
+              />
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {successOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">

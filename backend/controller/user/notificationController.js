@@ -35,7 +35,9 @@ export async function getUserNotifications(req, res) {
   try {
     const userId = req.user._id;
 
-    const user = await User.findById(userId).select('createdAt fullName').lean();
+    const user = await User.findById(userId)
+      .select('createdAt fullName')
+      .lean();
 
     const [kyc, orders] = await Promise.all([
       UserKyc.findOne({ userId }).lean(),
@@ -68,8 +70,23 @@ export async function getUserNotifications(req, res) {
           type: 'kyc',
           title: 'KYC verified',
           detail:
-            'Your identity documents were approved. You can proceed with rentals.',
+            'Your identity documents were approved. You can continue with your shopping.',
           href: '/orders',
+          at,
+        });
+      }
+    } else if (kyc?.status === 'rejected') {
+      const at = kyc.reviewedAt || kyc.updatedAt || kyc.submittedAt;
+      if (at) {
+        const reason = String(kyc.rejectionReason || '').trim();
+        items.push({
+          id: `kyc-rejected-${kyc._id}-${String(at)}`,
+          type: 'kyc',
+          title: 'KYC rejected by admin',
+          detail: reason
+            ? `Your KYC was rejected by admin. Reason: ${reason}`
+            : 'Your KYC was rejected by admin. Please re-upload clear documents.',
+          href: '/profile?kyc=update',
           at,
         });
       }

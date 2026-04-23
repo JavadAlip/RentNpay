@@ -981,7 +981,12 @@ const Navbar = () => {
                               {notifList.map((n) => (
                                 <li
                                   key={n.id}
-                                  className="px-4 py-3 hover:bg-gray-50"
+                                  className={`px-4 py-3 hover:bg-gray-50 ${n.href ? 'cursor-pointer' : ''}`}
+                                  onClick={() => {
+                                    if (!n.href) return;
+                                    router.push(n.href);
+                                    closeNotifPanel();
+                                  }}
                                 >
                                   <div className="flex items-start gap-2">
                                     <div className="flex-1 min-w-0">
