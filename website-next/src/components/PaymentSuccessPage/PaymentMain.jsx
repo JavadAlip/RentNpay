@@ -1,17 +1,67 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Clock,
   Upload,
   ShieldCheck,
   CheckCircle2,
-  FileText,
   X,
   CheckCircle,
+  Camera,
+  Info,
 } from 'lucide-react';
 import { apiGetMyUserKyc, apiSubmitMyUserKyc } from '@/lib/api';
+import customerKycIcon from '../../../../admin-next/src/assets/icons/customer-kyc.png';
+import customerAdhaarIcon from '../../../../admin-next/src/assets/icons/customer-adhaar.png';
+import customerPanIcon from '../../../../admin-next/src/assets/icons/customer-pan.png';
+
+function staticImageSrc(mod) {
+  return typeof mod === 'string' ? mod : mod?.src ?? '';
+}
+
+function KycHeaderIcon({ className }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className={`rounded-lg bg-emerald-500 flex items-center justify-center shrink-0 ${className}`}
+      >
+        <ShieldCheck className="w-6 h-6 text-white" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={staticImageSrc(customerKycIcon)}
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function DocTypeIcon({ src, className }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <Upload className={`${className} text-gray-400`} aria-hidden />;
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 const PaymentMain = () => {
   const router = useRouter();
@@ -40,6 +90,104 @@ const PaymentMain = () => {
   const aadhaarFrontRef = useRef(null);
   const aadhaarBackRef = useRef(null);
   const panCardRef = useRef(null);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [selfiePhase, setSelfiePhase] = useState('idle'); // idle | live | preview
+  const [selfiePreviewUrl, setSelfiePreviewUrl] = useState('');
+  const [selfieError, setSelfieError] = useState('');
+
+  const stopSelfieStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const startSelfieCamera = useCallback(async () => {
+    setSelfieError('');
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      setSelfieError('Camera is not available in this browser.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+      stopSelfieStream();
+      streamRef.current = stream;
+      setSelfiePhase('live');
+      requestAnimationFrame(() => {
+        const el = videoRef.current;
+        if (el) {
+          el.srcObject = stream;
+          el.play().catch(() => {});
+        }
+      });
+    } catch (e) {
+      setSelfieError(
+        e?.name === 'NotAllowedError'
+          ? 'Camera access was denied. Please allow the camera to take a selfie.'
+          : 'Could not start the camera.',
+      );
+      setSelfiePhase('idle');
+    }
+  }, [stopSelfieStream]);
+
+  const captureSelfie = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, w, h);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        stopSelfieStream();
+        setSelfiePreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(blob);
+        });
+        setSelfiePhase('preview');
+      },
+      'image/jpeg',
+      0.92,
+    );
+  }, [stopSelfieStream]);
+
+  const retakeSelfie = useCallback(async () => {
+    setSelfiePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    stopSelfieStream();
+    await startSelfieCamera();
+  }, [startSelfieCamera, stopSelfieStream]);
+
+  useEffect(() => {
+    if (!showKycModal) {
+      stopSelfieStream();
+      setSelfiePhase('idle');
+      setSelfieError('');
+      setSelfiePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return '';
+      });
+    }
+  }, [showKycModal, stopSelfieStream]);
 
   const prettyOrderId = useMemo(() => {
     const id = String(orderId || '').trim();
@@ -245,48 +393,54 @@ const PaymentMain = () => {
       </div>
 
       {showKycModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: 'none' }}
+        >
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
-            <div className="p-5 border-b bg-gradient-to-r from-green-50 to-gray-50">
-              <div className="flex items-start justify-between">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-white" />
-                  </div>
-
-                  <div>
-                    <h2 className="text-sm font-semibold text-gray-900">
+            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-sky-50/90 to-slate-50 rounded-t-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex gap-3 min-w-0">
+                  <KycHeaderIcon className="h-11 w-11 object-contain shrink-0" />
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-gray-900 leading-snug">
                       Identity Verification Required
                     </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      To rent items, we need to verify your ID. This takes 2
-                      minutes.
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                      To rent items, we need to verify your ID. This takes{' '}
+                      <span className="font-semibold text-gray-700">
+                        2 minutes
+                      </span>
+                      .
                     </p>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={closeKyc}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 shrink-0 p-0.5"
+                  aria-label="Close"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
+            <div
+              className="p-5 space-y-6 max-h-[80vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none' }}
+            >
               <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#F37021] text-white text-xs font-semibold shrink-0">
                     1
                   </span>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-semibold text-gray-800">
                     Your details
                   </p>
                 </div>
-                <p className="text-[11px] text-gray-500 -mt-1 mb-2">
-                  Required before you can submit documents.
-                </p>
+
                 <label className="block text-xs font-medium text-gray-700">
                   Date of birth
                   <input
@@ -337,10 +491,10 @@ const PaymentMain = () => {
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-xs">
+                  <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#F37021] text-white text-xs font-semibold shrink-0">
                     2
                   </span>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-semibold text-gray-900">
                     Upload Aadhaar & PAN
                   </p>
                 </div>
@@ -350,14 +504,17 @@ const PaymentMain = () => {
                     {
                       key: 'aadhaarFront',
                       label: 'Aadhaar Front',
+                      iconSrc: staticImageSrc(customerAdhaarIcon),
                       file: aadhaarFrontFile,
                       existing: kycState.aadhaarFront,
                       inputRef: aadhaarFrontRef,
                       onChange: (file) => setAadhaarFrontFile(file),
                     },
+
                     {
                       key: 'aadhaarBack',
                       label: 'Aadhaar Back',
+                      iconSrc: staticImageSrc(customerAdhaarIcon),
                       file: aadhaarBackFile,
                       existing: kycState.aadhaarBack,
                       inputRef: aadhaarBackRef,
@@ -366,6 +523,7 @@ const PaymentMain = () => {
                     {
                       key: 'panCard',
                       label: 'PAN Card',
+                      iconSrc: staticImageSrc(customerPanIcon),
                       file: panCardFile,
                       existing: kycState.panCard,
                       inputRef: panCardRef,
@@ -374,12 +532,16 @@ const PaymentMain = () => {
                   ].map((doc) => {
                     const fileName = doc.file?.name || '';
                     const alreadyUploaded = Boolean(doc.existing);
+                    const hasDoc = Boolean(fileName || alreadyUploaded);
+                    const actionLabel = hasDoc
+                      ? `Re-upload ${doc.label}`
+                      : 'Click to upload';
                     return (
                       <button
                         type="button"
                         key={doc.key}
                         onClick={() => doc.inputRef.current?.click()}
-                        className="border rounded-xl p-4 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                        className="border border-gray-200 rounded-xl p-4 text-center bg-white hover:bg-gray-50/80 cursor-pointer transition-colors"
                       >
                         <input
                           ref={doc.inputRef}
@@ -390,32 +552,107 @@ const PaymentMain = () => {
                             doc.onChange(e.target.files?.[0] || null)
                           }
                         />
-                        <div className="w-10 h-10 mx-auto mb-2 rounded-lg border flex items-center justify-center">
-                          {fileName || alreadyUploaded ? (
-                            <FileText className="w-4 h-4 text-emerald-500" />
-                          ) : (
-                            <Upload className="w-4 h-4 text-gray-400" />
-                          )}
+                        <div className="flex flex-col items-center gap-1.5">
+                          <DocTypeIcon
+                            src={doc.iconSrc}
+                            className="h-12 w-12 object-contain"
+                          />
                         </div>
-                        <p className="text-xs font-medium text-gray-700">
+                        <p className="text-xs font-semibold text-gray-800 mt-2">
                           {doc.label}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-1 truncate">
-                          {fileName
-                            ? fileName
-                            : alreadyUploaded
-                              ? 'Uploaded'
-                              : 'Click to upload'}
+                        <p
+                          className="text-[10px] text-gray-400 mt-1 line-clamp-2"
+                          title={hasDoc ? actionLabel : undefined}
+                        >
+                          {actionLabel}
                         </p>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-3 bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-lg p-3">
-                  Tips: Ensure documents are clear, unblurred, and all corners
-                  are visible. Accepted formats: JPG, PNG, PDF (Max 5MB).
+                <div className="mt-3 flex gap-2 bg-sky-50 border border-sky-200 text-sky-900 text-xs rounded-lg p-3">
+                  <Info
+                    className="w-4 h-4 text-sky-600 shrink-0 mt-0.5"
+                    aria-hidden
+                  />
+                  <p>
+                    Tips: Ensure documents are clear, unblurred, and all corners
+                    are visible. Accepted formats: JPG, PNG, PDF (Max 5MB).
+                  </p>
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#F37021] text-white text-xs font-semibold shrink-0">
+                    3
+                  </span>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Live Photo Check
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-slate-50/60 min-h-[260px] flex flex-col overflow-hidden">
+                  {selfiePhase === 'idle' ? (
+                    <div className="flex flex-col items-center justify-center flex-1 px-4 py-10 gap-3">
+                      <div className="w-20 h-20 rounded-full bg-gray-200/90 flex items-center justify-center">
+                        <Camera className="w-9 h-9 text-gray-400" aria-hidden />
+                      </div>
+                      <p className="text-xs text-gray-500 text-center max-w-[220px]">
+                        Please ensure your face is clearly visible
+                      </p>
+                      <button
+                        type="button"
+                        onClick={startSelfieCamera}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#F37021] bg-white text-[#F37021] text-xs font-medium hover:bg-orange-50 transition-colors"
+                      >
+                        <Camera className="w-4 h-4" aria-hidden />
+                        Take Selfie
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {selfiePhase === 'live' ? (
+                    <div className="flex flex-col flex-1 p-3 gap-3 min-h-[260px]">
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        className="w-full flex-1 min-h-[200px] max-h-[280px] rounded-lg object-cover bg-black"
+                      />
+                      <button
+                        type="button"
+                        onClick={captureSelfie}
+                        className="w-full py-2.5 rounded-lg bg-[#F37021] hover:bg-orange-600 text-white text-sm font-medium transition-colors"
+                      >
+                        Capture photo
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {selfiePhase === 'preview' ? (
+                    <div className="flex flex-col flex-1 p-3 gap-3 min-h-[260px]">
+                      <img
+                        src={selfiePreviewUrl}
+                        alt="Selfie preview"
+                        className="w-full flex-1 min-h-[200px] max-h-[280px] rounded-lg object-cover bg-black"
+                      />
+                      <button
+                        type="button"
+                        onClick={retakeSelfie}
+                        className="text-sm font-medium text-[#F37021] hover:underline py-1"
+                      >
+                        Re-take selfie
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selfieError ? (
+                  <p className="text-xs text-red-600">{selfieError}</p>
+                ) : null}
               </div>
 
               {kycError ? (
@@ -455,10 +692,19 @@ const PaymentMain = () => {
                     : 'Submit KYC & Enable Dispatch'}
               </button>
 
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <ShieldCheck className="w-4 h-4 text-green-500" />
-                Your data is encrypted and safe. Verification status will be
-                updated in &quot;My Orders&quot;.
+              <div className="flex items-start gap-2 text-xs text-gray-500 leading-relaxed">
+                <ShieldCheck
+                  className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                <p>
+                  Your data is{' '}
+                  <span className="font-semibold text-gray-700">
+                    encrypted and safe
+                  </span>
+                  . Verification status will be updated in &quot;My
+                  Orders&quot;.
+                </p>
               </div>
 
               <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
