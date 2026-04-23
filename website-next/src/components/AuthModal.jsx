@@ -67,7 +67,6 @@ function OtpInputs({ value, onChange, disabled }) {
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function AuthModal() {
   const { open, view, closeAuth } = useAuthModal();
-  console.log('[AuthModal] rendered — open:', open);
   const dispatch = useDispatch();
   const router = useRouter();
   const isAuthenticated = useSelector((s) => s.auth.isAuthenticated);
@@ -77,6 +76,7 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [devOtpRevealed, setDevOtpRevealed] = useState(false);
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,6 +87,7 @@ export default function AuthModal() {
     setScreen(view === 'signup' ? 'signup' : 'login');
     setError('');
     setOtp('');
+    setDevOtpRevealed(false);
   }, [open, view]);
 
   // Auto-close when user becomes authenticated
@@ -120,12 +121,15 @@ export default function AuthModal() {
     setError('');
     setLoading(true);
     try {
-      await api.post(USER_AUTH.signup, {
+      const { data } = await api.post(USER_AUTH.signup, {
         fullName: fullName.trim(),
         emailAddress,
         password,
       });
-      setOtp('');
+      const testOtp = String(data?.testOtp ?? '').trim();
+      const hasTestOtp = /^\d{6}$/.test(testOtp);
+      setDevOtpRevealed(hasTestOtp);
+      setOtp(hasTestOtp ? testOtp : '');
       setScreen('otp');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed.');
@@ -349,6 +353,12 @@ export default function AuthModal() {
                 </span>
               </p>
 
+              {devOtpRevealed ? (
+                <div className="mt-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
+                  Test OTP auto-filled for this environment.
+                </div>
+              ) : null}
+
               <div className="mt-6">
                 <label className="text-sm font-medium text-gray-800 mb-2 block">
                   One-time password
@@ -374,6 +384,7 @@ export default function AuthModal() {
                   onClick={() => {
                     reset();
                     setOtp('');
+                    setDevOtpRevealed(false);
                     setScreen('signup');
                   }}
                 >
