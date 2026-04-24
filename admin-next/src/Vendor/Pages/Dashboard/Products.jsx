@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import { useDispatch, useSelector } from 'react-redux';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Package, AlertTriangle, CircleX } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   createProduct,
@@ -399,7 +399,9 @@ const Products = () => {
     );
     if (patchVendorListingVisibility.fulfilled.match(resultAction)) {
       toast.success(
-        nextVendor ? 'Product visible on website' : 'Product hidden from website',
+        nextVendor
+          ? 'Product visible on website'
+          : 'Product hidden from website',
       );
     } else {
       toast.error(
@@ -423,13 +425,37 @@ const Products = () => {
           <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
+              {/* <div className="flex items-start gap-3">
+                <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-b from-[#2563EB] to-[#1E40AF]">
+                  <Package className="w-6 h-6 text-white" strokeWidth={1.75} />
+                </div>
                 <h1 className="text-base md:text-lg font-semibold text-gray-900">
                   Inventory Overview
                 </h1>
                 <p className="text-xs text-gray-500">
                   Manage your product stock and availability
                 </p>
+              </div> */}
+              <div className="flex items-start gap-3">
+                <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-b from-[#2563EB] to-[#1E40AF]">
+                  <Package className="w-6 h-6 text-white" strokeWidth={1.75} />
+                </div>
+                {/* 
+          <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50">
+            <Image
+              src={adminCustome}
+              alt="admin"
+              className="w-6 h-6 object-contain"
+            />
+          </div> */}
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
+                    Inventory Overview
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage your product stock and availability
+                  </p>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -484,7 +510,7 @@ const Products = () => {
             ) : null}
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-2xl border p-4">
                 <p className="text-xs text-gray-500">Total Products</p>
                 <p className="text-2xl font-semibold">{totalProducts}</p>
@@ -498,6 +524,77 @@ const Products = () => {
               <div className="bg-white rounded-2xl border p-4">
                 <p className="text-xs text-gray-500">Out of Stock</p>
                 <p className="text-2xl text-red-500">{outOfStock}</p>
+              </div>
+            </div> */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Total Products */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Products
+                  </p>
+                  <div className="p-1.5 bg-[#EFF6FF] rounded-lg">
+                    <Package className="w-5 h-5 text-blue-500" />
+                  </div>
+                </div>
+
+                <p className="text-3xl font-semibold mt-2 tabular-nums">
+                  {totalProducts}
+                </p>
+              </div>
+
+              {/* Low Stock */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-600">Low Stock</p>
+                  <div className="p-1.5 bg-[#FFF7ED] rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  </div>
+                </div>
+
+                <p className="text-2xl font-semibold mt-2 text-[#F97316] tabular-nums">
+                  {lowStock}
+                </p>
+
+                <p className="text-sm mt-2 text-gray-600">items</p>
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-medium text-[#F97316] hover:underline"
+                  // onClick={() => {
+                  //   setTypeFilter('all');
+                  //   setQuery('');
+                  // }}
+                >
+                  View list →
+                </button>
+              </div>
+
+              {/* Out of Stock */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-600">
+                    Out of Stock
+                  </p>
+                  <div className="p-1.5 bg-[#FEF2F2] rounded-lg">
+                    <CircleX className="w-5 h-5 text-red-500" />
+                  </div>
+                </div>
+
+                <p className="text-2xl font-semibold mt-2 text-[#E7000B] tabular-nums">
+                  {outOfStock}
+                </p>
+
+                <p className="text-sm mt-2 text-gray-600">items</p>
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-medium text-[#E7000B] hover:underline"
+                  // onClick={() => {
+                  //   setTypeFilter('all');
+                  //   setQuery('');
+                  // }}
+                >
+                  View list →
+                </button>
               </div>
             </div>
 
@@ -542,7 +639,8 @@ const Products = () => {
                       const adminListingOn = p.adminListingEnabled !== false;
                       const storefrontToggleDisabled =
                         isApprovalPending ||
-                        String(p.submissionStatus || '').trim() !== 'published' ||
+                        String(p.submissionStatus || '').trim() !==
+                          'published' ||
                         !adminListingOn;
                       const createTypeLabel =
                         p.createdVia === 'template' ? 'automatic' : 'manual';
@@ -586,8 +684,8 @@ const Products = () => {
                                 p.stock === 0
                                   ? 'text-red-500'
                                   : p.stock <= 5
-                                    ? 'text-amber-500'
-                                    : 'text-gray-700'
+                                    ? 'text-[#F97316]'
+                                    : 'text-black'
                               }`}
                             >
                               {p.stock} Units
@@ -611,7 +709,7 @@ const Products = () => {
                           </td>
 
                           {/* Active toggle (controls storefront visibility) */}
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
                             <button
                               type="button"
                               role="switch"
@@ -621,7 +719,7 @@ const Products = () => {
                               className={`relative inline-flex h-6 w-11 rounded-full transition ${
                                 isActiveOnStorefront
                                   ? 'bg-emerald-500'
-                                  : 'bg-gray-300'
+                                  : 'bg-red-500'
                               }`}
                               disabled={storefrontToggleDisabled}
                               title={
@@ -650,6 +748,47 @@ const Products = () => {
                                 Pending approval
                               </p>
                             ) : null}
+                          </td> */}
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isActiveOnStorefront}
+                              aria-disabled={storefrontToggleDisabled}
+                              onClick={() => handleToggleActive(p)}
+                              className={`relative inline-flex h-6 w-11 rounded-full border border-gray-300 transition ${
+                                isActiveOnStorefront
+                                  ? 'bg-[#E5E7EB]'
+                                  : 'bg-[#FEF2F2]'
+                              }`}
+                              disabled={storefrontToggleDisabled}
+                              title={
+                                isApprovalPending
+                                  ? 'Pending admin approval'
+                                  : String(p.submissionStatus || '').trim() !==
+                                      'published'
+                                    ? 'Publish listing before showing on website'
+                                    : !adminListingOn
+                                      ? 'Admin has disabled this listing on the storefront'
+                                      : isActiveOnStorefront
+                                        ? 'Visible on storefront'
+                                        : 'Hidden from storefront'
+                              }
+                            >
+                              <span
+                                className={`inline-block h-5 w-5 transform rounded-full shadow transition mt-0.5 ${
+                                  isActiveOnStorefront
+                                    ? 'translate-x-5 bg-[#0F8A42]'
+                                    : 'translate-x-0.5 bg-[#FF0000]'
+                                }`}
+                              />
+                            </button>
+
+                            {isApprovalPending ? (
+                              <p className="mt-1 text-[11px] text-amber-600">
+                                Pending approval
+                              </p>
+                            ) : null}
                           </td>
 
                           {/* Actions */}
@@ -657,7 +796,7 @@ const Products = () => {
                             <div className="inline-flex items-center gap-3">
                               <button
                                 onClick={() => handleEditClick(p)}
-                                className="text-blue-600 hover:text-blue-800"
+                                className="text-gray-600 hover:text-gray-800"
                                 title="Edit product"
                               >
                                 <Pencil size={16} />
