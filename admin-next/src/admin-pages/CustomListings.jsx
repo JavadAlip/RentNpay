@@ -26,6 +26,8 @@ import {
   toggleListingTemplateActive,
   updateListingTemplate,
 } from '@/redux/slices/listingTemplateSlice';
+// import Image from 'next/image';
+// import adminCustome from '@/assets/icons/admin-custom.png';
 
 function buildListingFormData(form) {
   const variants = form.variants || [];
@@ -836,15 +838,23 @@ const CustomListings = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-            <Package className="w-6 h-6" strokeWidth={1.75} />
+          <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-b from-[#2563EB] to-[#1E40AF]">
+            <Package className="w-6 h-6 text-white" strokeWidth={1.75} />
           </div>
+          {/* 
+          <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50">
+            <Image
+              src={adminCustome}
+              alt="admin"
+              className="w-6 h-6 object-contain"
+            />
+          </div> */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
               Custom Listings
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Manage your custom listing products and templates
+              Manage your Custom Listing Products
             </p>
           </div>
         </div>
@@ -854,21 +864,27 @@ const CustomListings = () => {
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-600">Total products</p>
-            <Package className="w-5 h-5 text-blue-500" />
+            {/* <Package className="w-5 h-5 text-blue-500" /> */}
+            <div className="p-1.5 bg-[#EFF6FF] rounded-lg">
+              <Package className="w-5 h-5  text-blue-500" />
+            </div>
           </div>
           <p className="text-3xl font-semibold mt-2 tabular-nums">{total}</p>
         </div>
-        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-5 shadow-sm">
+        <div className="rounded-2xl border  border-gray-200 bg-white  p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-amber-900/80">Active</p>
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <p className="text-sm font-medium text-gray-600">Active</p>
+            <div className="p-1.5 bg-[#FFF7ED] rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+            </div>
           </div>
-          <p className="text-2xl font-semibold mt-2 text-amber-900 tabular-nums">
-            {activeCount} items
+          <p className="text-2xl font-semibold mt-2 text-[#F97316] tabular-nums">
+            {activeCount}
           </p>
+          <p className="text-sm  mt-2 text-gray-600 tabular-nums">items</p>
           <button
             type="button"
-            className="mt-2 text-xs font-medium text-amber-700 hover:underline"
+            className="mt-2 text-xs font-medium text-[#F97316] hover:underline"
             onClick={() => {
               setTypeFilter('all');
               setQuery('');
@@ -877,17 +893,21 @@ const CustomListings = () => {
             View list →
           </button>
         </div>
-        <div className="rounded-2xl border border-red-100 bg-red-50/60 p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white  p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-red-900/80">Inactive</p>
-            <CircleX className="w-5 h-5 text-red-500" />
+            <p className="text-sm font-medium text-gray-600">Inactive</p>
+            {/* <CircleX className="w-5 h-5 text-red-500" /> */}
+            <div className="p-1.5 bg-[#FEF2F2] rounded-lg">
+              <CircleX className="w-5 h-5 text-red-500" />
+            </div>
           </div>
-          <p className="text-2xl font-semibold mt-2 text-red-900 tabular-nums">
-            {inactiveCount} items
+          <p className="text-2xl font-semibold mt-2 text-[#E7000B] tabular-nums">
+            {inactiveCount}
           </p>
+          <p className="text-sm  mt-2 text-gray-600 tabular-nums">items</p>
           <button
             type="button"
-            className="mt-2 text-xs font-medium text-red-700 hover:underline"
+            className="mt-2 text-xs font-medium text-[#E7000B] hover:underline"
             onClick={() =>
               toast.info('Filter inactive in the table using the status toggle')
             }
@@ -1192,7 +1212,8 @@ const CustomListings = () => {
         allowListingTypeSwitch
         showAdminListingFlags
         flexibleListingForm
-        subtitle="Custom specs & per-variant media, specifications, and rental"
+        // subtitle="Custom specs & per-variant media, specifications, and rental"
+        subtitle="List your product, rental, or service"
         submitCreateLabel="Publish"
         submitEditLabel="Update listing template"
         submitPrimaryClassName="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
