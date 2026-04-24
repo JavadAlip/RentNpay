@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  // baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://backend.delicod.com/api',
 });
 
 // admin auth
@@ -512,7 +513,11 @@ export const apiPatchAdminProductListingVisibility = (productId, body, token) =>
     },
   });
 
-export const apiPatchVendorProductListingVisibility = (productId, body, token) =>
+export const apiPatchVendorProductListingVisibility = (
+  productId,
+  body,
+  token,
+) =>
   API.patch(`/vendor/product/${productId}/listing-visibility`, body, {
     headers: {
       Authorization: `Bearer ${token}`,
