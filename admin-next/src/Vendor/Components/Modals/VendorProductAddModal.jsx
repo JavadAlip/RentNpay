@@ -3350,19 +3350,19 @@ export default function VendorProductAddModal({
                             </div>
 
                             <div className="rounded-xl border border-gray-200 bg-white p-5">
-                              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              {/* <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="flex min-w-0 items-start gap-3">
-                                  {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
                                     <Box
                                       className="h-5 w-5"
                                       strokeWidth={2}
                                       aria-hidden
                                     />
-                                  </div> */}
+                                  </div>
                                   <div className="min-w-0">
-                                    {/* <p className="text-base font-semibold text-gray-900">
+                                    <p className="text-base font-semibold text-gray-900">
                                       Product Specifications
-                                    </p> */}
+                                    </p>
                                     <p className="text-base flex items-center gap-2 font-semibold text-gray-900">
                                       <Box
                                         className="h-5 w-5 text-violet-600"
@@ -3403,6 +3403,62 @@ export default function VendorProductAddModal({
                                   />
                                   Add Custom Specification
                                 </button>
+                              </div> */}
+                              <div className="mb-4">
+                                {/* Top header */}
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="flex min-w-0 items-start gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-base flex items-center gap-2 font-semibold text-gray-900">
+                                        <Box
+                                          className="h-5 w-5 text-violet-600"
+                                          strokeWidth={2}
+                                          aria-hidden
+                                        />
+                                        Product Specifications
+                                      </p>
+
+                                      <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                                        Add custom attributes for this variant
+                                        (material, dimensions, color, etc.).
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* NEW ROW (like figma) */}
+                                <div className="mt-4 flex items-center justify-between">
+                                  <p className="text-sm font-semibold text-gray-700">
+                                    Custom Specifications
+                                  </p>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const id = expandedVariant.id;
+                                      setManualVariants((prev) =>
+                                        prev.map((x) =>
+                                          x.id === id
+                                            ? {
+                                                ...x,
+                                                specRows: [
+                                                  ...(x.specRows || []),
+                                                  emptyVariantSpecRow(),
+                                                ],
+                                              }
+                                            : x,
+                                        ),
+                                      );
+                                    }}
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
+                                  >
+                                    <Plus
+                                      className="h-3.5 w-3.5"
+                                      strokeWidth={2}
+                                    />
+                                    Add Custom Specification
+                                  </button>
+                                </div>
                               </div>
                               <div className="space-y-3">
                                 {(expandedVariant.specRows || []).map(
@@ -4022,9 +4078,9 @@ export default function VendorProductAddModal({
                           <span className="text-red-500">*</span>
                         </label>
                         <div className="mt-2 flex overflow-hidden rounded-xl border border-gray-200 bg-white">
-                          <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+                          {/* <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
                             ₹
-                          </span>
+                          </span> */}
                           <input
                             type="text"
                             inputMode="decimal"
@@ -4042,11 +4098,12 @@ export default function VendorProductAddModal({
                           <span className="font-normal text-gray-500">
                             (Optional)
                           </span>
+                          <span className="text-red-500 ml-1">*</span>
                         </label>
                         <div className="mt-2 flex overflow-hidden rounded-xl border border-gray-200 bg-white">
-                          <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+                          {/* <span className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
                             ₹
-                          </span>
+                          </span> */}
                           <input
                             type="text"
                             inputMode="decimal"
@@ -4066,24 +4123,48 @@ export default function VendorProductAddModal({
                 ) : (
                   <SectionCard
                     title="Sales Configuration"
-                    icon={DollarSign}
-                    showLock={saleFieldsLocked}
+                    subtitle="Set pricing and inventory details"
+                    // icon={DollarSign}
+                    // showLock={saleFieldsLocked}
+                    icon={Tag}
+                    headerIconBoxed
                   >
                     <div className="space-y-3">
-                      <div>
+                      {/* <div>
                         <label className="text-xs text-gray-600">
                           Selling Price *
                         </label>
+
                         <input
+                        
                           value={sellPrice}
                           onChange={(e) => setSellPrice(e.target.value)}
                           disabled={saleFieldsLocked}
                           className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
                           placeholder="Enter your price"
                         />
+                      </div> */}
+                      <div>
+                        <label className="text-xs text-gray-600">
+                          Selling Price *
+                        </label>
+
+                        <div className="mt-1 flex rounded-xl border overflow-hidden">
+                          <span className="flex items-center pl-3 pr-1 text-sm text-[#2563EB]">
+                            ₹
+                          </span>
+
+                          <input
+                            value={sellPrice}
+                            onChange={(e) => setSellPrice(e.target.value)}
+                            disabled={saleFieldsLocked}
+                            className="flex-none w-3/4 pl-1 pr-3 py-2 text-sm outline-none"
+                            placeholder="Enter your price"
+                          />
+                        </div>
                       </div>
 
-                      <div className="rounded-xl border border-orange-300 bg-orange-50 p-4">
+                      <div className="rounded-xl border border-[#FFB86A] bg-orange-50 p-4">
                         <div className="mb-3 flex items-center justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-2">
                             <TrendingDown
@@ -4091,11 +4172,11 @@ export default function VendorProductAddModal({
                               strokeWidth={2.25}
                               aria-hidden
                             />
-                            <p className="truncate text-base font-bold text-gray-900">
+                            <p className="truncate text-base font-medium text-gray-900">
                               Market Insights
                             </p>
                           </div>
-                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                          <span className="shrink-0 rounded-full bg-[#DCFCE7] border border-[#7BF1A8] px-2 py-0.5 text-[10px] font-semibold text-[#10B981]">
                             LIVE DATA
                           </span>
                         </div>
@@ -4116,7 +4197,7 @@ export default function VendorProductAddModal({
                             <p className="text-[10px] text-gray-500">
                               Lowest Price Online
                             </p>
-                            <p className="text-sm font-semibold text-emerald-700">
+                            <p className="text-sm font-semibold text-[#10B981]">
                               ₹
                               {Number.isFinite(Number(sellPrice)) &&
                               Number(sellPrice) > 0
@@ -4133,7 +4214,7 @@ export default function VendorProductAddModal({
                               setSellPrice(String(mrpPrice));
                             }
                           }}
-                          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#FFB86A] px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Zap
                             className="h-4 w-4 shrink-0 text-white"
@@ -4205,7 +4286,7 @@ export default function VendorProductAddModal({
                             }))
                           }
                           className="flex-1 min-w-0 px-3 py-2.5 text-sm outline-none"
-                          placeholder="e.g. 3"
+                          placeholder="3"
                         />
                         <select
                           value={logistics.deliveryTimelineUnit}
@@ -4235,7 +4316,7 @@ export default function VendorProductAddModal({
                         value={stock}
                         onChange={(e) => setStock(e.target.value)}
                         className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-                        placeholder="Units available"
+                        placeholder="5"
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Number of units available
