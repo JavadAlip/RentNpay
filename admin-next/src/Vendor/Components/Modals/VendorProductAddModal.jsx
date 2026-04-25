@@ -42,6 +42,7 @@ import {
   apiGetVendorListingTemplates,
   apiGetVendorMarketLowRentalTenures,
 } from '@/service/api';
+import check from '@/assets/icons/check.png';
 
 const PLACEHOLDER_IMG = 'https://placehold.co/56x56/e5e7eb/6b7280?text=IMG';
 
@@ -637,9 +638,15 @@ function templateVariantRentalSubtitle(
 /** Green pill with white round check — Catalog Images / Verified Specs headers. */
 function GreenVerifiedBadge({ children }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-600 py-1 pl-1 pr-2.5 text-xs font-semibold text-white shadow-sm">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white">
-        <Check className="h-3 w-3 text-green-600" strokeWidth={3} aria-hidden />
+    // <span className="inline-flex items-center gap-1.5 rounded-full bg-green-600 py-1 pl-1 pr-2.5 text-xs font-semibold text-white shadow-sm">
+    //   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white">
+    //     <Check className="h-3 w-3 text-green-600" strokeWidth={3} aria-hidden />
+    //   </span>
+    //   {children}
+    // </span>
+    <span className="inline-flex items-center gap-1 rounded-full bg-green-600 py-1 pl-1 pr-2.5 text-xs font-semibold text-white shadow-sm">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full ">
+        <img src={check.src} alt="check" className="h-4 w-4 object-contain" />
       </span>
       {children}
     </span>
@@ -707,11 +714,11 @@ function SectionCard({
                 {showLock ? (
                   lockOnlyHeader ? (
                     <div
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
                       role="img"
                       aria-label="Catalog images are locked"
                     >
-                      <Lock className="h-4 w-4" strokeWidth={2} aria-hidden />
+                      <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
                     </div>
                   ) : (
                     <Lock
@@ -2015,7 +2022,7 @@ export default function VendorProductAddModal({
                         : 'flex flex-col items-center justify-center gap-1.5 px-3 py-4 text-center'
                     } ${
                       selected
-                        ? 'border-blue-500 bg-blue-50/80 ring-1 ring-blue-200'
+                        ? 'border-blue-500  ring-1 ring-blue-200'
                         : 'border-gray-200 bg-white opacity-60'
                     } ${opt.id === 'service' ? 'cursor-not-allowed' : 'cursor-pointer opacity-100'}`}
                   >
@@ -2463,12 +2470,12 @@ export default function VendorProductAddModal({
                       >
                         {detailsLocked ? (
                           <div
-                            className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
+                            className="mb-3 flex h-6 w-6 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm"
                             role="img"
                             aria-label="Catalog images are locked"
                           >
                             <Lock
-                              className="h-4 w-4"
+                              className="h-3 w-3"
                               strokeWidth={2}
                               aria-hidden
                             />
@@ -2480,7 +2487,7 @@ export default function VendorProductAddModal({
                               <img
                                 src={url}
                                 alt=""
-                                className="h-24 w-24 rounded-xl object-cover border border-gray-200"
+                                className="h-72 w-64 rounded-xl object-cover border border-gray-200"
                               />
                               <span className="absolute top-1 left-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
                                 {i + 1}
@@ -2559,16 +2566,54 @@ export default function VendorProductAddModal({
                       showLock={detailsLocked}
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-gray-500">
+                        {/* <div> */}
+                        {/* <label className="text-xs text-gray-500">
                             {mode === 'create' && customListing
                               ? 'Product title'
                               : 'Product name'}
                             {mode === 'create' && customListing ? (
                               <span className="text-red-500"> *</span>
                             ) : null}
-                          </label>
-                          <input
+                          </label> */}
+                        <div>
+                          {/* Label OUTSIDE (above) - only for create mode with customListing */}
+                          {mode === 'create' && customListing && (
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Product Title
+                              <span className="text-red-500"> *</span>
+                            </label>
+                          )}
+
+                          <div className="relative">
+                            <input
+                              value={productName}
+                              onChange={(e) => setProductName(e.target.value)}
+                              readOnly={detailsLocked}
+                              placeholder={
+                                mode === 'create' && customListing
+                                  ? 'e.g., Samsung Galaxy S23'
+                                  : undefined
+                              }
+                              className={`w-full rounded-xl border px-3 text-base ${
+                                mode === 'create' && customListing
+                                  ? 'py-2.5'
+                                  : 'pt-6 pb-2'
+                              } ${
+                                fullTemplate && mode === 'create'
+                                  ? 'bg-white text-black border-gray-200'
+                                  : 'bg-white'
+                              }`}
+                            />
+
+                            {/* Label INSIDE - only for non-create or non-customListing mode */}
+                            {!(mode === 'create' && customListing) && (
+                              <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none uppercase">
+                                PRODUCT NAME
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                        {/* <input
                             value={productName}
                             onChange={(e) => setProductName(e.target.value)}
                             readOnly={detailsLocked}
@@ -2582,9 +2627,9 @@ export default function VendorProductAddModal({
                                 ? 'bg-gray-50 text-gray-800'
                                 : 'bg-white'
                             }`}
-                          />
-                        </div>
-                        <div>
+                          /> */}
+                        {/* </div> */}
+                        {/* <div>
                           <label className="text-xs text-gray-500">Brand</label>
                           <input
                             value={brand}
@@ -2601,8 +2646,69 @@ export default function VendorProductAddModal({
                                 : ''
                             }`}
                           />
-                        </div>
+                        </div> */}
+                        {/* <div>
+                          <div className="relative">
+                            <input
+                              value={brand}
+                              onChange={(e) => setBrand(e.target.value)}
+                              readOnly={detailsLocked}
+                              placeholder={
+                                mode === 'create' && customListing
+                                  ? 'e.g., Samsung'
+                                  : undefined
+                              }
+                              className={`w-full rounded-xl border px-3 pt-6 pb-2 text-sm ${
+                                fullTemplate && mode === 'create'
+                                  ? 'bg-white text-black border-gray-200'
+                                  : 'bg-white'
+                              }`}
+                            />
+                            <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none">
+                              BRAND
+                            </label>
+                          </div>
+                        </div> */}
+
                         <div>
+                          {/* Label OUTSIDE (above) - only for create mode with customListing */}
+                          {mode === 'create' && customListing && (
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Brand
+                            </label>
+                          )}
+
+                          <div className="relative">
+                            <input
+                              value={brand}
+                              onChange={(e) => setBrand(e.target.value)}
+                              readOnly={detailsLocked}
+                              śś
+                              placeholder={
+                                mode === 'create' && customListing
+                                  ? 'e.g., Samsung'
+                                  : undefined
+                              }
+                              className={`w-full rounded-xl border px-3 text-base ${
+                                mode === 'create' && customListing
+                                  ? 'py-2.5'
+                                  : 'pt-6 pb-2'
+                              } ${
+                                fullTemplate && mode === 'create'
+                                  ? 'bg-white text-black border-gray-200'
+                                  : 'bg-white'
+                              }`}
+                            />
+
+                            {/* Label INSIDE - only for non-create or non-customListing mode */}
+                            {!(mode === 'create' && customListing) && (
+                              <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none uppercase">
+                                BRAND
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                        {/* <div>
                           <label className="text-xs text-gray-500">
                             Condition
                             {mode === 'create' && customListing ? (
@@ -2629,6 +2735,49 @@ export default function VendorProductAddModal({
                               </option>
                             ))}
                           </select>
+                        </div> */}
+                        <div>
+                          {/* Label OUTSIDE (above) - only for create mode with customListing */}
+                          {mode === 'create' && customListing && (
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Condition
+                              <span className="text-red-500"> *</span>
+                            </label>
+                          )}
+
+                          <div className="relative">
+                            <select
+                              value={normalizeConditionForListingType(
+                                condition,
+                                listingType === 'sell' ? 'Sell' : 'Rental',
+                                listingType === 'rent' && !detailsLocked,
+                              )}
+                              onChange={(e) => setCondition(e.target.value)}
+                              disabled={detailsLocked}
+                              className={`w-full rounded-xl border px-3 text-base ${
+                                mode === 'create' && customListing
+                                  ? 'py-2.5'
+                                  : 'pt-6 pb-2'
+                              } ${
+                                fullTemplate && mode === 'create'
+                                  ? 'bg-white text-black border-gray-200'
+                                  : 'bg-white'
+                              }`}
+                            >
+                              {conditionSelectOptions.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Label INSIDE - only for non-create or non-customListing mode */}
+                            {!(mode === 'create' && customListing) && (
+                              <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none uppercase">
+                                CONDITION
+                              </label>
+                            )}
+                          </div>
                         </div>
                         {/* <div className="sm:col-span-2">
                     <label className="text-xs text-gray-500">
@@ -2643,7 +2792,7 @@ export default function VendorProductAddModal({
                       }`}
                     />
                   </div> */}
-                        <div className="sm:col-span-2">
+                        {/* <div className="sm:col-span-2">
                           <label className="text-xs text-gray-500">
                             Description
                             {mode === 'create' && customListing ? (
@@ -2666,21 +2815,76 @@ export default function VendorProductAddModal({
                                 : ''
                             }`}
                           />
+                        </div> */}
+                        <div className="sm:col-span-2">
+                          {/* Label OUTSIDE (above) - only for create mode with customListing */}
+                          {mode === 'create' && customListing && (
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Description
+                              <span className="text-red-500"> *</span>
+                            </label>
+                          )}
+
+                          <div className="relative">
+                            <textarea
+                              value={description}
+                              onChange={(e) => setDescription(e.target.value)}
+                              readOnly={detailsLocked}
+                              rows={3}
+                              placeholder={
+                                mode === 'create' && customListing
+                                  ? 'Provide detailed description including key features, condition, etc.'
+                                  : undefined
+                              }
+                              className={`w-full rounded-xl border px-3 text-base ${
+                                mode === 'create' && customListing
+                                  ? 'py-2.5'
+                                  : 'pt-6 pb-2'
+                              } ${
+                                fullTemplate && mode === 'create'
+                                  ? 'bg-white text-black border-gray-200'
+                                  : 'bg-white'
+                              }`}
+                            />
+
+                            {/* Label INSIDE - only for non-create or non-customListing mode */}
+                            {!(mode === 'create' && customListing) && (
+                              <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none uppercase">
+                                DESCRIPTION
+                              </label>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {detailsLocked ? (
                         specEntries.length > 0 ? (
+                          // <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          //   {specEntries.map(([k, v]) => (
+                          //     <div key={k}>
+                          //       <label className="text-xs text-gray-500 capitalize">
+                          //         {k}
+                          //       </label>
+                          //       <input
+                          //         value={String(v)}
+                          //         readOnly
+                          //         className="mt-1 w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm"
+                          //       />
+                          //     </div>
+                          //   ))}
+                          // </div>
                           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {specEntries.map(([k, v]) => (
                               <div key={k}>
-                                <label className="text-xs text-gray-500 capitalize">
-                                  {k}
-                                </label>
-                                <input
-                                  value={String(v)}
-                                  readOnly
-                                  className="mt-1 w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm"
-                                />
+                                <div className="relative">
+                                  <input
+                                    value={String(v)}
+                                    readOnly
+                                    className="w-full rounded-xl border bg-white px-3 pt-6 pb-2 text-base"
+                                  />
+                                  <label className="absolute left-3 top-2 text-xs text-gray-500 pointer-events-none uppercase">
+                                    {k}
+                                  </label>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -2940,15 +3144,28 @@ export default function VendorProductAddModal({
 
                             <div className="rounded-xl border border-gray-200 bg-white p-5">
                               <div className="flex items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                                {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl  text-violet-600">
                                   <Box
                                     className="h-5 w-5"
                                     strokeWidth={2}
                                     aria-hidden
                                   />
-                                </div>
+                                </div> */}
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-base font-semibold text-gray-900">
+                                  {/* <p className="text-base flex font-semibold text-gray-900">
+                                    <Box
+                                      className="h-5 w-5 text-violet-600 "
+                                      strokeWidth={2}
+                                      aria-hidden
+                                    />
+                                    Product Media
+                                  </p> */}
+                                  <p className="text-base flex items-center gap-2 font-semibold text-gray-900">
+                                    <Box
+                                      className="h-5 w-5 text-violet-600"
+                                      strokeWidth={2}
+                                      aria-hidden
+                                    />
                                     Product Media
                                   </p>
                                   <p className="mt-1 text-xs leading-relaxed text-gray-500">
@@ -3135,15 +3352,23 @@ export default function VendorProductAddModal({
                             <div className="rounded-xl border border-gray-200 bg-white p-5">
                               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="flex min-w-0 items-start gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                                  {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
                                     <Box
                                       className="h-5 w-5"
                                       strokeWidth={2}
                                       aria-hidden
                                     />
-                                  </div>
+                                  </div> */}
                                   <div className="min-w-0">
-                                    <p className="text-base font-semibold text-gray-900">
+                                    {/* <p className="text-base font-semibold text-gray-900">
+                                      Product Specifications
+                                    </p> */}
+                                    <p className="text-base flex items-center gap-2 font-semibold text-gray-900">
+                                      <Box
+                                        className="h-5 w-5 text-violet-600"
+                                        strokeWidth={2}
+                                        aria-hidden
+                                      />
                                       Product Specifications
                                     </p>
                                     <p className="mt-1 text-xs leading-relaxed text-gray-500">
@@ -3469,19 +3694,23 @@ export default function VendorProductAddModal({
                       </div>
                     ) : null}
                     <div className="mb-4 flex gap-3 border-b border-gray-100 pb-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                      {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center  text-emerald-600">
                         <DollarSign className="h-5 w-5" strokeWidth={2} />
-                      </div>
+                      </div> */}
                       <div className="min-w-0">
-                        <h4 className="text-sm font-semibold text-gray-900">
+                        <h4 className="text-sm flex  font-semibold text-gray-900">
+                          <DollarSign
+                            className="h-5 w-5  text-emerald-600"
+                            strokeWidth={2}
+                          />
                           Rental configuration
                         </h4>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {isCustomRentalPricing
                             ? `Set competitive rental prices for different tenure options.`
-                            : 'Set rent and shipping for each tenure. Add more term for extra durations (e.g. 16 months or 10 days).'}
+                            : ''}
                         </p>
-                        {rentalFieldsLocked ? (
+                        {/* {rentalFieldsLocked ? (
                           <p className="mt-2 text-xs text-gray-600">
                             Tenure type:{' '}
                             <span className="font-semibold text-gray-800">
@@ -3491,7 +3720,7 @@ export default function VendorProductAddModal({
                             </span>{' '}
                             (catalog — read-only)
                           </p>
-                        ) : null}
+                        ) : null} */}
                       </div>
                     </div>
                     {isCustomRentalPricing ? (
@@ -3538,14 +3767,14 @@ export default function VendorProductAddModal({
                             return (
                               <div
                                 key={i}
-                                className="relative rounded-xl border border-amber-200/90 bg-white p-3 shadow-sm space-y-2.5"
+                                className="relative rounded-xl border border-gray-200 bg-gray-50 p-3 shadow-sm space-y-2.5"
                               >
                                 {tier.bestValue ? (
                                   <span className="absolute top-2 right-2 rounded-full bg-orange-500 text-[9px] font-bold text-white px-2 py-0.5">
                                     POPULAR
                                   </span>
                                 ) : null}
-                                {!rentalFieldsLocked ? (
+                                {/* {!rentalFieldsLocked ? (
                                   <div className="flex flex-wrap items-center gap-2">
                                     <label className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
                                       Tenure ({isDayModel ? 'days' : 'months'})
@@ -3579,7 +3808,7 @@ export default function VendorProductAddModal({
                                       className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-sm"
                                     />
                                   </div>
-                                ) : null}
+                                ) : null} */}
                                 <div className="pr-14">
                                   {/* <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                                     {tier.tierLabel || 'Term'}
@@ -3591,10 +3820,10 @@ export default function VendorProductAddModal({
                                         : `${tier.months ?? 0} Months`)}
                                   </p>
                                 </div>
-                                <div className="rounded-lg bg-emerald-50/80 border border-emerald-100 px-2.5 py-2">
-                                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                <div className="rounded-lg  border border-gray-300 px-2.5 py-2">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                                     <TrendingDown
-                                      className="h-3.5 w-3.5 shrink-0"
+                                      className="h-3.5 w-3.5 shrink-0 text-emerald-700"
                                       strokeWidth={2.5}
                                     />
                                     Market low
@@ -3613,7 +3842,7 @@ export default function VendorProductAddModal({
                                     Your price
                                   </label>
                                   <div className="flex rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/20">
-                                    <span className="flex items-center px-2.5 text-gray-500 text-sm bg-gray-50 border-r border-gray-200">
+                                    <span className="flex items-center px-2.5 text-blue-500 text-sm bg-gray-50 border-r border-gray-200">
                                       ₹
                                     </span>
                                     <input
@@ -3646,7 +3875,7 @@ export default function VendorProductAddModal({
                                   <Zap className="h-3.5 w-3.5" />
                                   Match lowest
                                 </button>
-                                {!rentalFieldsLocked &&
+                                {/* {!rentalFieldsLocked &&
                                 rentalTiers.length > 1 ? (
                                   <button
                                     type="button"
@@ -3655,7 +3884,7 @@ export default function VendorProductAddModal({
                                   >
                                     Remove term
                                   </button>
-                                ) : null}
+                                ) : null} */}
                               </div>
                             );
                           })}
@@ -3674,7 +3903,7 @@ export default function VendorProductAddModal({
                                   Best value
                                 </span>
                               ) : null}
-                              {!rentalFieldsLocked ? (
+                              {/* {!rentalFieldsLocked ? (
                                 <div className="mb-2 flex flex-wrap items-center gap-2">
                                   <label className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
                                     Tenure (
@@ -3712,25 +3941,25 @@ export default function VendorProductAddModal({
                                     className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-sm"
                                   />
                                 </div>
-                              ) : null}
+                              ) : null} */}
                               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                                 {tier.tierLabel ||
                                   (rentalPricingModel === 'day'
                                     ? 'Term'
                                     : 'Term')}
                               </p>
-                              <p className="text-sm font-semibold text-gray-900 mb-2">
+                              <p className="text-lg font-semibold text-black mb-2">
                                 {String(tier.label || '').trim() ||
                                   (rentalPricingModel === 'day'
                                     ? `${tier.days ?? 0} Days`
                                     : `${tier.months ?? 0} Months`)}
                               </p>
-                              <label className="text-xs text-gray-600">
+                              <label className="text-xs text-black">
                                 {rentalPricingModel === 'day'
                                   ? 'Rent (per day)'
                                   : 'Monthly rent'}
                               </label>
-                              <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
+                              <div className="mt-1 flex rounded-lg border border-[#FFB86A] bg-white">
                                 <span className="pl-2 flex items-center text-gray-500 text-sm">
                                   ₹
                                 </span>
@@ -3743,10 +3972,10 @@ export default function VendorProductAddModal({
                                   disabled={rentalFieldsLocked}
                                 />
                               </div>
-                              <label className="text-xs text-gray-600 mt-2 block">
+                              <label className="text-xs text-black mt-2 block">
                                 Shipping charges
                               </label>
-                              <div className="mt-1 flex rounded-lg border border-gray-200 bg-white">
+                              <div className="mt-1 flex rounded-lg border border-[#FFB86A] bg-white">
                                 <span className="pl-2 flex items-center text-gray-500 text-sm">
                                   ₹
                                 </span>
@@ -3763,7 +3992,7 @@ export default function VendorProductAddModal({
                                   disabled={rentalFieldsLocked}
                                 />
                               </div>
-                              {!rentalFieldsLocked && rentalTiers.length > 1 ? (
+                              {/* {!rentalFieldsLocked && rentalTiers.length > 1 ? (
                                 <button
                                   type="button"
                                   onClick={() => removeRentalTier(i)}
@@ -3771,7 +4000,7 @@ export default function VendorProductAddModal({
                                 >
                                   Remove term
                                 </button>
-                              ) : null}
+                              ) : null} */}
                             </div>
                           ))}
                         </div>
@@ -3992,9 +4221,9 @@ export default function VendorProductAddModal({
                           <option value="Hours">Hours</option>
                         </select>
                       </div>
-                      {/* <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         Days required to deliver after order confirmation
-                      </p> */}
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-800">
@@ -4008,10 +4237,9 @@ export default function VendorProductAddModal({
                         className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
                         placeholder="Units available"
                       />
-                      {/* <p className="text-xs text-gray-500 mt-1">
-                      Overall listing inventory (separate from per-variant
-                      details above). Used for product-level stock status.
-                    </p> */}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Number of units available
+                      </p>
                     </div>
                     {/* <div>
                     <label className="text-xs text-gray-500">
@@ -4058,7 +4286,9 @@ export default function VendorProductAddModal({
           </button>
           <button
             type="button"
-            onClick={() => submit(mode === 'edit' ? 'published' : 'pending_approval')}
+            onClick={() =>
+              submit(mode === 'edit' ? 'published' : 'pending_approval')
+            }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Send className="h-4 w-4" />
