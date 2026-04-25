@@ -9,12 +9,12 @@ import {
   X,
   Calendar,
   Info,
+  CheckCircle,
+  IndianRupee,
 } from 'lucide-react';
-import {
-  apiGetVendorOrder,
-  apiUpdateVendorOrderStatus,
-} from '@/service/api';
+import { apiGetVendorOrder, apiUpdateVendorOrderStatus } from '@/service/api';
 import { toast } from 'react-toastify';
+import Products from '@/assets/icons/product2.png';
 
 const RESPONSE_WINDOW_MS = 30 * 60 * 1000;
 const PLATFORM_FEE_RATE = 0.2;
@@ -55,9 +55,7 @@ function orderDisplayTitle(order) {
 
 function vendorLineTotal(line, rentalDuration) {
   const dur = Math.max(1, Number(rentalDuration || 1));
-  return (
-    Number(line.pricePerDay || 0) * Number(line.quantity || 0) * dur
-  );
+  return Number(line.pricePerDay || 0) * Number(line.quantity || 0) * dur;
 }
 
 export default function VendorNewOrderModal({
@@ -87,7 +85,9 @@ export default function VendorNewOrderModal({
       setOrder(res.data);
     } catch (e) {
       setOrder(null);
-      setError(e?.response?.data?.message || e?.message || 'Failed to load order');
+      setError(
+        e?.response?.data?.message || e?.message || 'Failed to load order',
+      );
     } finally {
       setLoading(false);
     }
@@ -244,22 +244,43 @@ export default function VendorNewOrderModal({
             <div className="p-4 sm:p-5 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-bold text-gray-900">{customerName}</p>
+                  <p className="text-gray-600  text-sm">customer details</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {customerName}
+                  </p>
                   <p className="text-sm text-gray-600 mt-1 flex items-start gap-1.5">
                     <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
                     {locationLabel}
                   </p>
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                {/* <span className="text-[10px] font-bold tracking-wide border border-[#7BF1A8] text-[#00A63E] bg-emerald-50 px-2.5 py-1 rounded-md">
                   PAID — Payment secured
+                </span> */}
+                <span className="text-[10px] font-bold tracking-wide border border-[#7BF1A8] text-[#00A63E] bg-emerald-50 px-2.5 py-1 rounded-md inline-flex flex-col gap-0.5">
+                  {/* First line */}
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Paid
+                  </span>
+
+                  {/* Second line */}
+                  <span className="font-medium text-[9px]">
+                    Payment secured
+                  </span>
                 </span>
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Order items (your catalog)
-                </p>
-                <ul className="space-y-2">
+                {/* <p className="text-sm font-semibold text-gray-500  tracking-wide mb-2">
+                  Order items
+                </p> */}
+                <div className="flex items-center gap-2 mb-2">
+                  <img src={Products.src} alt="products" className="w-4 h-4" />
+                  <p className="text-sm font-semibold text-gray-500 tracking-wide">
+                    Order items
+                  </p>
+                </div>
+                {/* <ul className="space-y-2">
                   {myLines.map((line, idx) => {
                     const p = line.product;
                     const name =
@@ -279,33 +300,84 @@ export default function VendorNewOrderModal({
                       </li>
                     );
                   })}
+                </ul> */}
+                <ul className="space-y-2">
+                  {myLines.map((line, idx) => {
+                    const p = line.product;
+                    const name =
+                      (p && typeof p === 'object' && p.productName) ||
+                      'Product';
+
+                    return (
+                      <li
+                        key={`${line.product?._id || idx}-${idx}`}
+                        className="rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-2.5 flex items-center justify-between"
+                      >
+                        {/* Left */}
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">
+                            {name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            SKU: {formatSku(p)}
+                          </p>
+                        </div>
+
+                        {/* Right: Qty */}
+                        <span className="text-xs font-semibold text-gray-700 bg-white border border-gray-300 px-2 py-0.5 rounded-md">
+                          ×{line.quantity ?? 1}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 
               <div className="rounded-xl border border-gray-200 p-4 space-y-2 text-sm">
-                <div className="flex justify-between text-gray-700">
-                  <span>Order value (your lines)</span>
-                  <span className="font-semibold">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <IndianRupee className="w-4 h-4 text-[#F97316]" />
+                  Financial Summary
+                </p>
+                <div className="flex justify-between text-[#64748B]">
+                  <span>Order value</span>
+                  <span className="font-semibold text-black">
                     ₹{Number(orderValue).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="flex justify-between text-red-600">
-                  <span>Platform fee (est.)</span>
-                  <span className="font-semibold">
+                <div className="flex justify-between text-[#64748B]">
+                  <span>Platform fee </span>
+                  <span className="font-semibold text-red-600">
                     − ₹{Number(platformFee).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/60 px-3 py-3 mt-2">
+                {/* <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/60 px-3 py-3 mt-2">
                   <p className="text-xs text-emerald-800 font-medium">
-                    Your payout (est.)
+                    Your payout 
                   </p>
                   <p className="text-2xl font-bold text-emerald-700 mt-0.5">
                     ₹{Number(payout).toLocaleString('en-IN')}
                   </p>
+                </div> */}
+                <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/60 px-3 py-3 flex items-center justify-between">
+                  <p className="text-xs text-emerald-800 font-medium">
+                    Your payout
+                  </p>
+
+                  <p className="text-2xl font-bold text-emerald-700">
+                    ₹{Number(payout).toLocaleString('en-IN')}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500 pt-1">
+                {/* <div className="flex items-center gap-2 text-xs text-gray-500 pt-1">
                   <Calendar className="w-3.5 h-3.5" />
                   Settlement cycle: Weekly (as per platform terms)
+                </div> */}
+                <div className="flex items-center gap-2 text-xs text-gray-500 pt-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Settlement cycle:{' '}
+                  <span className="font-semibold text-gray-700">
+                    Weekly
+                  </span>{' '}
+                  (as per platform terms)
                 </div>
               </div>
 
@@ -331,29 +403,46 @@ export default function VendorNewOrderModal({
                   </button>
                 </div>
               ) : String(order.status) === 'pending' && !windowOpen ? (
-                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  The 30-minute response window has ended. Use the Orders page
-                  to update this order if needed.
+                <p>
+                  {/* className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" */}
+                  {/* The 30-minute response window has ended. Use the Orders page
+                  to update this order if needed. */}
                 </p>
               ) : (
                 <p className="text-sm text-gray-600">
                   Status:{' '}
-                  <span className="font-semibold capitalize">{order.status}</span>
+                  <span className="font-semibold capitalize">
+                    {order.status}
+                  </span>
                 </p>
               )}
 
               <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-900">
-                <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>
+                {/* <Info className="w-4 h-4 shrink-0 mt-0.5" /> */}
+                {/* <span>
                   Accepting acknowledges the order; status stays pending until
                   you update it from the Orders table (e.g. confirmed, shipped).
+                </span> */}
+                <span>
+                  📌 <span className="font-semibold">Note:</span> Accepting this
+                  order confirms you have the items in stock and can fulfill
+                  within the promised timeframe.
                 </span>
               </div>
 
-              {receivedAt ? (
+              {/* {receivedAt ? (
                 <p className="text-center text-[11px] text-gray-400">
                   Order received at {receivedAt} · Please respond within 30
                   minutes
+                </p>
+              ) : null} */}
+              {receivedAt ? (
+                <p className="text-center text-[11px] text-gray-400">
+                  Order received at{' '}
+                  <span className="font-semibold text-gray-600">
+                    {receivedAt}
+                  </span>{' '}
+                  · Please respond within 30 minutes
                 </p>
               ) : null}
             </div>

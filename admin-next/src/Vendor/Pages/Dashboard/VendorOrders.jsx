@@ -37,7 +37,8 @@ const tabs = [
   'Pickup',
   // 'Completed',
 ];
-
+import totalVal from '@/assets/icons/total-val.png';
+import processOrder from '@/assets/icons/process-order.png';
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const makeOtp = () => String(1000 + Math.floor(Math.random() * 9000));
 
@@ -1141,18 +1142,44 @@ export default function VendorOrdersPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="bg-white rounded-2xl border border-blue-100 p-4">
-                    <p className="text-xs text-gray-500">Total Processing</p>
-                    <p className="text-4xl font-semibold text-blue-600 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                  {/* <div className="bg-white rounded-2xl border border-blue-100 p-4">
+                    <p className="text-xs text-gray-500">Processing orders</p>
+                    <p className="text-4xl font-semibold text-[#2563EB] mt-1">
+                      {stats.processing}
+                    </p>
+                  </div> */}
+                  <div className="bg-white rounded-2xl border border-[#BEDBFF] p-4">
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={processOrder.src}
+                        alt="processing orders"
+                        className="w-8 h-8"
+                      />
+                      <p className="text-xs text-gray-500">Processing orders</p>
+                    </div>
+
+                    <p className="text-3xl font-semibold text-[#2563EB] mt-1">
                       {stats.processing}
                     </p>
                   </div>
-                  <div className="bg-white rounded-2xl border border-emerald-100 p-4">
-                    <p className="text-xs text-gray-500">
-                      Your revenue (lines)
+                  {/* <div className="bg-white rounded-2xl border border-emerald-100 p-4">
+                    <p className="text-xs text-gray-500">Total value</p>
+                    <p className="text-4xl font-semibold text-[#F97316] mt-1">
+                      {money(stats.totalRevenue)}
                     </p>
-                    <p className="text-4xl font-semibold text-emerald-600 mt-1">
+                  </div> */}
+                  <div className="bg-white rounded-2xl border border-[#FFD6A8] p-4">
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={totalVal.src}
+                        alt="total value"
+                        className="w-8 h-8"
+                      />
+                      <p className="text-xs text-gray-500">Total value</p>
+                    </div>
+
+                    <p className="text-3xl font-semibold text-[#F97316] mt-1">
                       {money(stats.totalRevenue)}
                     </p>
                   </div>
@@ -1162,12 +1189,12 @@ export default function VendorOrdersPage() {
                       {money(stats.averageOrder)}
                     </p>
                   </div>
-                  <div className="bg-white rounded-2xl border border-orange-100 p-4">
+                  {/* <div className="bg-white rounded-2xl border border-orange-100 p-4">
                     <p className="text-xs text-gray-500">Urgent actions</p>
                     <p className="text-4xl font-semibold text-orange-600 mt-1">
                       {stats.urgentActions}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4">
@@ -1187,7 +1214,7 @@ export default function VendorOrdersPage() {
                         <span
                           className={`min-w-[1.5rem] h-6 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
                             activeTab === tab
-                              ? 'bg-orange-100 text-orange-800'
+                              ? 'bg-[#F97316] text-white'
                               : 'bg-gray-100 text-gray-600'
                           }`}
                         >
@@ -1347,7 +1374,7 @@ export default function VendorOrdersPage() {
                           )}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-[#F97316] text-white">
+                          <tr className="bg-gray-800 text-white">
                             <td
                               colSpan={activeTab === 'Delivered' ? 5 : 6}
                               className="px-4 py-3 font-semibold"
