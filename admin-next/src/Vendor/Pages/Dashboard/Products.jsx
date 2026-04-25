@@ -609,6 +609,7 @@ const Products = () => {
                   className="w-full md:max-w-md px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-200"
                 />
               </div>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
@@ -678,7 +679,20 @@ const Products = () => {
                           <td className="px-4 py-3">{p.subCategory}</td>
 
                           {/* Stock */}
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
+                            <span
+                              className={`${
+                                p.stock === 0
+                                  ? 'text-red-500'
+                                  : p.stock <= 5
+                                    ? 'text-[#F97316]'
+                                    : 'text-black'
+                              }`}
+                            >
+                              {p.stock} Units
+                            </span>
+                          </td> */}
+                          <td className="px-4 py-3 whitespace-nowrap">
                             <span
                               className={`${
                                 p.stock === 0
@@ -693,7 +707,14 @@ const Products = () => {
                           </td>
 
                           {/* Status */}
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
+                            >
+                              {status}
+                            </span>
+                          </td> */}
+                          <td className="px-4 py-3 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
                             >
