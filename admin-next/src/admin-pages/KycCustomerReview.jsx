@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   Calendar,
@@ -20,6 +21,8 @@ import {
 import { apiGetCustomerKycReview, apiReviewCustomerKyc } from '@/service/api';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import CustId from '@/assets/icons/cust-id.png';
+import AdhaarId from '@/assets/icons/adhaar-id.png';
 
 const getTone = (status) => {
   if (status === 'approved')
@@ -41,21 +44,21 @@ const formatReviewDate = (d) => {
   });
 };
 
-function InfoRow({ icon: Icon, iconClass, label, children }) {
-  return (
-    <div className="flex gap-3">
-      <div
-        className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${iconClass}`}
-      >
-        <Icon className="w-4 h-4" aria-hidden />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-gray-500">{label}</p>
-        <p className="text-sm font-semibold text-gray-900 mt-0.5">{children}</p>
-      </div>
-    </div>
-  );
-}
+// function InfoRow({ icon: Icon, iconClass, label, children }) {
+//   return (
+//     <div className="flex gap-3">
+//       <div
+//         className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${iconClass}`}
+//       >
+//         <Icon className="w-4 h-4" aria-hidden />
+//       </div>
+//       <div className="min-w-0 flex-1">
+//         <p className="text-xs font-medium text-gray-500">{label}</p>
+//         <p className="text-sm font-semibold text-gray-900 mt-0.5">{children}</p>
+//       </div>
+//     </div>
+//   );
+// }
 
 // function DocPreviewSlot({ label, src, onZoom }) {
 //   return (
@@ -87,6 +90,27 @@ function InfoRow({ icon: Icon, iconClass, label, children }) {
 //     </div>
 //   );
 // }
+
+function InfoRow({ icon: Icon, img, iconClass, label, children }) {
+  return (
+    <div className="flex gap-3">
+      <div
+        className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${iconClass}`}
+      >
+        {img ? (
+          <img src={img.src} alt={label} className="w-8 h-8" />
+        ) : (
+          Icon && <Icon className="w-4 h-4" aria-hidden />
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-sm font-semibold text-gray-900 mt-0.5">{children}</p>
+      </div>
+    </div>
+  );
+}
 
 function DocPreviewSlot({ label, src }) {
   const [scale, setScale] = useState(1);
@@ -378,9 +402,16 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                 >
                   {kyc.permanentAddress || '—'}
                 </InfoRow>
-                <InfoRow
+                {/* <InfoRow
                   icon={CreditCard}
                   iconClass="bg-orange-50 text-orange-600"
+                  label="ID Type"
+                >
+                  {kyc.idType || '—'}
+                </InfoRow> */}
+                <InfoRow
+                  img={AdhaarId}
+                  iconClass="bg-orange-50"
                   label="ID Type"
                 >
                   {kyc.idType || '—'}
@@ -392,9 +423,16 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                 >
                   {kyc.contactNumber || '—'}
                 </InfoRow>
-                <InfoRow
+                {/* <InfoRow
                   icon={Hash}
                   iconClass="bg-pink-50 text-pink-600"
+                  label="Customer ID"
+                >
+                  {kyc.customerId || '—'}
+                </InfoRow> */}
+                <InfoRow
+                  img={CustId}
+                  iconClass="bg-pink-50"
                   label="Customer ID"
                 >
                   {kyc.customerId || '—'}
@@ -605,16 +643,16 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                     )}
                   </div>
 
-                  <div className="lg:max-w-xs rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2.5 flex gap-2.5 shrink-0">
+                  <div className="lg:max-w-xs rounded-lg border border-[#BEDBFF] bg-[#EFF6FF] px-3 py-2.5 flex gap-2.5 shrink-0">
                     <CheckCircle2
-                      className="w-4 h-4 text-sky-600 shrink-0 mt-0.5"
+                      className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5"
                       aria-hidden
                     />
                     <div>
-                      <p className="text-xs font-semibold text-sky-900">
+                      <p className="text-xs font-semibold text-[#2563EB]">
                         Physically Verified Badge
                       </p>
-                      <p className="text-[11px] text-sky-800/80 mt-0.5 leading-snug">
+                      <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug">
                         Will be applied to customer profile upon approval
                       </p>
                     </div>
@@ -664,8 +702,9 @@ export default function KycCustomerReview({ userId: userIdProp }) {
         pauseOnHover={false}
         theme="colored"
       />
-      {confirmApprove ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+      {/* {confirmApprove ? (
+        // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl p-6">
             <h3 className="text-lg font-semibold text-gray-900">
               Confirm Approval
@@ -698,7 +737,41 @@ export default function KycCustomerReview({ userId: userIdProp }) {
             </div>
           </div>
         </div>
-      ) : null}
+      ) : null} */}
+      {confirmApprove &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Approval
+              </h3>
+
+              <p className="text-sm text-gray-600 mt-2">
+                Are you sure you want to approve this customer KYC?
+              </p>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={() => setConfirmApprove(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm"
+                >
+                  No
+                </button>
+
+                <button
+                  onClick={() => {
+                    setConfirmApprove(false);
+                    handleApprove();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                >
+                  Yes, Approve
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
       {/* 
       {successOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
