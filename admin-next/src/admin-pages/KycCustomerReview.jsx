@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -13,8 +13,13 @@ import {
   Search,
   User,
   X,
+  ZoomIn,
+  ZoomOut,
+  CircleCheck,
 } from 'lucide-react';
 import { apiGetCustomerKycReview, apiReviewCustomerKyc } from '@/service/api';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const getTone = (status) => {
   if (status === 'approved')
@@ -52,31 +57,112 @@ function InfoRow({ icon: Icon, iconClass, label, children }) {
   );
 }
 
-function DocPreviewSlot({ label, src, onZoom }) {
+// function DocPreviewSlot({ label, src, onZoom }) {
+//   return (
+//     <div className="relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col min-h-0">
+//       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white">
+//         <p className="text-xs font-semibold text-gray-800">{label}</p>
+//         {src ? (
+//           <button
+//             type="button"
+//             onClick={() => onZoom(src)}
+//             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+//           >
+//             <Search className="w-3 h-3" aria-hidden />
+//             Zoom
+//           </button>
+//         ) : null}
+//       </div>
+//       <div className="p-2 flex-1 flex items-center justify-center bg-white min-h-[180px] max-h-[260px] overflow-hidden">
+//         {src ? (
+//           <img
+//             src={src}
+//             alt={label}
+//             className="max-w-full max-h-[240px] w-auto h-auto object-contain rounded-lg"
+//           />
+//         ) : (
+//           <p className="text-xs text-gray-400">Not uploaded</p>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+function DocPreviewSlot({ label, src }) {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+
+  const start = useRef({ x: 0, y: 0 });
+
+  const zoomIn = () => setScale((s) => Math.min(s + 0.2, 3));
+  const zoomOut = () => setScale((s) => Math.max(s - 0.2, 1));
+
+  // const handleWheel = (e) => {
+  //   e.preventDefault();
+  //   if (e.deltaY < 0) zoomIn();
+  //   else zoomOut();
+  // };
+
+  const handleMouseDown = (e) => {
+    setDragging(true);
+    start.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragging) return;
+    setPosition({
+      x: e.clientX - start.current.x,
+      y: e.clientY - start.current.y,
+    });
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
   return (
-    <div className="relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col min-h-0">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white">
+    <div className="relative rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-white">
         <p className="text-xs font-semibold text-gray-800">{label}</p>
-        {src ? (
-          <button
-            type="button"
-            onClick={() => onZoom(src)}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Search className="w-3 h-3" aria-hidden />
-            Zoom
-          </button>
-        ) : null}
+
+        {src && (
+          <div className="flex items-center gap-1">
+            <button onClick={zoomOut} className="p-1 rounded text-[#2563EB]">
+              <ZoomOut className="w-4 h-4" />
+            </button>
+
+            <button onClick={zoomIn} className="p-1 rounded text-[#2563EB]">
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
-      <div className="p-2 flex-1 flex items-center justify-center bg-white min-h-[180px] max-h-[260px] overflow-hidden">
+
+      <div
+        className="relative h-[260px] overflow-hidden bg-white cursor-grab"
+        // onWheel={handleWheel}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
         {src ? (
           <img
             src={src}
             alt={label}
-            className="max-w-full max-h-[240px] w-auto h-auto object-contain rounded-lg"
+            onMouseDown={handleMouseDown}
+            draggable={false}
+            className="absolute top-1/2 left-1/2 select-none"
+            style={{
+              transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transition: dragging ? 'none' : 'transform 0.2s ease',
+            }}
           />
         ) : (
-          <p className="text-xs text-gray-400">Not uploaded</p>
+          <p className="text-xs text-gray-400 flex items-center justify-center h-full">
+            Not uploaded
+          </p>
         )}
       </div>
     </div>
@@ -94,6 +180,7 @@ export default function KycCustomerReview({ userId: userIdProp }) {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
+  const [confirmApprove, setConfirmApprove] = useState(false);
   const [zoomSrc, setZoomSrc] = useState('');
   const [checks, setChecks] = useState({
     nameMatches: false,
@@ -162,8 +249,12 @@ export default function KycCustomerReview({ userId: userIdProp }) {
       typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
     if (!token || !kyc?.userId) return;
     const msg = comment?.trim();
+    // if (!msg) {
+    //   setError('Please enter rejection reason.');
+    //   return;
+    // }
     if (!msg) {
-      setError('Please enter rejection reason.');
+      toast.error('Please enter rejection reason');
       return;
     }
     setSubmitting(true);
@@ -338,16 +429,18 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                 </p>
               </div>
               <div className="p-4 space-y-3 flex-1 min-h-0 overflow-hidden">
-                <DocPreviewSlot
+                {/* <DocPreviewSlot
                   label="Front Side"
                   src={kyc.aadhaarFront}
                   onZoom={setZoomSrc}
-                />
-                <DocPreviewSlot
+                /> */}
+                <DocPreviewSlot label="Front Side" src={kyc.aadhaarFront} />
+                {/* <DocPreviewSlot
                   label="Back Side"
                   src={kyc.aadhaarBack}
                   onZoom={setZoomSrc}
-                />
+                /> */}
+                <DocPreviewSlot label="Back Side" src={kyc.aadhaarBack} />
               </div>
             </div>
           </div>
@@ -449,7 +542,7 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                   <div className="flex flex-col sm:flex-row flex-wrap gap-2.5">
                     {canApprove ? (
                       <>
-                        <button
+                        {/* <button
                           type="button"
                           disabled={submitting}
                           onClick={handleReject}
@@ -457,11 +550,28 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                         >
                           <X className="w-3.5 h-3.5 shrink-0" aria-hidden />
                           Reject
+                        </button> */}
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => {
+                            setChecks({
+                              nameMatches: false,
+                              photoClear: false,
+                              notExpired: false,
+                            });
+                            handleReject();
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border-2 border-rose-500 bg-white text-rose-600 text-xs font-semibold hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5 shrink-0" />
+                          Reject
                         </button>
                         <button
                           type="button"
                           disabled={submitting}
-                          onClick={handleApprove}
+                          // onClick={handleApprove}
+                          onClick={() => setConfirmApprove(true)}
                           className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm disabled:opacity-50"
                         >
                           <CheckCircle2
@@ -473,7 +583,7 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                       </>
                     ) : (
                       <>
-                        <button
+                        {/* <button
                           type="button"
                           disabled={submitting}
                           onClick={handleReject}
@@ -481,7 +591,7 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                         >
                           <X className="w-3.5 h-3.5 shrink-0" aria-hidden />
                           Submit Rejection
-                        </button>
+                        </button> */}
                         <button
                           type="button"
                           disabled={submitting}
@@ -546,6 +656,50 @@ export default function KycCustomerReview({ userId: userIdProp }) {
         </div>
       ) : null}
 
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        newestOnTop
+        closeOnClick
+        pauseOnHover={false}
+        theme="colored"
+      />
+      {confirmApprove ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl p-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Confirm Approval
+            </h3>
+
+            <p className="text-sm text-gray-600 mt-2">
+              Are you sure you want to approve this customer KYC?
+            </p>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmApprove(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => {
+                  setConfirmApprove(false);
+                  handleApprove();
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+              >
+                Yes, Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {/* 
       {successOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl p-6">
@@ -570,6 +724,39 @@ export default function KycCustomerReview({ userId: userIdProp }) {
                   router.push('/kyc/customer');
                 }}
                 className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm hover:bg-orange-600"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null} */}
+
+      {successOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
+                <CircleCheck className="w-7 h-7 text-emerald-600" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-gray-900 mt-4">
+                Customer Verified
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Verification completed successfully
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessOpen(false);
+                  router.push('/kyc/customer');
+                }}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
               >
                 Continue
               </button>
