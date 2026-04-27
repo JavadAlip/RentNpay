@@ -332,7 +332,7 @@ const Profile = () => {
 
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3">
-              Uploaded Documents (Read only)
+              Uploaded Documents
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {docs.map((doc) => (
