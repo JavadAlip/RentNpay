@@ -158,7 +158,7 @@ connectMongo()
   .then(async ({ usedFallback }) => {
     console.log(
       usedFallback
-        ? '✅ MongoDB Connected (using MONGODB_URI_FALLBACK)'
+        ? ' MongoDB Connected (using MONGODB_URI_FALLBACK)'
         : ' MongoDB Connected',
     );
     try {

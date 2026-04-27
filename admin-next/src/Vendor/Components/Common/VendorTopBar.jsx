@@ -196,7 +196,7 @@ const VendorTopBar = () => {
       )}
 
       <div className="flex flex-col min-w-0">
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
+        <h1 className="text-xl md:text-xl font-semibold text-black truncate">
           Vendor Dashboard
         </h1>
       </div>

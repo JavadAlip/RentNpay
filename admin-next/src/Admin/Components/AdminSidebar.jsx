@@ -199,43 +199,51 @@ const AdminSidebar = () => {
             {(() => {
               const isAnalyticsActive = pathname?.startsWith('/analytics');
               return (
-            <button
-              type="button"
-              onClick={() => setAnalyticsOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
-                isAnalyticsActive
-                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
-                  : ''
-              }`}
-              title="Analytics"
-            >
-              <span className="inline-flex items-center gap-2">
-                <img
-                  src={analyticsIcon.src}
-                  alt="Analytics"
-                  className={`w-4 h-4 shrink-0 ${isAnalyticsActive ? 'brightness-0 invert' : ''}`}
-                />
-                {sidebarOpen ? 'Analytics' : 'A'}
-              </span>
-              {/* {sidebarOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setAnalyticsOpen((v) => !v)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                    isAnalyticsActive
+                      ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                      : ''
+                  }`}
+                  title="Analytics"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={analyticsIcon.src}
+                      alt="Analytics"
+                      className={`w-4 h-4 shrink-0 ${isAnalyticsActive ? 'brightness-0 invert' : ''}`}
+                    />
+                    {sidebarOpen ? 'Analytics' : 'A'}
+                  </span>
+                  {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {analyticsOpen ? '▼' : '▶'}
                 </span>
               ) : null} */}
-              {sidebarOpen ? (
-                analyticsOpen ? (
-                  <ChevronDown
-                    size={18}
-                    className={isAnalyticsActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                ) : (
-                  <ChevronRight
-                    size={18}
-                    className={isAnalyticsActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                )
-              ) : null}
-            </button>
+                  {sidebarOpen ? (
+                    analyticsOpen ? (
+                      <ChevronDown
+                        size={18}
+                        className={
+                          isAnalyticsActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    ) : (
+                      <ChevronRight
+                        size={18}
+                        className={
+                          isAnalyticsActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    )
+                  ) : null}
+                </button>
               );
             })()}
             {sidebarOpen && analyticsOpen ? (
@@ -283,45 +291,54 @@ const AdminSidebar = () => {
           <div className="mx-2 mt-1">
             {(() => {
               const isProductsOffersActive =
-                pathname === offersChild.to || pathname?.startsWith('/global-products');
+                pathname === offersChild.to ||
+                pathname?.startsWith('/global-products');
               return (
-            <button
-              type="button"
-              onClick={() => setProductsOffersOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
-                isProductsOffersActive
-                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
-                  : ''
-              }`}
-              title="Products & Offers"
-            >
-              <span className="inline-flex items-center gap-2">
-                <img
-                  src={productOffersIcon.src}
-                  alt="Products & Offers"
-                  className={`w-4 h-4 shrink-0 ${isProductsOffersActive ? 'brightness-0 invert' : ''}`}
-                />
-                {sidebarOpen ? 'Products & Offers' : 'P'}
-              </span>
-              {/* {sidebarOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setProductsOffersOpen((v) => !v)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                    isProductsOffersActive
+                      ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                      : ''
+                  }`}
+                  title="Products & Offers"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={productOffersIcon.src}
+                      alt="Products & Offers"
+                      className={`w-4 h-4 shrink-0 ${isProductsOffersActive ? 'brightness-0 invert' : ''}`}
+                    />
+                    {sidebarOpen ? 'Products & Offers' : 'P'}
+                  </span>
+                  {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {productsOffersOpen ? '▼' : '▶'}
                 </span>
               ) : null} */}
-              {sidebarOpen ? (
-                productsOffersOpen ? (
-                  <ChevronDown
-                    size={18}
-                    className={isProductsOffersActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                ) : (
-                  <ChevronRight
-                    size={18}
-                    className={isProductsOffersActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                )
-              ) : null}
-            </button>
+                  {sidebarOpen ? (
+                    productsOffersOpen ? (
+                      <ChevronDown
+                        size={18}
+                        className={
+                          isProductsOffersActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    ) : (
+                      <ChevronRight
+                        size={18}
+                        className={
+                          isProductsOffersActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    )
+                  ) : null}
+                </button>
               );
             })()}
             {sidebarOpen && productsOffersOpen ? (
@@ -356,49 +373,57 @@ const AdminSidebar = () => {
             {(() => {
               const isKycActive = pathname?.startsWith('/kyc');
               return (
-            <button
-              type="button"
-              onClick={() => setKycOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
-                isKycActive
-                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
-                  : ''
-              }`}
-              title="KYC"
-            >
-              <span className="inline-flex items-center gap-2">
-                <img
-                  src={kycIcon.src}
-                  alt="KYC"
-                  className={`w-4 h-4 shrink-0 ${isKycActive ? 'brightness-0 invert' : ''}`}
-                />
-                {sidebarOpen ? 'KYC' : 'K'}
-                {sidebarOpen &&
-                kycQueueCounts.pending + kycQueueCounts.resubmitted > 0 ? (
-                  <span className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white">
-                    {kycQueueCounts.pending + kycQueueCounts.resubmitted > 9
-                      ? '9+'
-                      : kycQueueCounts.pending + kycQueueCounts.resubmitted}
+                <button
+                  type="button"
+                  onClick={() => setKycOpen((v) => !v)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 ${
+                    isKycActive
+                      ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                      : ''
+                  }`}
+                  title="KYC"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={kycIcon.src}
+                      alt="KYC"
+                      className={`w-4 h-4 shrink-0 ${isKycActive ? 'brightness-0 invert' : ''}`}
+                    />
+                    {sidebarOpen ? 'KYC' : 'K'}
+                    {sidebarOpen &&
+                    kycQueueCounts.pending + kycQueueCounts.resubmitted > 0 ? (
+                      <span className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white">
+                        {kycQueueCounts.pending + kycQueueCounts.resubmitted > 9
+                          ? '9+'
+                          : kycQueueCounts.pending + kycQueueCounts.resubmitted}
+                      </span>
+                    ) : null}
                   </span>
-                ) : null}
-              </span>
-              {/* {sidebarOpen ? (
+                  {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">{kycOpen ? '▼' : '▶'}</span>
               ) : null} */}
-              {sidebarOpen ? (
-                kycOpen ? (
-                  <ChevronDown
-                    size={18}
-                    className={isKycActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                ) : (
-                  <ChevronRight
-                    size={18}
-                    className={isKycActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                )
-              ) : null}
-            </button>
+                  {sidebarOpen ? (
+                    kycOpen ? (
+                      <ChevronDown
+                        size={18}
+                        className={
+                          isKycActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    ) : (
+                      <ChevronRight
+                        size={18}
+                        className={
+                          isKycActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    )
+                  ) : null}
+                </button>
               );
             })()}
             {sidebarOpen && kycOpen ? (
@@ -438,7 +463,9 @@ const AdminSidebar = () => {
                 href={l.to}
                 onClick={() => setMobileOpen(false)}
                 className={`mx-2 px-3 py-2 rounded-lg text-sm flex items-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                  isActive ? 'bg-[#FF7020] text-white font-medium shadow-sm' : ''
+                  isActive
+                    ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                    : ''
                 }`}
                 title={l.label}
               >
@@ -466,43 +493,51 @@ const AdminSidebar = () => {
                 pathname?.startsWith('/system/approval') ||
                 pathname === systemCategoriesChild.to;
               return (
-            <button
-              type="button"
-              onClick={() => setSystemOpen((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
-                isSystemActive
-                  ? 'bg-[#FF7020] text-white font-medium shadow-sm'
-                  : ''
-              }`}
-              title="System"
-            >
-              <span className="inline-flex items-center gap-2">
-                <img
-                  src={systemsIcon.src}
-                  alt="System"
-                  className={`w-4 h-4 shrink-0 ${isSystemActive ? 'brightness-0 invert' : ''}`}
-                />
-                {sidebarOpen ? 'System' : 'S'}
-              </span>
-              {/* {sidebarOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setSystemOpen((v) => !v)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm flex items-center justify-between text-gray-600 hover:bg-orange-50 hover:text-orange-600 ${
+                    isSystemActive
+                      ? 'bg-[#FF7020] text-white font-medium shadow-sm'
+                      : ''
+                  }`}
+                  title="System"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <img
+                      src={systemsIcon.src}
+                      alt="System"
+                      className={`w-4 h-4 shrink-0 ${isSystemActive ? 'brightness-0 invert' : ''}`}
+                    />
+                    {sidebarOpen ? 'System' : 'S'}
+                  </span>
+                  {/* {sidebarOpen ? (
                 <span className="text-xs text-gray-400">
                   {systemOpen ? '▼' : '▶'}
                 </span>
               ) : null} */}
-              {sidebarOpen ? (
-                systemOpen ? (
-                  <ChevronDown
-                    size={18}
-                    className={isSystemActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                ) : (
-                  <ChevronRight
-                    size={18}
-                    className={isSystemActive ? 'text-white fill-white' : 'text-gray-400 fill-gray-400'}
-                  />
-                )
-              ) : null}
-            </button>
+                  {sidebarOpen ? (
+                    systemOpen ? (
+                      <ChevronDown
+                        size={18}
+                        className={
+                          isSystemActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    ) : (
+                      <ChevronRight
+                        size={18}
+                        className={
+                          isSystemActive
+                            ? 'text-white fill-white'
+                            : 'text-gray-400 fill-gray-400'
+                        }
+                      />
+                    )
+                  ) : null}
+                </button>
               );
             })()}
             {sidebarOpen && systemOpen ? (
