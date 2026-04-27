@@ -208,7 +208,8 @@ export default function VendorNewOrderModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-order-title"
-        className="relative w-full max-w-lg max-h-[min(92vh,720px)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-200"
+        // className="relative w-full max-w-lg max-h-[min(92vh,720px)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-200"
+        className="relative w-full max-w-lg max-h-[min(92vh,720px)] overflow-y-auto vendor-login-scroll rounded-2xl bg-white shadow-2xl border border-gray-200"
       >
         {loading ? (
           <div className="p-12 flex justify-center">
