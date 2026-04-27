@@ -11,6 +11,7 @@ import {
   Info,
   CheckCircle,
   IndianRupee,
+  CircleCheck,
 } from 'lucide-react';
 import { apiGetVendorOrder, apiUpdateVendorOrderStatus } from '@/service/api';
 import { toast } from 'react-toastify';
@@ -155,9 +156,7 @@ export default function VendorNewOrderModal({
 
   /** Accept: acknowledge only — order stays `pending`; vendor moves it forward from Orders. */
   const handleAccept = () => {
-    toast.success(
-      'Order acknowledged. It stays pending — set status from Orders when ready.',
-    );
+    toast.success('Order acknowledged.');
     onClose?.();
   };
 
@@ -229,10 +228,24 @@ export default function VendorNewOrderModal({
                   New Order #{orderDisplayTitle(order)}
                 </h2>
               </div>
-              {String(order.status) === 'pending' && windowOpen ? (
-                <div className="flex items-center gap-1.5 text-xs font-semibold bg-white/20 px-2.5 py-1 rounded-lg shrink-0">
+              {/* {String(order.status) === 'pending' && windowOpen ? (
+                <div className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#EF4444] px-2.5 py-1 rounded-lg shrink-0">
                   <Clock className="w-3.5 h-3.5" />
                   Auto-rejects in {countdownLabel}
+                </div>
+              ) : String(order.status) === 'pending' ? (
+                <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-lg">
+                  Window closed
+                </span>
+              ) : null} */}
+              {String(order.status) === 'pending' && windowOpen ? (
+                <div className="flex gap-1.5 text-xs font-semibold bg-[#FEF2F2] text-[#EF4444] px-3 py-1.5 rounded-3xl shrink-0">
+                  <Clock className="w-3.5 h-3.5 mt-0.5" />
+
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-xs font-medium">Auto-rejects in</span>
+                    <span className="text-right text-sm">{countdownLabel}</span>
+                  </div>
                 </div>
               ) : String(order.status) === 'pending' ? (
                 <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-lg">
@@ -258,8 +271,8 @@ export default function VendorNewOrderModal({
                 </span> */}
                 <span className="text-[10px] font-bold tracking-wide border border-[#7BF1A8] text-[#00A63E] bg-emerald-50 px-2.5 py-1 rounded-md inline-flex flex-col gap-0.5">
                   {/* First line */}
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
+                  <span className="flex items-center uppercase gap-1">
+                    <CircleCheck className="w-3 h-3" />
                     Paid
                   </span>
 
@@ -340,13 +353,13 @@ export default function VendorNewOrderModal({
                 </p>
                 <div className="flex justify-between text-[#64748B]">
                   <span>Order value</span>
-                  <span className="font-semibold text-black">
+                  <span className="font-semibold text-black text-sm">
                     ₹{Number(orderValue).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="flex justify-between text-[#64748B]">
                   <span>Platform fee </span>
-                  <span className="font-semibold text-red-600">
+                  <span className="font-semibold text-red-600 text-xs">
                     − ₹{Number(platformFee).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -359,11 +372,11 @@ export default function VendorNewOrderModal({
                   </p>
                 </div> */}
                 <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50/60 px-3 py-3 flex items-center justify-between">
-                  <p className="text-xs text-emerald-800 font-medium">
+                  <p className="text-xs text-[#008236] font-medium">
                     Your payout
                   </p>
 
-                  <p className="text-2xl font-bold text-emerald-700">
+                  <p className="text-2xl font-bold text-[#008236]">
                     ₹{Number(payout).toLocaleString('en-IN')}
                   </p>
                 </div>
@@ -371,13 +384,11 @@ export default function VendorNewOrderModal({
                   <Calendar className="w-3.5 h-3.5" />
                   Settlement cycle: Weekly (as per platform terms)
                 </div> */}
-                <div className="flex items-center gap-2 text-xs text-gray-500 pt-1">
+                <div className="flex items-center gap-1 text-xs text-gray-500 pt-1">
                   <Calendar className="w-3.5 h-3.5" />
                   Settlement cycle:{' '}
-                  <span className="font-semibold text-gray-700">
-                    Weekly
-                  </span>{' '}
-                  (as per platform terms)
+                  <span className="font-semibold text-black">Weekly</span> (as
+                  per platform terms)
                 </div>
               </div>
 
@@ -389,8 +400,8 @@ export default function VendorNewOrderModal({
                     onClick={handleAccept}
                     className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50"
                   >
-                    <Check className="w-4 h-4" />
-                    Acknowledge order
+                    <CircleCheck className="w-4 h-4" />
+                    Accept & Confirm Stock
                   </button>
                   <button
                     type="button"
@@ -439,9 +450,7 @@ export default function VendorNewOrderModal({
               {receivedAt ? (
                 <p className="text-center text-[11px] text-gray-400">
                   Order received at{' '}
-                  <span className="font-semibold text-gray-600">
-                    {receivedAt}
-                  </span>{' '}
+                  <span className="font-semibold text-black">{receivedAt}</span>{' '}
                   · Please respond within 30 minutes
                 </p>
               ) : null}
