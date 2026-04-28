@@ -6,12 +6,16 @@ import {
   Clock3,
   MapPin,
   Package2,
+  Package,
   RotateCcw,
   Truck,
   User,
   X,
 } from 'lucide-react';
-import { apiGetVendorOrder, apiScheduleVendorReturnPickup } from '@/service/api';
+import {
+  apiGetVendorOrder,
+  apiScheduleVendorReturnPickup,
+} from '@/service/api';
 import { toast } from 'react-toastify';
 
 function lineMatchesVendor(line, vendorIdStr) {
@@ -216,7 +220,7 @@ export default function VendorReturnRequestedModal({
                   <RotateCcw className="w-[18px] h-[18px]" />
                 </span>
                 <div>
-                  <h2 className="text-[36px] leading-[1] font-medium tracking-[-0.015em] text-gray-900">
+                  <h2 className="text-xl leading-[1] font-medium tracking-[-0.015em] text-gray-900">
                     Return Requested
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
@@ -241,7 +245,7 @@ export default function VendorReturnRequestedModal({
                 <span className="font-medium text-gray-900">{customer}</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                <Package2 className="w-4 h-4 text-gray-400" />
+                <Package className="w-4 h-4 text-gray-400" />
                 <span className="text-gray-500">Item:</span>
                 <span className="font-medium text-gray-900">{productName}</span>
                 <span className="text-gray-400">#{formatSku(product)}</span>
@@ -253,16 +257,22 @@ export default function VendorReturnRequestedModal({
                   {tenureEndedLabel}
                 </span>
               </div>
+              {/* <div className="pt-0.5">
+                <span className="inline-flex rounded-lg border border-[#8EC5FF] bg-[#DBEAFE] px-3 py-1 text-[11px] font-semibold tracking-[0.03em] text-[#1447E6]">
+                  PENDING PICKUP
+                </span>
+              </div> */}
               <div className="pt-0.5">
-                <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.03em] text-blue-700">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#8EC5FF] bg-[#DBEAFE] px-3 py-1 text-[11px] font-semibold tracking-[0.03em] text-[#1447E6]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#155DFC]" />
                   PENDING PICKUP
                 </span>
               </div>
             </div>
 
             <div className="mt-5 border-t border-gray-200 pt-4">
-              <h3 className="text-[28px] leading-[1.1] font-medium text-gray-900 inline-flex items-center gap-2">
-                <Truck className="w-[18px] h-[18px] text-orange-500" />
+              <h3 className="text-lg leading-[1.1] font-medium text-gray-900 inline-flex items-center gap-2">
+                <Truck className="w-[18px] h-[18px] text-[#F97316]" />
                 Schedule Pickup
               </h3>
               <p className="mt-1 text-gray-500 text-sm">
@@ -306,7 +316,7 @@ export default function VendorReturnRequestedModal({
 
                 <div className="mt-3.5">
                   <label className="text-[13px] font-medium text-gray-900">
-                    Assign Driver *
+                    Assign Driver <span className="text-red-600">*</span>
                   </label>
                   <input
                     value={driver}
@@ -318,8 +328,8 @@ export default function VendorReturnRequestedModal({
                 </div>
 
                 <div className="mt-3.5 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                  <p className="text-sm font-semibold text-gray-700 inline-flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-orange-400" />
+                  <p className="text-sm font-semibold text-gray-600 inline-flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#F97316]" />
                     Pickup Address
                   </p>
                   <p className="text-sm text-gray-900 mt-1">
@@ -337,7 +347,9 @@ export default function VendorReturnRequestedModal({
                   className="mt-4 w-full rounded-xl bg-[#FF6F00] text-white font-semibold py-3.5 hover:bg-[#e56400] inline-flex items-center justify-center gap-2 shadow-sm disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Truck className="w-4 h-4" />
-                  {saving ? 'Saving Pickup Schedule...' : 'Confirm Pickup Schedule'}
+                  {saving
+                    ? 'Saving Pickup Schedule...'
+                    : 'Confirm Pickup Schedule'}
                 </button>
               </div>
             </div>

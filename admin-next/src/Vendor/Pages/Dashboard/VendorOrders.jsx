@@ -10,12 +10,16 @@ import {
   CircleAlert,
   ClipboardCheck,
   IndianRupee,
+  Package,
   Package2,
   Shield,
   ShieldCheck,
   Upload,
   User,
+  Wrench,
+  Calendar,
   X,
+  DollarSign,
 } from 'lucide-react';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
@@ -39,6 +43,7 @@ const tabs = [
 ];
 import totalVal from '@/assets/icons/total-val.png';
 import processOrder from '@/assets/icons/process-order.png';
+import ClipboardCheckIcon from '@/assets/icons/rtn-inspection.png';
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const makeOtp = () => String(1000 + Math.floor(Math.random() * 9000));
 
@@ -232,11 +237,11 @@ function DeliveryVerificationModal({
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white">
                 <ShieldCheck className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="text-[34px] leading-[1.05] font-semibold text-gray-900">
+                <h2 className="text-lg leading-[1.05] font-semibold text-gray-900">
                   Delivery Verification
                 </h2>
                 <p className="text-sm text-gray-500">
@@ -256,7 +261,7 @@ function DeliveryVerificationModal({
 
           <div className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <p className="text-gray-600 inline-flex items-center gap-2">
-              <BadgeCheck className="h-4 w-4 text-gray-400" />
+              <Package className="h-4 w-4 text-gray-400" />
               <span className="text-gray-400">Order:</span>{' '}
               <span className="font-semibold text-gray-900">
                 #{order.displayId}
@@ -272,19 +277,17 @@ function DeliveryVerificationModal({
           </div>
 
           <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <p className="font-semibold text-gray-900 text-sm inline-flex items-center gap-2">
-              <Package2 className="h-4 w-4 text-gray-500" />
+            <p className="font-semibold text-black text-sm inline-flex items-center gap-2">
+              <Package className="h-4 w-4 text-gray-500" />
               Items Being Delivered
             </p>
             <div className="mt-2 flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-gray-800 font-medium">
-                  {productTitle}
-                </p>
+                <p className="text-sm text-black font-medium">{productTitle}</p>
                 <p className="text-xs text-gray-400 mt-0.5">SKU : {firstSku}</p>
               </div>
               {requiresInstallation ? (
-                <span className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                <span className="shrink-0 rounded-md border border-[#8EC5FF] bg-[#DBEAFE] px-2 py-1 text-[11px] font-semibold text-[#1447E6]">
                   Requires Installation
                 </span>
               ) : null}
@@ -293,7 +296,7 @@ function DeliveryVerificationModal({
 
           <div className="mt-4">
             <p className="font-semibold text-gray-900 inline-flex items-center gap-2">
-              <Shield className="h-4 w-4 text-orange-500" />
+              <ShieldCheck className="h-4 w-4 text-orange-500" />
               Proof of Delivery (OTP)
             </p>
             <p className="mt-1 text-sm text-gray-600">
@@ -341,12 +344,12 @@ function DeliveryVerificationModal({
               the items.
             </div>
           </div>
-
+          {/* 
           {requiresInstallation ? (
             <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
               <p className="font-semibold text-gray-900 inline-flex items-center gap-2">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-violet-100 text-violet-700">
-                  <BadgeCheck className="h-3.5 w-3.5" />
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-[#9810FA]">
+                  <Wrench className="h-4 w-4 " />
                 </span>
                 Installation Required
               </p>
@@ -379,6 +382,66 @@ function DeliveryVerificationModal({
                 </span>
               </label>
             </div>
+          ) : null} */}
+          {requiresInstallation ? (
+            <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+              {/* header */}
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3E8FF] text-[#9810FA]">
+                  <Wrench className="h-5 w-5" />
+                </span>
+
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Installation Required
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Some items need installation before delivery completion
+                  </p>
+                </div>
+              </div>
+
+              {/* items */}
+              {/* <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                  Items to install
+                </p>
+                <p className="mt-1 text-sm text-gray-800">{productTitle}</p>
+              </div> */}
+              <div className="mt-3 rounded-lg border border-[#DAB2FF] bg-white px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                  Items to install
+                </p>
+
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-[#9810FA]" />
+                  <p className="text-sm font-medium text-black">
+                    {productTitle}
+                  </p>
+                </div>
+              </div>
+
+              {/* checkbox */}
+              <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#DAB2FF] bg-white px-3 py-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={installationDone}
+                  onChange={(e) =>
+                    setInstallationDone(Boolean(e.target.checked))
+                  }
+                  className="mt-0.5 h-5 w-5 rounded border-[#C27AFF] text-violet-600 focus:ring-violet-500"
+                />
+                <span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    Installation Completed{' '}
+                    <span className="text-red-500">*</span>
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Check this box after completing installation and testing
+                  </span>
+                </span>
+              </label>
+            </div>
           ) : null}
 
           <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -392,33 +455,45 @@ function DeliveryVerificationModal({
                 {money(orderValue)}
               </span>
             </div>
-            <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 flex items-center justify-between">
-              <span className="text-sm font-semibold text-amber-900">
+            <div className="mt-3 rounded-lg border border-[#FFB86A] bg-[#FFFBEB] px-3 py-2.5 flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#9F2D00]">
                 Your Payout
               </span>
               <span className="text-2xl font-bold text-amber-700">
                 {money(payoutValue)}
               </span>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
+            {/* <p className="mt-2 text-xs text-gray-500">
               Will move to{' '}
-              <span className="font-semibold">Pending Settlement</span> after
-              delivery confirmation
-            </p>
+              <span className=" text-black font-semibold">
+                Pending Settlement
+              </span>{' '}
+              after delivery confirmation
+            </p> */}
+            <div className="mt-2 flex items-start gap-1 text-xs text-gray-500">
+              <Calendar className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
+              <p>
+                Will move to{' '}
+                <span className="text-black font-semibold">
+                  Pending Settlement
+                </span>{' '}
+                after delivery confirmation
+              </p>
+            </div>
           </div>
 
           {!canConfirm ? (
-            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 flex gap-2">
-              <CircleAlert className="h-4 w-4 mt-0.5 shrink-0" />
+            <div className="mt-4 rounded-xl border border-[#FFD230] bg-[#FFFBEB] px-3 py-2.5 text-sm text-amber-900 flex gap-2">
+              <CircleAlert className="h-4 w-4 mt-0.5 text-[#E17100] shrink-0" />
               <span>
-                <span className="font-semibold block">
+                <span className="font-semibold text-[#7B3306] block">
                   Complete Required Steps
                 </span>
-                <span className="block text-xs mt-1">
+                <span className="block text-[#973C00] text-xs mt-1">
                   {otpOk ? '✓' : '✗'} Enter the 4-digit OTP from customer
                 </span>
                 {requiresInstallation ? (
-                  <span className="block text-xs">
+                  <span className="block text-[#973C00] text-xs">
                     {installationDone ? '✓' : '✗'} Confirm installation is
                     completed
                   </span>
@@ -426,10 +501,11 @@ function DeliveryVerificationModal({
               </span>
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 flex gap-2">
-              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>OTP verified. Ready to confirm delivery.</span>
-            </div>
+            // <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 flex gap-2">
+            //   <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            //   <span>OTP verified. Ready to confirm delivery.</span>
+            // </div>
+            <div></div>
           )}
 
           <button
@@ -549,11 +625,18 @@ function ReturnInspectionModal({
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF7A00] text-white shadow-sm">
+              {/* <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F54900] to-[#F97316] text-white shadow-sm">
                 <ClipboardCheck className="h-7 w-7" />
+              </span> */}
+              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F54900] to-[#F97316] shadow-sm">
+                <img
+                  src={ClipboardCheckIcon.src}
+                  alt="Clipboard Check"
+                  className="w-7 h-7 shrink-0 brightness-0 invert"
+                />
               </span>
               <div>
-                <h2 className="text-[28px] font-semibold leading-tight text-gray-900">
+                <h2 className="text-xl font-semibold leading-tight text-gray-900">
                   Return Inspection: Order #{order.displayId}
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
@@ -572,17 +655,17 @@ function ReturnInspectionModal({
           </div>
 
           <div className="mt-4">
-            <h3 className="text-[27px] font-semibold leading-[1.1] text-gray-900">
+            <h3 className="text-xl font-semibold leading-[1.1] text-gray-900">
               Condition Comparison
             </h3>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-[13px] font-semibold text-gray-700 inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#10B981]" />
                   Original Delivery Condition
                 </p>
                 <div className="mt-2 rounded-xl border border-gray-200 bg-white p-2.5">
-                  <div className="relative h-[198px] rounded-lg bg-gray-100 overflow-hidden">
+                  <div className="relative h-[208px] rounded-lg bg-gray-100 overflow-hidden">
                     {order.productImage ? (
                       <img
                         src={order.productImage}
@@ -594,17 +677,17 @@ function ReturnInspectionModal({
                       DELIVERED
                     </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-gray-400">
-                    Photo taken on: {originalPhotoTakenOn}
-                  </p>
                 </div>
+                <p className="mt-2 text-[11px] text-gray-400">
+                  Photo taken on: {originalPhotoTakenOn}
+                </p>
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-gray-700 inline-flex items-center gap-1.5">
                   <Camera className="h-3.5 w-3.5 text-orange-500" />
-                  New Pickup Photo *
+                  New Pickup Photo <span className="text-red-600">*</span>
                 </p>
-                <label className="mt-2 flex h-[232px] cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-300 bg-[#F9FAFB] text-sm text-gray-600 hover:bg-gray-50">
+                <label className="mt-2 flex h-[232px] cursor-pointer flex-col items-center justify-center rounded-xl border border-[#99A1AF] bg-[#F9FAFB] text-sm text-gray-600 hover:bg-gray-50">
                   <input
                     type="file"
                     accept="image/*"
@@ -631,7 +714,7 @@ function ReturnInspectionModal({
                     />
                   ) : (
                     <>
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#FF8A1F] text-white shadow-sm">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#F97316] text-white shadow-sm">
                         <Upload className="h-5 w-5" />
                       </span>
                       <span className="mt-3 text-[17px] font-semibold text-gray-900">
@@ -644,17 +727,18 @@ function ReturnInspectionModal({
                   )}
                 </label>
                 <p className="mt-2 text-[11px] text-gray-400">
-                  {pickupPhotoName || 'No file selected'}
+                  {/* {pickupPhotoName || 'No file selected'} */}
+                  {pickupPhotoName || 'Upload required to proceed'}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mt-5 rounded-xl border border-gray-200 bg-[#FCFCFD] p-4">
-            <h3 className="text-sm font-semibold text-gray-900">
+          <div className="mt-5  p-4">
+            <h3 className="text-lg font-semibold text-gray-900">
               Inspection Checklist
             </h3>
-            <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div className="mt-4 rounded-xl border border-[#D1D5DC] bg-[#F9FAFB] px-4 py-3">
               {checklistRows.map((row) => (
                 <label
                   key={row.key}
@@ -680,15 +764,15 @@ function ReturnInspectionModal({
                       }
                       className="peer sr-only"
                     />
-                    <span className="absolute inset-0 rounded-full bg-gray-200 transition peer-checked:bg-emerald-500" />
+                    <span className="absolute inset-0 rounded-full bg-gray-200 transition peer-checked:bg-[#10B981]" />
                     <span className="absolute left-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6" />
                   </span>
                 </label>
               ))}
 
-              <div className="mt-2 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
+              <div className="mt-2 rounded-xl border border-[#8EC5FF] bg-[#EFF6FF] px-4 py-3">
                 <p className="inline-flex items-center gap-2 text-[15px] font-semibold leading-[1.1] text-gray-900">
-                  <Shield className="h-5 w-5 text-blue-500" />
+                  <Shield className="h-5 w-5 text-[#2563EB]" />
                   Rentnpay Care Protection
                 </p>
                 <p className="mt-1 text-[12px] leading-[1.3] text-gray-500">
@@ -701,14 +785,14 @@ function ReturnInspectionModal({
           </div>
 
           <div className="mt-5">
-            <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <IndianRupee className="h-5 w-5 text-emerald-500" />
+            <h3 className="inline-flex items-center gap-1 text-base font-semibold text-gray-900">
+              <DollarSign className="h-4 w-4 text-[#10B981]" />
               Refund &amp; Deduction Calculator
             </h3>
 
             <div className="mt-3 rounded-xl border border-gray-200 bg-[#F9FAFB] p-4">
               <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-                <span className="text-[15px] leading-[1.15] text-gray-500">
+                <span className="text-sm leading-[1.15] text-gray-500">
                   Total Deposit Held
                 </span>
                 <span className="text-[34px] font-semibold leading-none text-gray-900">
@@ -717,11 +801,11 @@ function ReturnInspectionModal({
               </div>
 
               <div className="mt-4">
-                <label className="text-[15px] font-semibold leading-[1.15] text-gray-900">
+                <label className="text-sm font-semibold leading-[1.15] text-gray-900">
                   Damage Deduction
                 </label>
                 <div className="mt-2 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#EF4444] font-semibold  text-sm">
                     ₹
                   </span>
                   <input
@@ -732,7 +816,7 @@ function ReturnInspectionModal({
                     className="w-full rounded-lg border border-gray-300 bg-white pl-8 pr-3 py-2 text-sm"
                   />
                 </div>
-                <p className="mt-1 text-[12px] leading-[1.3] text-gray-500">
+                <p className="mt-1 text-sm leading-[1.3] text-gray-500">
                   Amount deducted for repair/replacement costs
                 </p>
               </div>
@@ -742,7 +826,7 @@ function ReturnInspectionModal({
                   Cleaning Fees
                 </label>
                 <div className="mt-2 relative max-w-[420px]">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#EF4444] font-semibold text-sm">
                     ₹
                   </span>
                   <input
@@ -756,12 +840,12 @@ function ReturnInspectionModal({
               </div>
 
               <div className="mt-4 border-t border-gray-200 pt-4">
-                <div className="rounded-xl border border-emerald-400 bg-emerald-50 px-4 py-3 flex items-center justify-between">
+                <div className="rounded-xl border border-[#05DF72] bg-[#ECFDF5] px-4 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[15px] font-semibold leading-[1.15] text-gray-900">
+                    <p className="text-[15px] font-semibold leading-[1.15] text-black">
                       Final Refund Amount
                     </p>
-                    <p className="mt-1 text-[12px] leading-[1.3] text-gray-500">
+                    <p className="mt-1 text-[12px] leading-[1.3] text-[#64748B]">
                       Amount to be refunded to customer&apos;s account
                     </p>
                   </div>
@@ -773,11 +857,11 @@ function ReturnInspectionModal({
             </div>
           </div>
 
-          <div className="mt-5 rounded-xl border border-gray-200 p-4">
-            <h3 className="text-sm font-semibold text-gray-900">
+          <div className="mt-5 p-4">
+            <h3 className="text-base font-semibold text-black">
               Authorization
             </h3>
-            <label className="mt-3 flex items-start gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
+            <label className="mt-3 flex items-start gap-3 rounded-lg border border-[#D1D5DC] px-3 py-2.5">
               <input
                 type="checkbox"
                 checked={authorizeRefund}
@@ -813,7 +897,7 @@ function ReturnInspectionModal({
             )}
           </button>
           <p className="mt-3 inline-flex w-full items-center justify-center gap-1.5 text-xs text-gray-500">
-            <CircleAlert className="h-3.5 w-3.5 text-orange-400" />
+            <CircleAlert className="h-3.5 w-3.5 text-[#F97316]" />
             Upload pickup photo and complete authorization to proceed
           </p>
         </div>
