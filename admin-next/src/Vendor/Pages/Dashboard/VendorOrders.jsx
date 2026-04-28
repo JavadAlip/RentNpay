@@ -628,7 +628,7 @@ function ReturnInspectionModal({
               {/* <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F54900] to-[#F97316] text-white shadow-sm">
                 <ClipboardCheck className="h-7 w-7" />
               </span> */}
-              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F54900] to-[#F97316] shadow-sm">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#F54900] to-[#F97316] shadow-sm">
                 <img
                   src={ClipboardCheckIcon.src}
                   alt="Clipboard Check"
