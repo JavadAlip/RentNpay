@@ -404,12 +404,22 @@ export default function VendorAssignDeliveryModal({
             {submitting ? 'Updating…' : 'Mark as shipped'}
             <CircleCheck className="w-4 h-4" />
           </button>
-          <div className="rounded-lg bg-[#F0FDF4] border border-[#B9F8CF] px-3 py-2 text-xs text-[#016630] flex items-start gap-2">
+          {/* <div className="rounded-lg bg-[#F0FDF4] border border-[#B9F8CF] px-3 py-2 text-xs text-[#016630] flex items-start gap-2">
             <CircleCheck className="w-3.5 h-3.5 text-[#016630] shrink-0 mt-0.5" />
             <span>
               This will send an{' '}
               <span className="font-semibold">"Out for Delivery"</span> SMS to
               Customer with delivery details and tracking information.
+            </span>
+          </div> */}
+          <div className="rounded-lg bg-[#F0FDF4] border border-[#B9F8CF] px-3 py-2 text-xs text-[#016630] flex items-start gap-2">
+            <CircleCheck className="w-3.5 h-3.5 text-[#016630] shrink-0 mt-0.5" />
+            <span>
+              This will send an{' '}
+              <span className="font-semibold">
+                &quot;Out for Delivery&quot;
+              </span>{' '}
+              SMS to Customer with delivery details and tracking information.
             </span>
           </div>
         </form>
