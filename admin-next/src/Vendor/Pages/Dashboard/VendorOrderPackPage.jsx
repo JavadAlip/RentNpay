@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Info,
   Truck,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
@@ -23,6 +24,8 @@ import {
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import VendorAssignDeliveryModal from '../../Components/Modals/VendorAssignDeliveryModal';
+import Alert from '@/assets/icons/alret.png';
+import InventoryUpdated from '@/assets/icons/inventory-updtd.png';
 
 function productImageUrl(path) {
   if (!path) return '';
@@ -91,7 +94,8 @@ function openPrintWindow(title, innerHtml) {
     toast.error('Allow pop-ups to print.');
     return;
   }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
+  w.document
+    .write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
     <style>
       body { font-family: system-ui, sans-serif; padding: 24px; color: #111; }
       h1 { font-size: 18px; margin-bottom: 8px; }
@@ -124,7 +128,9 @@ export default function VendorOrderPackPage({ orderId }) {
   const getToken = useCallback(() => {
     return (
       token ||
-      (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null)
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null)
     );
   }, [token]);
 
@@ -195,8 +201,7 @@ export default function VendorOrderPackPage({ orderId }) {
     const rows = myLines
       .map((line) => {
         const p = line.product;
-        const n =
-          p && typeof p === 'object' ? p.productName : 'Item';
+        const n = p && typeof p === 'object' ? p.productName : 'Item';
         return `<tr><td>${n}</td><td>${formatSku(p)}</td><td>${line.quantity ?? 1}</td></tr>`;
       })
       .join('');
@@ -295,10 +300,11 @@ export default function VendorOrderPackPage({ orderId }) {
               <>
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
+                    {/* <div className="flex items-start gap-3">
                       <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
                         <Package className="w-6 h-6" />
                       </div>
+
                       <div>
                         <h1 className="text-xl font-bold text-gray-900">
                           #ORD-{orderRef}
@@ -307,19 +313,45 @@ export default function VendorOrderPackPage({ orderId }) {
                           Processing &amp; packing
                         </p>
                       </div>
+                    </div> */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#3B82F6] to-[#2563EB] flex items-center justify-center text-white">
+                        <Package className="w-6 h-6" />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        {/* badge on top */}
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          Processing &amp; packing
+                        </p>
+                        {/* order id */}
+                        <h1 className="text-xl font-bold text-gray-900">
+                          #ORD-{orderRef}
+                        </h1>
+                      </div>
                     </div>
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                       PROCESSING · In progress
                     </span>
                   </div>
-                  <div className="mt-4 rounded-xl bg-sky-50 border border-sky-100 px-4 py-3 text-sm text-sky-900">
+                  {/* <div className="mt-4 rounded-xl bg-[#EFF6FF] border border-[#BEDBFF] px-4 py-3 text-sm text-[#193CB8]">
                     Next step: pack items and attach documents.
+                  </div> */}
+                  <div className="mt-4 rounded-xl gap-1 flex flex-row bg-[#EFF6FF] border border-[#BEDBFF] px-4 py-3 text-sm text-[#193CB8]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <img src={Alert.src} alt="alert" className="w-4 h-4" />
+                      <p className="text-sm font-semibold tracking-wide">
+                        Next step:
+                      </p>
+                    </div>
+
+                    <p className="text-sm">Pack items and attach documents.</p>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
-                  <h2 className="text-lg font-bold text-gray-900">
+                  <h2 className="text-lg font-semibold text-black">
                     Packing checklist
                   </h2>
                   <p className="text-sm text-gray-500 mt-0.5">
@@ -339,7 +371,7 @@ export default function VendorOrderPackPage({ orderId }) {
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
-                            <div className="flex items-start gap-3">
+                            {/* <div className="flex items-start gap-3">
                               {done ? (
                                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                               ) : (
@@ -353,13 +385,43 @@ export default function VendorOrderPackPage({ orderId }) {
                                   {task.detail}
                                 </p>
                               </div>
+                            </div> */}
+
+                            <div className="flex items-start gap-3">
+                              {done ? (
+                                <div className="w-5 h-5 rounded-md bg-[#008236] flex items-center justify-center shrink-0 mt-0.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                </div>
+                              ) : (
+                                <Circle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
+                              )}
+
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500">
+                                  Task {idx + 1}/{TASKS.length}
+                                </p>
+
+                                <p
+                                  className={`font-semibold text-sm ${
+                                    done
+                                      ? 'text-[#008236] line-through decoration-[#008236]'
+                                      : 'text-gray-900'
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {task.detail}
+                                </p>
+                              </div>
                             </div>
                           </button>
                         </li>
                       );
                     })}
                   </ul>
-                  <div className="mt-4">
+                  {/* <div className="mt-4">
                     <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-blue-600 transition-all"
@@ -371,23 +433,45 @@ export default function VendorOrderPackPage({ orderId }) {
                     <p className="text-xs text-gray-500 mt-2 text-center">
                       {completedCount}/{TASKS.length} completed
                     </p>
+                  </div> */}
+                  <div className="mt-4">
+                    {/* Label row above the bar */}
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-semibold text-gray-500">
+                        Progress
+                      </p>
+                      <p className="text-xs font-semibold text-black">
+                        {completedCount}/{TASKS.length} completed
+                      </p>
+                    </div>
+
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{
+                          width: `${(completedCount / TASKS.length) * 100}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 space-y-4">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">
+                    <h2 className="text-lg font-semibold text-black">
                       Required documents
                     </h2>
                     <p className="text-sm text-gray-500 mt-0.5">
                       Print and attach these documents to the package.
                     </p>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <FileText className="w-8 h-8 text-[#F97316] shrink-0" />
+
+                  {/* <div className="flex items-start gap-3 flex-1">
+                      <FileText className="w-8 h-8 text-[#F97316] bg-[#FFEDD4] rounded-lg p-1.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-900">Tax invoice</p>
+                        <p className="font-semibold text-gray-900">
+                          Tax invoice
+                        </p>
                         <p className="text-xs text-gray-500 mt-0.5">
                           GST-compliant summary with line items.
                         </p>
@@ -401,6 +485,39 @@ export default function VendorOrderPackPage({ orderId }) {
                           Customer: {customerName}
                         </p>
                       </div>
+                    </div> */}
+                  {/* <div className="rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <FileText className="w-8 h-8 text-[#F97316] bg-[#FFEDD4] rounded-lg p-1.5 shrink-0" />
+
+                      <div className="w-full">
+                        <p className="font-semibold text-gray-900">
+                          Tax invoice
+                        </p>
+
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          GST-compliant summary with line items.
+                        </p>
+
+              
+                        <div className="border-t border-gray-200 my-2"></div>
+
+                        <div className="flex items-start gap-36 text-xs">
+                          <div>
+                            <p className="text-gray-500">Vendor GSTIN</p>
+                            <p className="font-semibold text-gray-900 font-mono">
+                              {vendorGstin || '—'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-gray-500">Customer</p>
+                            <p className="font-semibold text-gray-900">
+                              {customerName}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -410,16 +527,65 @@ export default function VendorOrderPackPage({ orderId }) {
                       <Printer className="w-4 h-4" />
                       Print PDF
                     </button>
+                  </div> */}
+                  <div className="rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-8 h-8 text-[#F97316] bg-[#FFEDD4] rounded-lg p-1.5 shrink-0" />
+
+                      <div className="w-full">
+                        {/* Top row responsive */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              Tax invoice
+                            </p>
+
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              GST-compliant summary with line items.
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={printInvoice}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#F97316] text-white text-sm font-semibold hover:bg-[#e56400] shrink-0 w-full sm:w-auto"
+                          >
+                            <Printer className="w-4 h-4" />
+                            Print PDF
+                          </button>
+                        </div>
+
+                        {/* divider */}
+                        <div className="border-t border-gray-200 my-3"></div>
+
+                        {/* GSTIN + Customer responsive */}
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:gap-16 gap-3 text-xs">
+                          <div>
+                            <p className="text-gray-500">Vendor GSTIN</p>
+                            <p className="font-semibold text-gray-900 font-mono">
+                              {vendorGstin || '—'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-gray-500">Customer</p>
+                            <p className="font-semibold text-gray-900">
+                              {customerName}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                  {/* <div className="rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
                     <div className="flex items-start gap-3 flex-1">
-                      <Tag className="w-8 h-8 text-blue-600 shrink-0" />
+                      <Tag className="w-8 h-8 text-[#3B82F6] bg-[#DBEAFE] rounded-lg p-1.5 shrink-0" />
                       <div>
                         <p className="font-semibold text-gray-900">
                           Shipping label
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Address label for the delivery partner.
+                          Barcode label with delivery address
                         </p>
                       </div>
                     </div>
@@ -431,30 +597,77 @@ export default function VendorOrderPackPage({ orderId }) {
                       <Printer className="w-4 h-4" />
                       Print label
                     </button>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-100 px-3 py-2.5 text-xs text-orange-900">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  </div> */}
+                  {/* <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-100 px-3 py-2.5 text-xs text-orange-900">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     Important: paste the label visibly on the package for easy
                     scanning by the delivery partner.
+                  </div> */}
+                  <div className="rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <Tag className="w-8 h-8 text-[#3B82F6] bg-[#DBEAFE] rounded-lg p-1.5 shrink-0" />
+
+                      <div className="w-full">
+                        {/* top row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              Shipping label
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Barcode label with delivery address
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={printLabel}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold hover:bg-blue-700 shrink-0 w-full sm:w-auto"
+                          >
+                            <Printer className="w-4 h-4" />
+                            Print label
+                          </button>
+                        </div>
+
+                        {/* divider */}
+                        <div className="border-t border-gray-200 my-3"></div>
+
+                        {/* bottom content (you can add anything here later) */}
+                        <div className="text-xs flex gap-1 text-[#973C00]">
+                          <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                          <span>
+                            <span className="font-semibold">Important:</span>{' '}
+                            paste the label visibly on the package for easy
+                            scanning by the delivery partner.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 space-y-4">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Inventory
-                  </h2>
+                  {/* <h2 className="text-lg font-semibold text-black">
+                    Inventory Updated
+                  </h2> */}
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={InventoryUpdated.src}
+                      alt="inventory-updated"
+                      className="w-4 h-4"
+                    />
+                    <h2 className="text-md font-semibold text-black">
+                      Inventory Updated
+                    </h2>
+                  </div>
                   <ul className="space-y-3">
                     {myLines.map((line, idx) => {
                       const p = line.product;
                       const name =
-                        p && typeof p === 'object'
-                          ? p.productName
-                          : 'Product';
+                        p && typeof p === 'object' ? p.productName : 'Product';
                       const qty = Number(line.quantity || 1);
                       const stock =
-                        p && typeof p === 'object'
-                          ? Number(p.stock ?? 0)
-                          : 0;
+                        p && typeof p === 'object' ? Number(p.stock ?? 0) : 0;
                       return (
                         <li
                           key={`${line.product?._id || idx}`}
@@ -467,10 +680,16 @@ export default function VendorOrderPackPage({ orderId }) {
                             SKU: {formatSku(p)}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded">
-                              −{qty} unit{qty === 1 ? '' : 's'} reserved
+                            <span className="text-xs font-semibold text-[#C10007] bg-[#FFE2E2] border border-[#FFA2A2] px-2 py-0.5 rounded">
+                              -{qty} unit{qty === 1 ? '' : 's'} reserved
                             </span>
-                            <span className="text-xs font-medium text-emerald-700">
+                            {/* <span className="text-xs font-medium text-emerald-700">
+                              <span className="w-4 h-4 rounded-full bg-gray-600"></span>
+                              {stock} unit{stock === 1 ? '' : 's'} remaining
+                              (current stock)
+                            </span> */}
+                            <span className="text-xs font-medium text-emerald-700 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>
                               {stock} unit{stock === 1 ? '' : 's'} remaining
                               (current stock)
                             </span>
@@ -479,10 +698,10 @@ export default function VendorOrderPackPage({ orderId }) {
                       );
                     })}
                   </ul>
-                  <div className="flex items-start gap-2 rounded-lg bg-sky-50 border border-sky-100 px-3 py-2.5 text-xs text-sky-900">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                    Stock was adjusted when the customer placed the order. Counts
-                    above reflect your current catalog stock.
+                  <div className="flex items-start gap-2 rounded-lg bg-[#EFF6FF] border border-[#BEDBFF] px-3 py-2.5 text-xs text-[#193CB8]">
+                    <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                    Stock was adjusted when the customer placed the order.
+                    Counts above reflect your current catalog stock.
                   </div>
                 </div>
 
@@ -491,14 +710,20 @@ export default function VendorOrderPackPage({ orderId }) {
                     type="button"
                     disabled={!allChecked}
                     onClick={() => setAssignOpen(true)}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-40 disabled:pointer-events-none"
+                    className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl   bg-gradient-to-r from-[#16A34A] to-[#15803D] 
+  hover:from-[#15803D] hover:to-[#166534]
+ text-white text-sm font-bold disabled:opacity-40 disabled:pointer-events-none"
                   >
-                    <CheckCircle2 className="w-5 h-5" />
+                    <Package className="w-5 h-5" />
                     Mark as packed &amp; ready
+                    <CheckCircle2 className="w-5 h-5" />
                   </button>
-                  <div className="flex items-start justify-center gap-2 mt-3 text-xs text-emerald-800">
-                    <Truck className="w-4 h-4 shrink-0 mt-0.5" />
-                    Ready to ship — next, assign delivery and mark shipped.
+                  <div className="flex items-start justify-start gap-2 mt-3 text-xs text-[#016630] bg-[#F0FDF4] border border-[#B9F8CF] rounded-lg px-3 py-2">
+                    <Truck className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>
+                      <span className="font-semibold">Ready to ship!</span> This
+                      will notify the delivery partner and customer via SMS
+                    </span>
                   </div>
                 </div>
               </>
