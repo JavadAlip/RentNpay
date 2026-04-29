@@ -66,7 +66,9 @@ export default function VendorCustomersPage() {
   useEffect(() => {
     if (!openMenuId) return;
     const close = (e) => {
-      const root = document.getElementById(`vendor-customer-actions-${openMenuId}`);
+      const root = document.getElementById(
+        `vendor-customer-actions-${openMenuId}`,
+      );
       if (root && !root.contains(e.target)) setOpenMenuId(null);
     };
     document.addEventListener('mousedown', close);
@@ -76,7 +78,10 @@ export default function VendorCustomersPage() {
   useEffect(() => {
     let mounted = true;
     const authToken =
-      token || (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      token ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) {
       setError('Please login again to continue.');
       setLoading(false);
@@ -88,7 +93,11 @@ export default function VendorCustomersPage() {
       .then((res) => {
         if (!mounted) return;
         setRows(res.data?.customers || []);
-        setTotals(res.data?.totals ? { ...emptyTotals, ...res.data.totals } : emptyTotals);
+        setTotals(
+          res.data?.totals
+            ? { ...emptyTotals, ...res.data.totals }
+            : emptyTotals,
+        );
       })
       .catch((err) => {
         if (!mounted) return;
@@ -176,7 +185,9 @@ export default function VendorCustomersPage() {
           ) : (
             <div className="space-y-4 sm:space-y-5">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Customers
+                </h1>
                 <p className="text-sm text-gray-500 mt-1">
                   Track customer lifecycle with dynamic platform data
                 </p>
@@ -260,10 +271,18 @@ export default function VendorCustomersPage() {
                   <table className="min-w-[1200px] w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr className="text-gray-500 text-xs uppercase tracking-wide">
-                        <th className="px-4 py-3 text-left font-medium">Customer ID</th>
-                        <th className="px-4 py-3 text-left font-medium">Customer Profile</th>
-                        <th className="px-4 py-3 text-left font-medium">Tenure</th>
-                        <th className="px-4 py-3 text-right font-medium">Service</th>
+                        <th className="px-4 py-3 text-left font-medium">
+                          Customer ID
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium">
+                          Customer Profile
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium">
+                          Tenure
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Service
+                        </th>
                         <th
                           className="px-4 py-3 text-right font-medium"
                           title="Sum of checkout totals for Sell listings with condition Brand New."
@@ -282,20 +301,49 @@ export default function VendorCustomersPage() {
                         >
                           Rent
                         </th>
-                        <th className="px-4 py-3 text-right font-medium">Deposit</th>
-                        <th className="px-4 py-3 text-right font-medium">Shipping</th>
-                        <th className="px-4 py-3 text-right font-medium">Lifetime Value</th>
-                        <th className="px-4 py-3 text-right font-medium">Actions</th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Deposit
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Shipping
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Lifetime Value
+                        </th>
+                        <th className="px-4 py-3 text-right font-medium">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.map((c) => (
-                        <tr key={c._id} className="border-t border-gray-100 hover:bg-gray-50">
+                        <tr
+                          key={c._id}
+                          className="border-t border-gray-100 hover:bg-gray-50"
+                        >
                           <td className="px-4 py-3 font-semibold text-gray-900 font-mono text-xs sm:text-sm">
                             {c.customerCode || '—'}
                           </td>
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
                             <p className="font-semibold text-gray-900">{c.fullName || '—'}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {formatKycPhone(c.kycMobile)}
+                            </p>
+                          </td> */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900">
+                                {c.fullName || '—'}
+                              </p>
+
+                              {Number(c.ordersCount || 0) >= 2 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.3 rounded-xl text-[10px] font-semibold bg-orange-500 text-white">
+                                  <Award className="w-3 h-3" />
+                                  Top
+                                </span>
+                              )}
+                            </div>
+
                             <p className="text-xs text-gray-500 mt-0.5">
                               {formatKycPhone(c.kycMobile)}
                             </p>
@@ -337,7 +385,9 @@ export default function VendorCustomersPage() {
                                 aria-label="Row actions"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setOpenMenuId((id) => (id === c._id ? null : c._id));
+                                  setOpenMenuId((id) =>
+                                    id === c._id ? null : c._id,
+                                  );
                                 }}
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                               >
@@ -361,7 +411,10 @@ export default function VendorCustomersPage() {
 
                       {filtered.length === 0 && (
                         <tr>
-                          <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
+                          <td
+                            colSpan={11}
+                            className="px-4 py-10 text-center text-gray-500"
+                          >
                             No customers found for selected filters.
                           </td>
                         </tr>

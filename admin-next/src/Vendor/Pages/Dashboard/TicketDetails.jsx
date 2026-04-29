@@ -13,9 +13,12 @@ import {
   Phone,
   User,
   MessageCircle,
+  Home,
 } from 'lucide-react';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
+import basicInfoIcon from '@/assets/icons/basicInfo3.png';
+import basicInfoIcon1 from '@/assets/icons/basicInfo4.png';
 import {
   apiGetVendorTicketById,
   apiUpdateVendorTicketStatus,
@@ -176,15 +179,20 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
-                          <Box className="w-4 h-4 text-blue-500" />
-                          Product
-                        </p>
-                        <p className="mt-1 font-medium text-gray-900">
-                          {ticket.productName}
-                        </p>
+                        <div className="flex items-start gap-3">
+                          <span className="w-10 h-10 rounded-lg bg-[#DBEAFE] inline-flex items-center justify-center shrink-0">
+                            <Box className="w-5 h-5 text-blue-600" />
+                          </span>
+
+                          <div>
+                            <p className="text-xs text-gray-500">Product</p>
+                            <p className="mt-0.5 font-medium text-gray-900">
+                              {ticket.productName}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      {/* <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                         <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                           <Building2 className="w-4 h-4 text-violet-500" />
                           Assigned Vendor
@@ -192,12 +200,41 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                         <p className="mt-1 font-medium text-gray-900">
                           {ticket.assignedStore || 'Rentnpay Support'}
                         </p>
+                      </div> */}
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          {/* <span className="w-10 h-10 rounded-lg bg-[#EDE9FE] inline-flex items-center justify-center shrink-0">
+                            <Building2 className="w-5 h-5 text-violet-600" />
+                          </span> */}
+                          <span className="w-10 h-10 rounded-lg bg-[#F3E8FF] inline-flex items-center justify-center shrink-0">
+                            <img
+                              src={basicInfoIcon.src}
+                              alt="Assigned Vendor"
+                              className="w-5 h-5 shrink-0"
+                            />
+                          </span>
+
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              Assigned Vendor
+                            </p>
+                            <p className="mt-0.5 font-medium text-gray-900">
+                              {ticket.assignedStore || 'Rentnpay Support'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                      {/* <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                         <Phone className="w-4 h-4 text-emerald-500" />
+                        Contact information
+                      </p> */}
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <span className="w-8 h-8 rounded-lg bg-[#DCFCE7] inline-flex items-center justify-center">
+                          <Phone className="w-4 h-4 text-[#10B981]" />
+                        </span>
                         Contact information
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -210,8 +247,14 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                     </div>
 
                     <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      {/* <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <Home className="w-4 h-4 text-amber-500" />
+                        Visit Address
+                      </p> */}
                       <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4 text-amber-500" />
+                        <span className="w-8 h-8 rounded-lg bg-[#FFEDD4] inline-flex items-center justify-center">
+                          <Home className="w-4 h-4 text-[#F97316]" />
+                        </span>
                         Visit Address
                       </p>
                       <p className="mt-1 font-medium text-gray-900">
@@ -227,7 +270,7 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                     <p className="mt-3 text-sm font-medium text-gray-800">
                       Customer Issue
                     </p>
-                    <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
+                    <div className="mt-2 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#64748B] whitespace-pre-wrap">
                       {ticket.issueDescription || ticket.message}
                     </div>
 
@@ -251,7 +294,7 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
                         type="button"
                         onClick={onSave}
                         disabled={!canSave || saving}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         {saving ? 'Saving...' : 'Save Changes'}
@@ -272,31 +315,53 @@ export default function VendorTicketDetailsPage({ orderId, issueId }) {
 
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="rounded-xl border border-blue-100 bg-blue-50/30 px-4 py-3">
-                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                      {/* <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                         <User className="w-4 h-4 text-blue-500" />
                         Customer
+                      </p> */}
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <span className="w-8 h-8 rounded-lg bg-[#DBEAFE] inline-flex items-center justify-center">
+                          <User className="w-4 h-4 text-[#2563EB]" />
+                        </span>
+                        Customer
                       </p>
-                      <p className="mt-1.5 text-lg font-semibold text-blue-700">
+                      <p className="mt-1.5 text-lg font-semibold text-[#2563EB]">
                         {ticket.customerName}
                       </p>
                       <p className="text-xs text-gray-500">Query Owner</p>
                     </div>
                     <div className="rounded-xl border border-violet-100 bg-violet-50/30 px-4 py-3">
-                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                      {/* <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                         <MessageCircle className="w-4 h-4 text-violet-500" />
                         Query ID
+                      </p> */}
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <span className="w-8 h-8 rounded-lg bg-[#F3E8FF] inline-flex items-center justify-center">
+                          <MessageCircle className="w-4 h-4 text-[#8B5CF6]" />
+                        </span>
+                        Query ID
                       </p>
-                      <p className="mt-1.5 text-lg font-semibold text-violet-700">
+                      <p className="mt-1.5 text-lg font-semibold text-[#8B5CF6]">
                         {ticket.queryId}
                       </p>
                       <p className="text-xs text-gray-500">Unique Identifier</p>
                     </div>
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 px-4 py-3">
-                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                      {/* <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                         <Building2 className="w-4 h-4 text-emerald-500" />
                         Vendor
+                      </p> */}
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <span className="w-8 h-8 rounded-lg bg-[#DCFCE7] inline-flex items-center justify-center">
+                          <img
+                            src={basicInfoIcon1.src}
+                            alt="Vendor"
+                            className="w-4 h-4 shrink-0"
+                          />
+                        </span>
+                        Vendor
                       </p>
-                      <p className="mt-1.5 text-lg font-semibold text-emerald-700">
+                      <p className="mt-1.5 text-lg font-semibold text-[#10B981]">
                         {ticket.assignedStore || 'Rentnpay Support'}
                       </p>
                       <p className="text-xs text-gray-500">Service Provider</p>

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
+  MessageCircle,
   MessageSquare,
   MoveRight,
   Search,
@@ -17,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import { apiGetVendorTickets } from '@/service/api';
+import basicInfoIcon from '@/assets/icons/basic-info.png';
 
 function formatRelativeTime(iso) {
   const d = iso ? new Date(iso) : null;
@@ -43,9 +45,9 @@ function StatCard({
         <div>
           <p className="text-xs font-medium text-gray-500 inline-flex items-center gap-2">
             <span
-              className={`w-6 h-6 rounded-full inline-flex items-center justify-center ${iconWrapClass}`}
+              className={`w-9 h-9 rounded-lg inline-flex items-center justify-center ${iconWrapClass}`}
             >
-              <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
+              <Icon className={`w-4 h-4 ${iconClass}`} />
             </span>
             {label}
           </p>
@@ -168,7 +170,7 @@ export default function VendorTicketsPage() {
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="max-w-5xl mx-auto space-y-5">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-black">
                 Customer Queries
               </h1>
               {/* <p className="text-sm text-gray-500 mt-1">
@@ -209,23 +211,23 @@ export default function VendorTicketsPage() {
             ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-xl border border-blue-100 bg-white p-0 shadow-sm overflow-hidden">
+              <div className="rounded-xl border border-[#BEDBFF] bg-white p-0 shadow-sm overflow-hidden">
                 <StatCard
-                  icon={MessageSquare}
+                  icon={MessageCircle}
                   label="Total Queries"
                   value={loading ? '—' : summary.total}
-                  valueClass="text-blue-600"
-                  iconWrapClass="bg-blue-50"
+                  valueClass="text-[#2563EB]"
+                  iconWrapClass="bg-[#E0E7FF]"
                   iconClass="text-blue-600"
                 />
               </div>
-              <div className="rounded-xl border border-orange-100 bg-white p-0 shadow-sm overflow-hidden">
+              <div className="rounded-xl border border-[#FFD6A8] bg-white p-0 shadow-sm overflow-hidden">
                 <StatCard
                   icon={AlertCircle}
                   label="Pending Queries"
                   value={loading ? '—' : summary.pending}
-                  valueClass="text-orange-500"
-                  iconWrapClass="bg-orange-50"
+                  valueClass="text-[#F97316]"
+                  iconWrapClass="bg-[#FFE2E2]"
                   iconClass="text-orange-500"
                 />
               </div>
@@ -234,8 +236,8 @@ export default function VendorTicketsPage() {
                   icon={CheckCircle2}
                   label="Solved Queries"
                   value={loading ? '—' : summary.solved}
-                  valueClass="text-emerald-600"
-                  iconWrapClass="bg-emerald-50"
+                  valueClass="text-[#10B981]"
+                  iconWrapClass="bg-[#D0FAE5]"
                   iconClass="text-emerald-600"
                 />
               </div>
@@ -295,12 +297,17 @@ export default function VendorTicketsPage() {
                           {t.queryId}
                         </p>
                       </div>
-                      <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap">
+                      <div className="mt-3 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] px-4 py-3 text-sm text-[#64748B] whitespace-pre-wrap">
                         {t.message}
                       </div>
                       {t.assignedStore ? (
                         <p className="mt-3 text-xs text-blue-600 flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 shrink-0" />
+                          {/* <Building2 className="w-3.5 h-3.5 shrink-0" /> */}
+                          <img
+                            src={basicInfoIcon.src}
+                            alt="Assigned"
+                            className="w-3 h-3 shrink-0"
+                          />
                           <span>
                             Assigned to:{' '}
                             <span className="font-medium">
