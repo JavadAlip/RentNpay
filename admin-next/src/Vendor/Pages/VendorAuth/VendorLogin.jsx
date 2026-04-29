@@ -5,6 +5,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { vendorLogin, clearError } from '../../../redux/slices/vendorSlice';
+import loginVendorIcon from '@/assets/icons/login-vndr.png';
+import secureVendorIcon from '@/assets/icons/secure-vndr.png';
+import { X } from 'lucide-react';
 
 const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
   const dispatch = useDispatch();
@@ -67,10 +70,14 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
     if (e.key === 'Enter') handleSubmit();
   };
 
+  const handleBackHome = () => {
+    router.push('/vendor-main');
+  };
   return (
-    <div className="vendor-login-scroll w-full max-w-md max-h-[88vh] overflow-y-auto bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-6 py-6 sm:px-7 sm:py-7 flex flex-col items-center relative">
+    // <div className="vendor-login-scroll w-full max-w-2xl max-h-[88vh] overflow-y-auto bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-6 py-6 sm:px-7 sm:py-7 flex flex-col items-center relative">
+    <div className="vendor-login-scroll w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[88vh] overflow-y-auto bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-7 py-7 items-center  sm:px-8 sm:py-8 flex flex-col relative">
       {/* Close button */}
-      {onClose && (
+      {/* {onClose && (
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition"
@@ -90,10 +97,19 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
             />
           </svg>
         </button>
+      )} */}
+
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-gray-500 hover:text-gray-700 transition"
+        >
+          <X size={16} />
+        </button>
       )}
 
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-4">
+      {/* <div className="flex items-center gap-2 mb-4">
         <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <rect
@@ -119,14 +135,30 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
         <span className="text-lg font-semibold text-gray-900 tracking-tight">
           Rentnpay
         </span>
+      </div> */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className=" inline-flex items-center justify-center shrink-0">
+          <img
+            src={loginVendorIcon.src}
+            alt="Rentnpay"
+            className="w-8 h-8 shrink-0"
+          />
+        </span>
+
+        <span className="text-lg font-semibold text-gray-900 tracking-tight">
+          Rentnpay
+        </span>
       </div>
 
       {/* Title */}
-      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1 text-center">
+      <h1 className="text-lg sm:text-2xl font-semibold text-gray-900 mb-1 text-center">
         Vendor Sign In
       </h1>
-      <p className="text-xs sm:text-sm text-gray-500 mb-4 text-center">
+      {/* <p className="text-xs sm:text-sm text-gray-500 mb-4 text-center">
         Welcome back! Sign in to your partner account
+      </p> */}
+      <p className="text-xs sm:text-sm text-gray-500 mb-4 text-center">
+        Enter your gmail to get started
       </p>
 
       {/* Step dots */}
@@ -242,6 +274,16 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
           </div>
         </div>
 
+        <div className="flex justify-end -mt-2">
+          <button
+            type="button"
+            onClick={() => (onForgotPassword ? onForgotPassword() : null)}
+            className="text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+          >
+            Forgot password?
+          </button>
+        </div>
+
         {/* Submit */}
         <button
           onClick={handleSubmit}
@@ -251,18 +293,16 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
         >
           {loading ? 'Signing In...' : 'Sign In'}
         </button>
-
-        <div className="flex justify-end -mt-2">
+        {/* Back to home */}
+        {/* <div className="flex justify-center ">
           <button
             type="button"
-            onClick={() =>
-              onForgotPassword ? onForgotPassword() : null
-            }
-            className="text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+            onClick={handleBackHome}
+            className="text-sm text-[#64748B] hover:text-gray-600 transition-colors"
           >
-            Forgot password?
+            Back to home
           </button>
-        </div>
+        </div> */}
 
         {/* Sign Up link */}
         <div className="flex justify-center">
@@ -273,13 +313,13 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
             className="text-xs sm:text-sm text-gray-500 hover:text-blue-600 transition-colors"
           >
             Don&apos;t have an account?{' '}
-            <span className="text-blue-600 font-medium">Please Sign Up</span>
+            <span className="text-blue-600 font-medium">Sign Up</span>
           </button>
         </div>
       </div>
 
       {/* Secure badge */}
-      <div className="flex items-center gap-1.5 mt-5 text-[11px] text-gray-400">
+      {/* <div className="flex items-center gap-1.5 mt-5 text-[11px] text-gray-400">
         <svg
           width="13"
           height="13"
@@ -295,6 +335,17 @@ const VendorLogin = ({ onClose, onSignup, onForgotPassword }) => {
           />
         </svg>
         Secure &amp; Private
+      </div> */}
+
+      {/* Secure badge */}
+      <div className="flex items-center gap-1.5 mt-5 text-gray-400">
+        <img
+          src={secureVendorIcon.src}
+          alt="Secure"
+          className="w-3.5 h-3.5 shrink-0"
+        />
+
+        <span className="text-sm">Secure & Private</span>
       </div>
     </div>
   );

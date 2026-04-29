@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { vendorSignup, clearError } from '../../../redux/slices/vendorSlice';
+import { X } from 'lucide-react';
 
 const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
   const dispatch = useDispatch();
@@ -32,7 +33,13 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = () => {
-    if (!form.fullName || !form.emailAddress || !form.password || !form.mobileNumber) return;
+    if (
+      !form.fullName ||
+      !form.emailAddress ||
+      !form.password ||
+      !form.mobileNumber
+    )
+      return;
     const digits = String(form.mobileNumber).replace(/\D/g, '');
     if (digits.length < 10) return;
     dispatch(
@@ -57,7 +64,7 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
   return (
     <div className="vendor-login-scroll w-full max-w-lg bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-9 py-10 flex flex-col items-center relative max-h-[90vh] overflow-y-auto">
       {/* Close button */}
-      <button
+      {/* <button
         onClick={() =>
           onClose ? onClose() : (window.location.href = '/vendor-main')
         }
@@ -77,9 +84,18 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
             d="M6 18L18 6M6 6l12 12"
           />
         </svg>
+      </button> */}
+
+      <button
+        onClick={() =>
+          onClose ? onClose() : (window.location.href = '/vendor-main')
+        }
+        className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-gray-500 hover:text-gray-700 transition"
+      >
+        <X size={18} />
       </button>
 
-      <h1 className="text-2xl font-semibold text-gray-900 mb-8 text-center">
+      <h1 className="text-xl font-semibold text-gray-900 mb-8 text-center">
         Create Partner Account
       </h1>
 
@@ -124,7 +140,7 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
         {/* Email — name changed to emailAddress to match backend */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Business Email Address
+            Email Address
           </label>
           <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
             <svg
@@ -146,38 +162,6 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
               value={form.emailAddress}
               onChange={handleChange}
               placeholder="yourname@gmail.com"
-              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
-            />
-          </div>
-        </div>
-
-        {/* Mobile number */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Mobile number
-          </label>
-          <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
-            <svg
-              className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.608-1.25.508C11.54 15.83 8.17 12.46 6.34 8.318c-.103-.504.13-.99.508-1.25l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
-              />
-            </svg>
-            <input
-              type="tel"
-              name="mobileNumber"
-              inputMode="numeric"
-              autoComplete="tel"
-              value={form.mobileNumber}
-              onChange={handleChange}
-              placeholder="10-digit mobile number"
               className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
             />
           </div>
@@ -262,7 +246,7 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
             <span className="text-gray-400 font-normal">(optional)</span>
           </label>
           <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
-            <svg
+            {/* <svg
               className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0"
               fill="none"
               stroke="currentColor"
@@ -274,14 +258,50 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
                 strokeLinejoin="round"
                 d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"
               />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
-            </svg>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 6h.008v.008H6V6z"
+              />
+            </svg> */}
             <input
               type="text"
               name="referralCode"
               value={form.referralCode}
               onChange={handleChange}
-              placeholder="Enter code if you have one"
+              placeholder="Enter if you have one"
+              className="flex-1 bg-transparent border-none outline-none text-sm  text-gray-900 placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* Mobile number */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Mobile number
+          </label>
+          <div className="flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
+            <svg
+              className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.608-1.25.508C11.54 15.83 8.17 12.46 6.34 8.318c-.103-.504.13-.99.508-1.25l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
+              />
+            </svg>
+            <input
+              type="tel"
+              name="mobileNumber"
+              inputMode="numeric"
+              autoComplete="tel"
+              value={form.mobileNumber}
+              onChange={handleChange}
+              placeholder="10-digit mobile number"
               className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
             />
           </div>
@@ -289,7 +309,7 @@ const VendorSignup = ({ onClose, onSignIn, onSuccess }) => {
 
         <p className="text-xs text-gray-400 text-center">
           By joining, you agree to our{' '}
-          <span className="text-orange-500 font-medium cursor-pointer hover:underline">
+          <span className="text-[#2563EB] font-medium text-sm cursor-pointer hover:underline">
             Partner Terms
           </span>
           .
