@@ -7,15 +7,19 @@ import {
   apiVendorVerifyResetOtp,
 } from '@/service/api';
 import { toast } from 'react-toastify';
+import loginVendorIcon from '@/assets/icons/login-vndr.png';
+import { Eye, EyeOff } from 'lucide-react';
 
 const VendorForgotPassword = ({ onBackToLogin }) => {
-  const [step, setStep] = useState(1); // 1 email, 2 otp, 3 reset
+  const [step, setStep] = useState(1);
   const [emailAddress, setEmailAddress] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [testOtp, setTestOtp] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const canSubmit = useMemo(() => {
     if (step === 1) return !!emailAddress;
@@ -72,7 +76,7 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
     setLoading(true);
     try {
       await apiVendorResetPassword({ emailAddress, otp, newPassword });
-      toast.success('Password reset successful. Please login.');
+      toast.success('Password reset successful.');
       onBackToLogin?.();
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to reset password');
@@ -91,7 +95,7 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
   return (
     <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.10)] border border-gray-100 px-7 py-9 flex flex-col items-center relative">
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-5">
+      {/* <div className="flex items-center gap-2 mb-5">
         <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <rect
@@ -114,6 +118,19 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
             <circle cx="13.5" cy="10.5" r="1" fill="white" />
           </svg>
         </div>
+        <span className="text-lg font-semibold text-gray-900 tracking-tight">
+          Rentnpay
+        </span>
+      </div> */}
+      <div className="flex items-center gap-2 mb-5">
+        <span className="inline-flex items-center justify-center shrink-0">
+          <img
+            src={loginVendorIcon.src}
+            alt="Rentnpay"
+            className="w-8 h-8 shrink-0"
+          />
+        </span>
+
         <span className="text-lg font-semibold text-gray-900 tracking-tight">
           Rentnpay
         </span>
@@ -173,7 +190,7 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
           <>
             {testOtp ? (
               <div className="w-full px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs text-center">
-                Test OTP auto-filled for this environment.
+                OTP auto-filled .
               </div>
             ) : null}
             <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
@@ -203,7 +220,7 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
             </div>
           </>
         ) : null}
-
+        {/* 
         {step === 3 ? (
           <>
             <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
@@ -251,6 +268,78 @@ const VendorForgotPassword = ({ onBackToLogin }) => {
                 placeholder="Confirm password"
                 className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
               />
+            </div>
+          </>
+        ) : null} */}
+
+        {step === 3 ? (
+          <>
+            {/* New password */}
+            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
+              <svg
+                className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                />
+              </svg>
+
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="New password"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="text-gray-400 hover:text-gray-600 ml-2"
+              >
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+
+            {/* Confirm password */}
+            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition">
+              <svg
+                className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                />
+              </svg>
+
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="Confirm password"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="text-gray-400 hover:text-gray-600 ml-2"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </>
         ) : null}
