@@ -18,7 +18,17 @@ import {
   Package,
   Building2,
   Clock3,
+  TrendingUp,
+  ShoppingBag,
+  MessageSquare,
+  Home,
+  Mail,
+  Phone,
+  Calendar,
+  FileText,
+  Eye,
 } from 'lucide-react';
+import badgeCheck from '@/assets/icons/BadgeCheck.png';
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -65,11 +75,11 @@ function formatRelativeTime(iso) {
 }
 
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: LayoutGrid },
-  { id: 'rentals', label: 'Active Rentals', icon: Sofa },
-  { id: 'orders', label: 'Order History', icon: ClipboardList },
+  { id: 'overview', label: 'Overview', icon: TrendingUp },
+  { id: 'rentals', label: 'Active Rentals', icon: Package },
+  { id: 'orders', label: 'Order History', icon: ShoppingBag },
   { id: 'kyc', label: 'KYC Vault', icon: Shield },
-  { id: 'support', label: 'Support Tickets', icon: LifeBuoy },
+  { id: 'support', label: 'Support Tickets', icon: MessageSquare },
 ];
 
 export default function VendorCustomerDetailsPage({ userId }) {
@@ -84,7 +94,9 @@ export default function VendorCustomerDetailsPage({ userId }) {
     let mounted = true;
     const authToken =
       token ||
-      (typeof window !== 'undefined' ? localStorage.getItem('vendorToken') : null);
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('vendorToken')
+        : null);
     if (!authToken) {
       setError('Please login again to continue.');
       setLoading(false);
@@ -104,7 +116,9 @@ export default function VendorCustomerDetailsPage({ userId }) {
       })
       .catch((err) => {
         if (!mounted) return;
-        setError(err.response?.data?.message || 'Failed to load customer details.');
+        setError(
+          err.response?.data?.message || 'Failed to load customer details.',
+        );
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -117,18 +131,32 @@ export default function VendorCustomerDetailsPage({ userId }) {
 
   const supportTickets = useMemo(() => data?.supportTickets || [], [data]);
 
+  // const typeBadge = (t) => {
+  //   const v = String(t || '').toLowerCase();
+  //   if (v === 'buy') {
+  //     return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+  //   }
+  //   return 'bg-blue-50 text-blue-800 border-blue-200';
+  // };
+
   const typeBadge = (t) => {
     const v = String(t || '').toLowerCase();
-    if (v === 'buy') {
-      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+
+    if (v === 'rent') {
+      return 'bg-[#EFF6FF] text-[#2563EB] border-[#DBEAFE]';
     }
-    return 'bg-blue-50 text-blue-800 border-blue-200';
+
+    if (v === 'buy') {
+      return 'bg-[#F0FDF4] text-[#00A63E] border-[#DCFCE7]';
+    }
+
+    return 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
   const statusBadge = (s) => {
     const v = String(s || '').toLowerCase();
     if (v === 'delivered' || v === 'completed' || v === 'confirmed') {
-      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      return 'bg-[#F0FDF4] text-[#00A63E] ';
     }
     if (v === 'cancelled') return 'bg-rose-50 text-rose-800 border-rose-200';
     return 'bg-gray-50 text-gray-700 border-gray-200';
@@ -154,13 +182,8 @@ export default function VendorCustomerDetailsPage({ userId }) {
       </div>
     );
   } else {
-    const {
-      user,
-      activeRentals,
-      orderHistory,
-      customerKyc,
-      profilePhone,
-    } = data;
+    const { user, activeRentals, orderHistory, customerKyc, profilePhone } =
+      data;
     const initials = String(user.fullName || 'U')
       .split(' ')
       .map((x) => x[0])
@@ -176,17 +199,17 @@ export default function VendorCustomerDetailsPage({ userId }) {
     const kycDocs = [
       {
         key: 'aadhaarFront',
-        title: 'Aadhaar — front',
+        title: 'Aadhaar - Front',
         src: customerKyc?.aadhaarFront || '',
       },
       {
         key: 'aadhaarBack',
-        title: 'Aadhaar — back',
+        title: 'Aadhaar - Back',
         src: customerKyc?.aadhaarBack || '',
       },
       {
         key: 'panCard',
-        title: 'PAN card',
+        title: 'PAN Card',
         src: customerKyc?.panCard || '',
       },
     ];
@@ -212,31 +235,67 @@ export default function VendorCustomerDetailsPage({ userId }) {
                   <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
                     {user.fullName}
                   </h1>
-                  {kycVerified ? (
+                  {/* {kycVerified ? (
                     <span
                       className="inline-flex items-center gap-0.5 text-blue-600"
                       title="KYC verified"
                     >
                       <CheckCircle2 className="w-5 h-5" />
                     </span>
+                  ) : null} */}
+                  {kycVerified ? (
+                    <span
+                      className="inline-flex items-center"
+                      title="KYC verified"
+                    >
+                      <img
+                        src={badgeCheck.src}
+                        alt="KYC Verified"
+                        className="w-5 h-5 shrink-0"
+                      />
+                    </span>
                   ) : null}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm text-gray-500 font-mono">{user.customerCode}</p>
+                  <p className="text-sm text-gray-500 font-mono">
+                    #{user.customerCode}
+                  </p>
                   <span
                     className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
                       kycVerified
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                        ? 'bg-[#F0FDF4] text-[#00A63E] '
+                        : 'bg-amber-50 text-red-600'
                     }`}
                   >
                     KYC: {kycStatus.replace('_', ' ')}
                   </span>
                 </div>
-                <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1">
+                {/* <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1">
                   <span>{user.emailAddress}</span>
                   <span>{phone}</span>
                   <span className="text-gray-500">
+                    Joined{' '}
+                    {user.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString('en-IN', {
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : '—'}
+                  </span>
+                </div> */}
+                <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    {user.emailAddress}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    {phone}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5 text-gray-500">
+                    <Calendar className="w-4 h-4 text-gray-400" />
                     Joined{' '}
                     {user.createdAt
                       ? new Date(user.createdAt).toLocaleDateString('en-IN', {
@@ -251,7 +310,7 @@ export default function VendorCustomerDetailsPage({ userId }) {
           </div>
 
           <div className="mt-6 border-t border-gray-100 pt-4 flex flex-wrap gap-1 sm:gap-2">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {/* {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -265,16 +324,41 @@ export default function VendorCustomerDetailsPage({ userId }) {
                 <Icon className="w-4 h-4 shrink-0" />
                 {label}
               </button>
-            ))}
+            ))} */}
+            {TABS.map(({ id, label, icon: Icon }) => {
+              const active = tab === id;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium border transition-colors ${
+                    active
+                      ? 'border-orange-200 bg-orange-50 text-[#F97316]'
+                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      active ? 'text-[#F97316]' : ''
+                    }`}
+                  />
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {tab === 'overview' && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+            {/* <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-gray-500" />
-              <h2 className="font-semibold text-gray-900">Recent transactions</h2>
-            </div>
+              <h2 className="font-semibold text-gray-900">
+                Recent transactions
+              </h2>
+            </div> */}
             <div className="overflow-x-auto">
               <table className="min-w-[800px] w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wide">
@@ -304,11 +388,26 @@ export default function VendorCustomerDetailsPage({ userId }) {
                         {money(o.amount)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span
+                        {/* <span
                           className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${typeBadge(
                             o.type,
                           )}`}
                         >
+                          {o.type || 'Rent'}
+                        </span> */}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${typeBadge(
+                            o.type,
+                          )}`}
+                        >
+                          {String(o.type).toLowerCase() === 'rent' && (
+                            <Home className="w-3.5 h-3.5 text-[#2563EB]" />
+                          )}
+
+                          {String(o.type).toLowerCase() === 'buy' && (
+                            <ShoppingBag className="w-3.5 h-3.5 text-[#00A63E]" />
+                          )}
+
                           {o.type || 'Rent'}
                         </span>
                       </td>
@@ -354,7 +453,7 @@ export default function VendorCustomerDetailsPage({ userId }) {
                   const isDay = item.tenureUnit === 'day';
                   const rentLabel = isDay
                     ? `${money(item.monthlyAmount)}/day`
-                    : `${money(item.monthlyAmount)}/mo`;
+                    : `${money(item.monthlyAmount)}/month`;
                   const totalTenureLabel = isDay
                     ? `${item.duration} day${item.duration === 1 ? '' : 's'}`
                     : `${item.duration} month${item.duration === 1 ? '' : 's'}`;
@@ -395,48 +494,58 @@ export default function VendorCustomerDetailsPage({ userId }) {
                                 </p>
                               ) : null}
                             </div>
-                            <p className="text-lg font-bold text-gray-900 whitespace-nowrap">
+                            {/* <p className="text-lg font-bold text-gray-900 whitespace-nowrap">
                               {rentLabel}
+                            </p> */}
+                            <p className="text-lg font-bold text-gray-900 whitespace-nowrap">
+                              {money(item.monthlyAmount)}
+                              <span className="text-xs font-medium text-[#64748B] ml-1">
+                                /{isDay ? 'day' : 'month'}
+                              </span>
                             </p>
                           </div>
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-4 text-xs">
-                            <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2">
-                              <p className="text-gray-500 font-medium uppercase tracking-wide">
+                            <div className="rounded-xl bg-[#EFF6FF] border border-[#BEDBFF] px-3 py-2">
+                              <p className="text-[#2563EB]   font-medium uppercase tracking-wide">
                                 Total tenure
                               </p>
-                              <p className="font-semibold text-gray-900 mt-0.5 capitalize">
+                              <p className="font-semibold text-lg text-black mt-0.5 capitalize">
                                 {totalTenureLabel}
                               </p>
                             </div>
                             <div className="rounded-xl bg-orange-50 border border-orange-100 px-3 py-2">
-                              <p className="text-gray-500 font-medium uppercase tracking-wide">
+                              <p className="text-[#F97316] border-[#FFD6A8] bg-[#FFF7ED] font-medium uppercase tracking-wide">
                                 Remaining
                               </p>
-                              <p className="font-semibold text-gray-900 mt-0.5">
+                              <p className="font-semibold text-lg text-black mt-0.5">
                                 {remLabel}
                               </p>
                             </div>
                             <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
-                              <p className="text-gray-500 font-medium uppercase tracking-wide">
+                              <p className="text-[#00A63E] border-[#B9F8CF] bg-[#F0FDF4] font-medium uppercase tracking-wide">
                                 Security deposit
                               </p>
-                              <p className="font-semibold text-emerald-900 mt-0.5">
+                              <p className="font-semibold  text-lg text-black mt-0.5">
                                 {money(item.deposit)}
                               </p>
                             </div>
                             <div className="rounded-xl bg-violet-50 border border-violet-100 px-3 py-2">
-                              <p className="text-gray-500 font-medium uppercase tracking-wide">
+                              <p className="text-[#9810FA] border-[#E9D4FF] bg-[#FAF5FF] font-medium uppercase tracking-wide">
                                 Care tax
                               </p>
-                              <p className="font-semibold text-violet-900 mt-0.5">
+                              <p className="font-semibold text-lg text-black mt-0.5">
                                 {money(item.careTax)}
                               </p>
                             </div>
                           </div>
-                          <div className="mt-4">
+                          {/* <div className="mt-4">
                             <div className="flex justify-between text-[11px] text-gray-500 uppercase tracking-wide mb-1">
-                              <span>Start {formatShortDate(item.startDate)}</span>
-                              <span>End {formatShortDate(item.endDate)}</span>
+                              <span>
+                                Start Date {formatShortDate(item.startDate)}
+                              </span>
+                              <span>
+                                End Date{formatShortDate(item.endDate)}
+                              </span>
                             </div>
                             <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                               <div
@@ -446,13 +555,41 @@ export default function VendorCustomerDetailsPage({ userId }) {
                                 }}
                               />
                             </div>
+                          </div> */}
+
+                          <div className="mt-4">
+                            {/* row 1 labels */}
+                            <div className="flex justify-between text-[11px] text-gray-500 uppercase tracking-wide mb-1">
+                              <span>Start Date</span>
+                              <span>End Date</span>
+                            </div>
+
+                            {/* row 2 dates + progress */}
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                                {formatShortDate(item.startDate)}
+                              </span>
+
+                              <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                                <div
+                                  className="h-full bg-orange-500 rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.round(item.progressPct || 0)}%`,
+                                  }}
+                                />
+                              </div>
+
+                              <span className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                                {formatShortDate(item.endDate)}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-2">
+                          {/* <p className="text-xs text-gray-500 mt-2">
                             Total rent for tenure:{' '}
                             <span className="font-semibold text-gray-800">
                               {money(item.lineTotalRent)}
                             </span>
-                          </p>
+                          </p> */}
                         </div>
                       </div>
                     </div>
@@ -471,7 +608,7 @@ export default function VendorCustomerDetailsPage({ userId }) {
         {tab === 'orders' && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4 text-gray-500" />
+              <ShoppingBag className="w-4 h-4 text-gray-500" />
               <h2 className="font-semibold text-gray-900">Order history</h2>
             </div>
             <div className="overflow-x-auto">
@@ -503,12 +640,29 @@ export default function VendorCustomerDetailsPage({ userId }) {
                         <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                           {money(o.amount)}
                         </td>
-                        <td className="px-4 py-2.5">
+                        {/* <td className="px-4 py-2.5">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${typeBadge(
                               o.type,
                             )}`}
                           >
+                            {o.type || 'Rent'}
+                          </span>
+                        </td> */}
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${typeBadge(
+                              o.type,
+                            )}`}
+                          >
+                            {String(o.type).toLowerCase() === 'rent' && (
+                              <Home className="w-3.5 h-3.5 text-[#2563EB]" />
+                            )}
+
+                            {String(o.type).toLowerCase() === 'buy' && (
+                              <ShoppingBag className="w-3.5 h-3.5 text-[#00A63E]" />
+                            )}
+
                             {o.type || 'Rent'}
                           </span>
                         </td>
@@ -545,8 +699,8 @@ export default function VendorCustomerDetailsPage({ userId }) {
         {tab === 'kyc' && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-gray-500" />
-              <h2 className="font-semibold text-gray-900">KYC documents</h2>
+              <FileText className="w-4 h-4 text-gray-500" />
+              <h2 className="font-semibold text-gray-900">KYC Documents</h2>
             </div>
             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               {kycDocs.map((doc) => {
@@ -577,8 +731,8 @@ export default function VendorCustomerDetailsPage({ userId }) {
                           {doc.title}
                         </p>
                         {kycVerified && has ? (
-                          <span className="text-[11px] font-medium text-emerald-700 flex items-center gap-0.5 shrink-0">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span className="text-xs font-medium text-[#00A63E] bg-[#F0FDF4] px-3 py-1 rounded-full inline-flex items-center gap-1 shrink-0">
+                            {/* <CheckCircle2 className="w-3.5 h-3.5" /> */}
                             Verified
                           </span>
                         ) : (
@@ -592,7 +746,7 @@ export default function VendorCustomerDetailsPage({ userId }) {
                           Uploaded: {formatLongDate(customerKyc.submittedAt)}
                         </p>
                       ) : null}
-                      <button
+                      {/* <button
                         type="button"
                         disabled={!has}
                         onClick={() =>
@@ -600,6 +754,17 @@ export default function VendorCustomerDetailsPage({ userId }) {
                         }
                         className="mt-auto w-full py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
+                        View
+                      </button> */}
+                      <button
+                        type="button"
+                        disabled={!has}
+                        onClick={() =>
+                          has && setKycPreview({ title: doc.title, url: src })
+                        }
+                        className="mt-auto w-full py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
                         View
                       </button>
                     </div>
@@ -619,13 +784,13 @@ export default function VendorCustomerDetailsPage({ userId }) {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <LifeBuoy className="w-4 h-4 text-gray-500" />
-                <h2 className="font-semibold text-gray-900">Support tickets</h2>
+                <MessageSquare className="w-3.5 h-3.5 text-gray-500" />
+                <h2 className="font-semibold text-gray-900">Support Tickets</h2>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Product issue reports from this customer&apos;s orders involving your
-                products.
-              </p>
+              {/* <p className="text-xs text-gray-500 mt-1">
+                Product issue reports from this customer&apos;s orders involving
+                your products.
+              </p> */}
             </div>
             <div className="p-4 space-y-3">
               {supportTickets.length ? (
@@ -642,10 +807,10 @@ export default function VendorCustomerDetailsPage({ userId }) {
                             {t.queryId}
                           </span>
                           <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium border ${
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium  ${
                               solved
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                                ? 'bg-[#F0FDF4] text-[#00A63E] '
+                                : 'bg-[#FEF2F2] text-[#E7000B] '
                             }`}
                           >
                             {solved ? 'Resolved' : 'Pending'}
@@ -659,17 +824,17 @@ export default function VendorCustomerDetailsPage({ userId }) {
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                           <span className="inline-flex items-center gap-1">
-                            <Clock3 className="w-3.5 h-3.5 shrink-0" />
+                            {/* <Clock3 className="w-3.5 h-3.5 shrink-0" />
                             {formatRelativeTime(t.createdAt)}
-                            <span className="text-gray-400">·</span>
+                            <span className="text-gray-400">·</span> */}
                             Created: {formatLongDate(t.createdAt)}
                           </span>
-                          {t.assignedStore ? (
+                          {/* {t.assignedStore ? (
                             <span className="inline-flex items-center gap-1 text-blue-600">
                               <Building2 className="w-3.5 h-3.5 shrink-0" />
                               {t.assignedStore}
                             </span>
-                          ) : null}
+                          ) : null} */}
                         </div>
                       </div>
                       <Link
@@ -683,7 +848,8 @@ export default function VendorCustomerDetailsPage({ userId }) {
                 })
               ) : (
                 <div className="text-sm text-gray-500 py-4 text-center">
-                  No support tickets for this customer yet. Issues appear when you open{' '}
+                  No support tickets for this customer yet. Issues appear when
+                  you open{' '}
                   <Link
                     href="/vendor/tickets"
                     className="text-orange-600 font-medium hover:underline"
@@ -710,7 +876,9 @@ export default function VendorCustomerDetailsPage({ userId }) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
-                <p className="font-semibold text-gray-900">{kycPreview.title}</p>
+                <p className="font-semibold text-gray-900">
+                  {kycPreview.title}
+                </p>
                 <button
                   type="button"
                   onClick={() => setKycPreview(null)}
