@@ -19,6 +19,7 @@ import VendorSidebar from '../../Components/Common/VendorSidebar';
 import VendorTopBar from '../../Components/Common/VendorTopBar';
 import basicInfoIcon from '@/assets/icons/basicInfo3.png';
 import basicInfoIcon1 from '@/assets/icons/basicInfo4.png';
+
 import {
   apiGetVendorTicketById,
   apiUpdateVendorTicketStatus,

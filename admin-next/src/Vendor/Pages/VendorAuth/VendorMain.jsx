@@ -8,6 +8,13 @@ import VendorOtpVerification from './VendorOtpVerification';
 import VendorWelcome from './VendorWelcome';
 import VendorForgotPassword from './VendorForgotPassword';
 import { clearPendingSignup } from '../../../redux/slices/vendorSlice';
+import step2Icon from '@/assets/icons/step2.png';
+import dollarVendorIcon from '@/assets/icons/doller-vndr.png';
+import verifiedVendorIcon from '@/assets/icons/verified-vndr.png';
+import truckVendorIcon from '@/assets/icons/truck-vndr.png';
+import { Phone } from 'lucide-react';
+import vendorMainImage from '@/assets/images/vendor-main.png';
+import checkVendorsIcon from '@/assets/icons/check-vndrs.png';
 
 const VendorMain = () => {
   const dispatch = useDispatch();
@@ -83,14 +90,18 @@ const VendorMain = () => {
       <header className="w-full border-b border-gray-100 bg-white">
         <div className="max-w-6xl mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">
-              R
+            <div className="w-9 h-9 rounded-xl  flex items-center justify-center">
+              <img
+                src={step2Icon.src}
+                alt="Rentnpay"
+                className="w-8 h-8 shrink-0"
+              />
             </div>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-gray-900">
                 Rentnpay Partner
               </p>
-              <p className="text-xs text-gray-500">Vendor Portal</p>
+              {/* <p className="text-xs text-gray-500">Vendor Portal</p> */}
             </div>
           </div>
           <button
@@ -107,10 +118,10 @@ const VendorMain = () => {
         <section className="max-w-6xl mx-auto px-4 lg:px-6 pt-10 lg:pt-16 pb-10 lg:pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600 mb-3">
+              {/* <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600 mb-3">
                 Rentnpay Partner
-              </p>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-900 leading-tight mb-4">
+              </p> */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-manrope font-semibold text-gray-900 leading-tight mb-4">
                 Grow your Rental
                 <br className="hidden sm:block" />
                 Business with <span className="text-gray-900">Rentnpay.</span>
@@ -119,12 +130,26 @@ const VendorMain = () => {
                 Join 500+ local vendors. Zero commission for the first month.
               </p>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-lg">
-                <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2 sm:py-2.5 flex-1 gap-2">
+              <div className=" rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-lg">
+                {/* <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2 sm:py-2.5 flex-1 gap-2">
                   <div className="flex items-center gap-1 text-gray-700 text-sm">
                     <span className="text-xs">+91</span>
                     <span className="w-px h-4 bg-gray-300" />
                   </div>
+                  <input
+                    type="tel"
+                    placeholder="7745665205"
+                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                  />
+                </div> */}
+                <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2 sm:py-2.5 flex-1 gap-2">
+                  <Phone className="w-3.5 h-3.5 text-gray-500" />
+
+                  <div className="flex items-center gap-1 text-gray-700 text-sm">
+                    <span className="text-xs">+91</span>
+                    <span className="w-px h-4 bg-gray-300" />
+                  </div>
+
                   <input
                     type="tel"
                     placeholder="7745665205"
@@ -139,15 +164,17 @@ const VendorMain = () => {
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-gray-500">
-                <span>✓ Free to join</span>
-                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                <span>✓ Quick approval</span>
-                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                <span>✓ No hidden charges</span>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-gray-500">
+                <span className="text-[#64748B] text-sm ">✓ Free to join</span>
+                <span className="w-1 h-1 rounded-full bg-[#64748B]" />
+                <span className="text-[#64748B] text-sm">✓ Quick approval</span>
+                <span className="w-1 h-1 rounded-full bg-[#64748B]" />
+                <span className="text-[#64748B] text-sm">
+                  ✓ No hidden charges
+                </span>
               </div>
 
-              <div className="mt-6 inline-flex items-center gap-2 bg-white rounded-full px-3 py-2 shadow-sm border border-gray-100">
+              {/* <div className="mt-6 inline-flex items-center gap-2 bg-white rounded-full px-3 py-2 shadow-sm border border-gray-100">
                 <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
                   <span className="w-3 h-3 rounded-full bg-emerald-500" />
                 </div>
@@ -155,18 +182,56 @@ const VendorMain = () => {
                   <p className="font-medium text-gray-900">500+ Vendors</p>
                   <p className="text-gray-500 text-[11px]">Already growing</p>
                 </div>
-              </div>
+              </div> */}
             </div>
-
+            {/* 
             <div className="relative">
               <div className="rounded-3xl overflow-hidden shadow-[0_18px_55px_rgba(15,23,42,0.22)] bg-gray-200 aspect-[4/3] sm:aspect-[5/3] lg:aspect-[4/3]">
                 <div
                   className="w-full h-full bg-cover bg-center"
                   style={{
-                    backgroundImage:
-                      'url("https://images.pexels.com/photos/374885/pexels-photo-374885.jpeg?auto=compress&cs=tinysrgb&w=1200")',
+                    // backgroundImage:
+                    //   'url("https://images.pexels.com/photos/374885/pexels-photo-374885.jpeg?auto=compress&cs=tinysrgb&w=1200")',
+                    backgroundImage: `url(${vendorMainImage.src})`,
                   }}
                 />
+              </div>
+            </div> */}
+            <div className="relative">
+              {/* Image container */}
+              <div className="rounded-3xl overflow-hidden shadow-[0_18px_55px_rgba(15,23,42,0.22)] bg-gray-200 aspect-[4/3] sm:aspect-[5/3] lg:aspect-[4/3]">
+                <div
+                  className="w-full h-full bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${vendorMainImage.src})`,
+                  }}
+                />
+              </div>
+
+              {/* Floating badge OUTSIDE overflow-hidden */}
+              {/* <div className="absolute -bottom-3 -left-3 sm:-bottom-4 sm:-left-4 inline-flex items-center gap-2 bg-white rounded-lg  px-3 py-3 shadow-sm border border-gray-100">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                </div>
+
+                <div className="text-xs leading-tight">
+                  <p className="font-medium text-gray-900">500+ Vendors</p>
+                  <p className="text-gray-500 text-[11px]">Already growing</p>
+                </div>
+              </div> */}
+              <div className="absolute -bottom-3 -left-3 sm:-bottom-4 sm:-left-4 inline-flex items-center gap-2 bg-white rounded-lg px-3 py-3 shadow-sm border border-gray-100">
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <img
+                    src={checkVendorsIcon.src}
+                    alt="Verified Vendors"
+                    className="w-8 h-8 shrink-0"
+                  />
+                </div>
+
+                <div className="text-xs leading-tight">
+                  <p className="font-medium text-gray-900">500+ Vendors</p>
+                  <p className="text-gray-500 text-[11px]">Already growing</p>
+                </div>
               </div>
             </div>
           </div>
@@ -180,10 +245,18 @@ const VendorMain = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                {/* <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
                   <span className="text-emerald-600 text-lg">$</span>
+                </div> */}
+
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                  <img
+                    src={dollarVendorIcon.src}
+                    alt="Payments"
+                    className="w-6 h-6 shrink-0"
+                  />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1.5">
+                <h3 className="text-base font-semibold text-gray-900 mb-1.5">
                   Guaranteed Payments
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600">
@@ -191,10 +264,17 @@ const VendorMain = () => {
                 </p>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+                {/* <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
                   <span className="text-blue-600 text-lg">👤</span>
+                </div> */}
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+                  <img
+                    src={verifiedVendorIcon.src}
+                    alt="Verified Customers"
+                    className="w-6 h-6 shrink-0"
+                  />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1.5">
+                <h3 className="text-base font-semibold text-gray-900 mb-1.5">
                   Verified Customers
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600">
@@ -203,10 +283,17 @@ const VendorMain = () => {
                 </p>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+                {/* <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
                   <span className="text-orange-500 text-lg">🚚</span>
+                </div> */}
+                <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+                  <img
+                    src={truckVendorIcon.src}
+                    alt="Logistics Support"
+                    className="w-6 h-6 shrink-0"
+                  />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1.5">
+                <h3 className="text-base font-semibold text-gray-900 mb-1.5">
                   Logistics Support
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600">
