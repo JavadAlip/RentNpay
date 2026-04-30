@@ -223,7 +223,9 @@ export default function UserDetails({ userId }) {
                 ) : null}
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <p className="text-sm text-gray-500 font-mono">{user.customerCode}</p>
+                <p className="text-sm text-gray-500 font-mono">
+                  {user.customerCode}
+                </p>
                 <span
                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
                     kycVerified
@@ -628,8 +630,8 @@ export default function UserDetails({ userId }) {
               <h2 className="font-semibold text-gray-900">Support tickets</h2>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Product issue reports from this customer&apos;s orders (same data as Customer
-              Queries).
+              Product issue reports from this customer&apos;s orders (same data
+              as Customer Queries).
             </p>
           </div>
           <div className="p-4 space-y-3">
@@ -656,8 +658,12 @@ export default function UserDetails({ userId }) {
                           {solved ? 'Resolved' : 'Pending'}
                         </span>
                       </div>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">{t.productName}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 mt-1 line-clamp-2">{t.message}</p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                        {t.productName}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-700 mt-1 line-clamp-2">
+                        {t.message}
+                      </p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1">
                           <Clock3 className="w-3.5 h-3.5 shrink-0" />
@@ -685,7 +691,10 @@ export default function UserDetails({ userId }) {
             ) : (
               <div className="text-sm text-gray-500 py-4 text-center">
                 No support tickets for this customer yet. Issues raised from{' '}
-                <Link href="/system/tickets" className="text-orange-600 font-medium hover:underline">
+                <Link
+                  href="/system/tickets"
+                  className="text-orange-600 font-medium hover:underline"
+                >
                   Customer Queries
                 </Link>{' '}
                 will appear here when linked to their orders.
