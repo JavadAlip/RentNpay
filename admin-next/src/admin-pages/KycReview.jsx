@@ -7,6 +7,9 @@ import {
   apiRequestVendorKycDocumentReupload,
   apiReviewVendorKyc,
 } from '@/service/api';
+import buildingIcon from '@/assets/icons/building-orng.png';
+import buildingBlueIcon from '@/assets/icons/building-blue.png';
+import { MapPin, AlertCircle } from 'lucide-react';
 
 const categoryBadge = (category) => {
   if (category === 'bank') return 'Bank Proof';
@@ -87,7 +90,8 @@ export default function KycReview({ vendorId: vendorIdProp }) {
     setBrightness(100);
   }, [activeIdx, activeSrc]);
 
-  const defaultStore = kyc?.storeManagement?.stores?.find((s) => s.isDefault) ||
+  const defaultStore =
+    kyc?.storeManagement?.stores?.find((s) => s.isDefault) ||
     kyc?.storeManagement?.stores?.[0];
   const gpsNote =
     defaultStore?.mapLat != null && defaultStore?.mapLng != null
@@ -109,7 +113,8 @@ export default function KycReview({ vendorId: vendorIdProp }) {
     if (!msg) {
       const docCategory = activeDoc?.category;
       const shopMismatch =
-        shopNameMatch === false && (docCategory === 'shop' || docCategory === 'business');
+        shopNameMatch === false &&
+        (docCategory === 'shop' || docCategory === 'business');
       const addressMismatch =
         addressMatch === false &&
         (docCategory === 'identity' ||
@@ -120,7 +125,9 @@ export default function KycReview({ vendorId: vendorIdProp }) {
         parts.push('Please check shop name: it does not match the document.');
       }
       if (addressMismatch) {
-        parts.push('Please check address: it does not match the Aadhaar/document.');
+        parts.push(
+          'Please check address: it does not match the Aadhaar/document.',
+        );
       }
 
       // Fallbacks when category doesn't align perfectly.
@@ -128,10 +135,14 @@ export default function KycReview({ vendorId: vendorIdProp }) {
         parts.push('Please check shop name: it does not match the document.');
       }
       if (!parts.length && addressMatch === false) {
-        parts.push('Please check address: it does not match the Aadhaar/document.');
+        parts.push(
+          'Please check address: it does not match the Aadhaar/document.',
+        );
       }
       if (!parts.length) {
-        parts.push('Please upload a clear, well-lit re-upload for verification.');
+        parts.push(
+          'Please upload a clear, well-lit re-upload for verification.',
+        );
       }
 
       msg = parts.join(' ');
@@ -214,12 +225,14 @@ export default function KycReview({ vendorId: vendorIdProp }) {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Review Vendor KYC</h1>
+      {/* <div>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Review Vendor KYC
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
           {kyc.vendorName} • {kyc.vendorEmail}
         </p>
-      </div>
+      </div> */}
 
       {error && kyc ? (
         <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl">
@@ -231,7 +244,9 @@ export default function KycReview({ vendorId: vendorIdProp }) {
         <div className="xl:col-span-3 rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 text-slate-100 flex flex-col">
           <div className="px-4 sm:px-5 py-4 border-b border-slate-700 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-white">Document Viewer</h2>
+              <h2 className="text-base font-semibold text-white">
+                Document Viewer
+              </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Review uploaded documents for verification.
               </p>
@@ -278,8 +293,8 @@ export default function KycReview({ vendorId: vendorIdProp }) {
                 />
               ) : (
                 <p className="text-sm text-slate-500 px-6 text-center">
-                  No file for this slot yet (vendor may only have saved a filename). Ask for
-                  re-upload or check another document.
+                  No file for this slot yet (vendor may only have saved a
+                  filename). Ask for re-upload or check another document.
                 </p>
               )}
             </div>
@@ -327,7 +342,9 @@ export default function KycReview({ vendorId: vendorIdProp }) {
                 ‹ Prev
               </button>
               <span className="text-slate-400 px-2">
-                {documents.length ? `${activeIdx + 1}/${documents.length}` : '0/0'}
+                {documents.length
+                  ? `${activeIdx + 1}/${documents.length}`
+                  : '0/0'}
               </span>
               <button
                 type="button"
@@ -345,20 +362,50 @@ export default function KycReview({ vendorId: vendorIdProp }) {
 
         <div className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 flex flex-col">
           <div className="flex items-center gap-2">
-            <span className="text-lg">🏪</span>
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Verify Data Points</h2>
-              <p className="text-xs text-gray-500">Vendor: {kyc.shopNameForVerification || kyc.vendorName}</p>
+              <h2 className="text-base font-semibold text-black">
+                Verify Data Points
+              </h2>
+              {/* <p className="text-xs text-gray-500">
+                Vendor: {kyc.shopNameForVerification || kyc.vendorName}
+              </p> */}
+              <p className="text-sm text-black font-semibold flex items-center gap-1.5">
+                <img
+                  src={buildingIcon.src}
+                  alt="Vendor"
+                  className="w-3.5 h-3.5 shrink-0"
+                />
+                <span>
+                  Vendor: {kyc.shopNameForVerification || kyc.vendorName}
+                </span>
+              </p>
+              <p className="text-xs text-gray-500">
+                Compare entered data with document evidence
+              </p>
             </div>
           </div>
 
           <div className="mt-4 space-y-3 flex-1 overflow-y-auto">
             <div className="rounded-xl border border-gray-200 p-3">
-              <p className="text-[11px] text-gray-500 uppercase tracking-wide">Shop name input</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1">
+              <div className="flex items-center gap-2">
+                <img
+                  src={buildingBlueIcon.src}
+                  alt="Identity"
+                  className="w-4 h-4 shrink-0"
+                />
+                <p className="text-base font-semibold text-gray-900">
+                  Identity Match
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 uppercase tracking-wide">
+                Shop name input:
+              </p>
+              <p className="mt-1 px-3 py-2 text-sm font-medium text-gray-900  border border-gray-200 rounded-lg">
                 {kyc.shopNameForVerification || '—'}
               </p>
-              <p className="text-[11px] text-gray-500 mt-3">Does name match document?</p>
+              <p className="text-[11px] text-black mt-3">
+                Does name match document?
+              </p>
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
@@ -386,11 +433,21 @@ export default function KycReview({ vendorId: vendorIdProp }) {
             </div>
 
             <div className="rounded-xl border border-gray-200 p-3">
-              <p className="text-[11px] text-gray-500 uppercase tracking-wide">Address input</p>
-              <p className="text-sm font-semibold text-gray-900 mt-1 line-clamp-3">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="w-4 h-4 text-[#9810FA]" />
+                <p className="text-sm font-semibold text-gray-900">
+                  Address Verification
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-500 uppercase tracking-wide">
+                Address input:
+              </p>
+              <p className="mt-1 px-3 py-2 text-sm font-medium text-gray-900  border border-gray-200 rounded-lg">
                 {kyc.permanentAddress || '—'}
               </p>
-              <p className="text-[11px] text-gray-500 mt-3">Does address match document?</p>
+              <p className="text-[11px] text-black mt-3">
+                Does address match document?
+              </p>
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
@@ -421,17 +478,28 @@ export default function KycReview({ vendorId: vendorIdProp }) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+            {/* <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
               <p className="font-semibold">Verification in progress</p>
               <p className="text-blue-800/90 mt-0.5">
-                Complete checks and approve, or request re-upload for the selected document with
-                a clear reason.
+                Complete all verifications to proceed
+              </p>
+            </div> */}
+            <div className="rounded-xl border border-[#8EC5FF] bg-[#EFF6FF] px-3 py-2 text-xs">
+              {/* Title with icon */}
+              <div className="flex items-center gap-2 text-[#155DFC]">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <p className="font-semibold">Verification in progress</p>
+              </div>
+
+              {/* Description */}
+              <p className="text-[#155DFC] mt-0.5">
+                Complete all verifications to proceed
               </p>
             </div>
 
             <div>
-              <p className="text-[11px] text-gray-500 mb-1">
-                Comment / reason (shown to vendor on re-upload request)
+              <p className="text-sm font-semibold text-black mb-1">
+                Comment / Reason for rejection:
               </p>
               <textarea
                 value={comment}
@@ -449,20 +517,23 @@ export default function KycReview({ vendorId: vendorIdProp }) {
               disabled={submitting || !activeDoc}
               className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
             >
-              Request re-upload (this document)
+              Request re-upload
             </button>
             <button
               type="button"
               onClick={handleApprove}
               disabled={submitting || !canApprove}
-              className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Approve vendor
             </button>
             <p className="text-[11px] text-gray-500 text-center">
-              Status: <span className="font-semibold capitalize">{kyc.status}</span>
+              Status:{' '}
+              <span className="font-semibold capitalize">{kyc.status}</span>
               {activeDoc?.review?.status === 'reupload_requested' ? (
-                <span className="ml-2 text-amber-700">• Re-upload requested for current doc</span>
+                <span className="ml-2 text-amber-700">
+                  • Re-upload requested for current doc
+                </span>
               ) : null}
             </p>
           </div>
@@ -506,7 +577,12 @@ export default function KycReview({ vendorId: vendorIdProp }) {
                 <ul className="space-y-3 text-sm text-emerald-900">
                   <li className="flex items-start gap-3">
                     <span className="mt-[2px] w-5 h-5 rounded-full bg-white border border-emerald-200 flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
                         <path
                           d="M20 6L9 17L4 12"
                           stroke="#059669"
@@ -520,7 +596,12 @@ export default function KycReview({ vendorId: vendorIdProp }) {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="mt-[2px] w-5 h-5 rounded-full bg-white border border-emerald-200 flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
                         <path
                           d="M20 6L9 17L4 12"
                           stroke="#059669"
@@ -534,7 +615,12 @@ export default function KycReview({ vendorId: vendorIdProp }) {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="mt-[2px] w-5 h-5 rounded-full bg-white border border-emerald-200 flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
                         <path
                           d="M20 6L9 17L4 12"
                           stroke="#059669"
