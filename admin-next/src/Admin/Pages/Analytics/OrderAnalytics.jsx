@@ -475,7 +475,7 @@ const OrderAnalytics = () => {
                 </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-[#007BFF] text-white flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
           </div>
@@ -586,20 +586,18 @@ const OrderAnalytics = () => {
             ].map((x) => (
               <div
                 key={x.key}
-                className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4 flex items-center gap-4"
+                className="rounded-xl   px-4 py-4 flex items-center gap-4"
               >
                 <Image
                   src={x.iconSrc}
                   alt=""
-                  width={56}
-                  height={56}
-                  className="w-12 h-12 sm:w-14 sm:h-14 object-contain shrink-0"
+                  className="w-10 h-10  object-contain shrink-0"
                 />
                 <div className="min-w-0">
-                  <p className="text-3xl sm:text-[40px] font-bold text-slate-900 leading-none">
+                  <p className="text-2xl font-bold text-slate-900 leading-none">
                     {analytics.counts[x.key].toLocaleString('en-IN')}
                   </p>
-                  <p className="text-[11px] sm:text-sm uppercase tracking-wide text-gray-500 mt-1 truncate">
+                  <p className="text-base uppercase tracking-wide text-gray-500 mt-1 truncate">
                     {x.label}
                   </p>
                 </div>
