@@ -141,11 +141,18 @@ import {
   formatRelativeTime,
 } from '@/Admin/utils/activityFeed';
 
+import revenueIcon from '@/assets/icons/doller-vndr.png';
+import revenueHighIcon from '@/assets/icons/revenue-high.png';
+import vendorStatusIcon from '@/assets/icons/vendor-status.png';
+import liveListingIcon from '@/assets/icons/live-listing.png';
+import criticalIcon from '@/assets/icons/critical.png';
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({
     revenue: 0,
+    revenueGrowth: 23,
     vendorsActive: 0,
     vendorsPending: 0,
     listingsRent: 0,
@@ -292,6 +299,19 @@ const Dashboard = () => {
     () => (showAllFeed ? feed : feed.slice(0, 3)),
     [feed, showAllFeed],
   );
+  const isPositive = stats.revenueGrowth >= 0;
+
+  const rentPercent = totalListings
+    ? Math.round((stats.listingsRent / totalListings) * 100)
+    : 0;
+
+  const buyPercent = totalListings
+    ? Math.round((stats.listingsBuy / totalListings) * 100)
+    : 0;
+
+  const servicePercent = totalListings
+    ? Math.round((stats.listingsService / totalListings) * 100)
+    : 0;
 
   return (
     <main className="p-4 sm:p-6 overflow-auto bg-[#f2f4f8] min-h-full">
@@ -306,7 +326,7 @@ const Dashboard = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-5 mb-5">
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            {/* <div className="bg-white rounded-2xl border border-gray-200 p-5">
               <p className="text-[11px] font-medium text-gray-500 tracking-wide">
                 TOTAL REVENUE (COMMISSION)
               </p>
@@ -316,9 +336,52 @@ const Dashboard = () => {
               <p className="mt-1 text-xs text-gray-400">
                 Net earnings after vendor payouts
               </p>
-            </div>
-
+            </div> */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              {/* Row 1 → Icon + Growth */}
+              <div className="flex items-center justify-between mb-2">
+                <img src={revenueIcon.src} alt="Revenue" className="w-8 h-8" />
+
+                {/* <span
+                  className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border
+  ${
+    isPositive
+      ? 'text-green-700 bg-green-50 border-green-200'
+      : 'text-red-700 bg-red-50 border-red-200'
+  }`}
+                >
+                  {isPositive ? '↑' : '↓'} {isPositive ? '+' : ''}
+                  {stats.revenueGrowth}%
+                </span> */}
+                {/* <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border text-green-700 bg-green-50 border-green-200">
+                  ↑ +12%
+                </span> */}
+                <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg border text-[#008236] bg-green-50 border-green-200">
+                  <img
+                    src={revenueHighIcon.src}
+                    alt="Revenue Growth"
+                    className="w-3 h-3"
+                  />
+                  +12%
+                </span>
+              </div>
+
+              {/* Row 2 → Title */}
+              <p className="text-[11px] font-medium text-gray-500 tracking-wide">
+                TOTAL REVENUE (COMMISSION)
+              </p>
+
+              {/* Value */}
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                ₹{stats.revenue.toLocaleString('en-IN')}
+              </p>
+
+              {/* Subtitle */}
+              <p className="mt-1 text-xs text-gray-400">
+                Net earnings after vendor payouts
+              </p>
+            </div>
+            {/* <div className="bg-white rounded-2xl border border-gray-200 p-5">
               <p className="text-[11px] font-medium text-gray-500 tracking-wide">
                 VENDOR STATUS
               </p>
@@ -328,9 +391,36 @@ const Dashboard = () => {
               <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-block">
                 {stats.vendorsPending} Pending Approval
               </p>
-            </div>
-
+            </div> */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              {/* Icon */}
+              <div className="mb-2">
+                <img
+                  src={vendorStatusIcon.src}
+                  alt="Vendor Status"
+                  className="w-8 h-8"
+                />
+              </div>
+
+              {/* Title */}
+              <p className="text-[11px] font-medium text-gray-500 tracking-wide">
+                VENDOR STATUS
+              </p>
+
+              {/* Values */}
+              <p className="mt-2 text-3xl font-bold text-[#00A63E]">
+                {stats.vendorsActive} Active
+              </p>
+
+              <p className="mt-1 text-xs text-[#973C00] bg-[#FEF3C6] border border-[#FFB900] rounded-md px-2 py-1 inline-block">
+                {stats.vendorsPending} Pending Approval
+              </p>
+              {/* Subtitle */}
+              <p className="mt-1 text-xs text-gray-400">
+                Shops onboarding this week
+              </p>
+            </div>
+            {/* <div className="bg-white rounded-2xl border border-gray-200 p-5">
               <p className="text-[11px] font-medium text-gray-500 tracking-wide">
                 LIVE LISTINGS
               </p>
@@ -351,23 +441,115 @@ const Dashboard = () => {
                   <span className="font-medium">{stats.listingsService}</span>
                 </div>
               </div>
-            </div>
+            </div> */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              {/* Icon */}
+              <div className="mb-2">
+                <img
+                  src={liveListingIcon.src}
+                  alt="Live Listings"
+                  className="w-8 h-8"
+                />
+              </div>
 
+              {/* Title */}
+              <p className="text-[11px] font-medium text-gray-500 tracking-wide">
+                LIVE LISTINGS
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {totalListings.toLocaleString('en-IN')}
+              </p>
+
+              {/* <div className="mt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between text-gray-600">
+                  <span>Rent</span>
+                  <span className="font-medium">{stats.listingsRent}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Buy (New/Used)</span>
+                  <span className="font-medium">{stats.listingsBuy}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Services</span>
+                  <span className="font-medium">{stats.listingsService}</span>
+                </div>
+              </div> */}
+              <div className="mt-3 space-y-3 text-xs">
+                {/* Rent */}
+                <div>
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Rent</span>
+                    <span className="font-medium">{stats.listingsRent}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${rentPercent}%`,
+                        backgroundColor: '#3B82F6',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Buy */}
+                <div>
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Buy (New/Used)</span>
+                    <span className="font-medium">{stats.listingsBuy}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${buyPercent}%`,
+                        backgroundColor: '#8B5CF6',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Services */}
+                <div>
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Services</span>
+                    <span className="font-medium">{stats.listingsService}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${servicePercent}%`,
+                        backgroundColor: '#F97316',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="bg-white rounded-2xl border border-rose-200 p-5">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-medium text-gray-500 tracking-wide">
-                  ORDERS DELAYED {'>'} 24 HRS
-                </p>
+                {/* Left → Icon */}
+                <img
+                  src={criticalIcon.src}
+                  alt="Critical"
+                  className="w-8 h-8"
+                />
+
+                {/* Right → Badge */}
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white">
                   CRITICAL
                 </span>
               </div>
-              <p className="mt-3 text-4xl font-semibold text-rose-600">
+              <p className="mt-3 text-4xl font-bold text-rose-600">
                 {stats.delayedOrders}
               </p>
-              <button className="mt-3 px-3 py-2 rounded-lg bg-rose-500 text-white text-xs font-medium">
-                View Delayed Orders
-              </button>
+              <div className="mt-3 flex justify-center">
+                <button className="px-4 py-2 rounded-lg bg-rose-500 text-white text-base font-medium">
+                  Approve now
+                </button>
+              </div>
             </div>
           </div>
 
