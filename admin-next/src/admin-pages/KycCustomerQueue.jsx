@@ -142,7 +142,7 @@ export default function KycCustomerQueue() {
         </div> */}
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <button
+            {/* <button
               type="button"
               onClick={() => setActiveTab('pending')}
               className={`py-3 rounded-xl border border-[#64748B] text-left px-4 ${
@@ -155,6 +155,24 @@ export default function KycCustomerQueue() {
                 <Image src={pendingIcon} alt="Pending" width={36} height={36} />
                 <p className="text-xs text-gray-500">Pending</p>
               </div>
+              <p className="text-base font-semibold text-[#64748B]">
+                {queue.pending.length}
+              </p>
+            </button> */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('pending')}
+              className={`py-3 rounded-xl border border-blue-300 text-left px-4 ${
+                activeTab === 'pending'
+                  ? 'bg-blue-50'
+                  : 'bg-transparent hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Image src={pendingIcon} alt="Pending" width={36} height={36} />
+                <p className="text-xs text-gray-500">Pending</p>
+              </div>
+
               <p className="text-base font-semibold text-[#64748B]">
                 {queue.pending.length}
               </p>
@@ -178,7 +196,7 @@ export default function KycCustomerQueue() {
               </p>
             </button> */}
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setActiveTab('approved')}
               className={`py-3 rounded-xl border border-[#10B981] text-left px-4 ${
@@ -199,9 +217,33 @@ export default function KycCustomerQueue() {
               <p className="text-base font-semibold text-[#10B981]">
                 {queue.approved.length}
               </p>
-            </button>
+            </button> */}
 
             <button
+              type="button"
+              onClick={() => setActiveTab('approved')}
+              className={`py-3 rounded-xl border border-[#10B981] text-left px-4 ${
+                activeTab === 'approved'
+                  ? 'bg-emerald-50'
+                  : 'bg-transparent hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Image
+                  src={verifiedIcon}
+                  alt="Verified"
+                  width={36}
+                  height={36}
+                />
+                <p className="text-xs text-gray-500">Verified</p>
+              </div>
+
+              <p className="text-base font-semibold text-[#10B981]">
+                {queue.approved.length}
+              </p>
+            </button>
+
+            {/* <button
               type="button"
               onClick={() => setActiveTab('rejected')}
               className={`py-3 rounded-xl border border-[#E7000B] text-left px-4 ${
@@ -219,6 +261,29 @@ export default function KycCustomerQueue() {
                 />
                 <p className="text-xs text-gray-500">Rejected</p>
               </div>
+              <p className="text-base font-semibold text-[#E7000B]">
+                {queue.rejected.length}
+              </p>
+            </button> */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('rejected')}
+              className={`py-3 rounded-xl border border-[#E7000B] text-left px-4 ${
+                activeTab === 'rejected'
+                  ? 'bg-rose-50'
+                  : 'bg-transparent hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Image
+                  src={rejectedIcon}
+                  alt="Rejected"
+                  width={36}
+                  height={36}
+                />
+                <p className="text-xs text-gray-500">Rejected</p>
+              </div>
+
               <p className="text-base font-semibold text-[#E7000B]">
                 {queue.rejected.length}
               </p>

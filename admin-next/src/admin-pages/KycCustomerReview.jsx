@@ -441,9 +441,9 @@ export default function KycCustomerReview({ userId: userIdProp }) {
 
               {!isPending ? (
                 <div className="mt-5 rounded-xl border border-gray-200 bg-slate-50 p-4 text-sm text-gray-700">
-                  <p className="font-semibold text-gray-900">
+                  {/* <p className="font-semibold text-gray-900">
                     Read-only review
-                  </p>
+                  </p> */}
                   <p className="mt-1 text-xs text-gray-600">
                     {kyc.status === 'approved'
                       ? `This customer is verified. Reviewed ${formatReviewDate(kyc.reviewedAt)}.`
