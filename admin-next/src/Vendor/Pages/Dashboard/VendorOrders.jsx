@@ -43,6 +43,7 @@ const tabs = [
 ];
 import totalVal from '@/assets/icons/total-val.png';
 import processOrder from '@/assets/icons/process-order.png';
+import totalOrdersIcon from '@/assets/icons/total-orders2.png';
 import ClipboardCheckIcon from '@/assets/icons/rtn-inspection.png';
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const makeOtp = () => String(1000 + Math.floor(Math.random() * 9000));
@@ -1240,7 +1241,7 @@ export default function VendorOrdersPage() {
                         alt="processing orders"
                         className="w-8 h-8"
                       />
-                      <p className="text-xs text-gray-500">Processing orders</p>
+                      <p className="text-xs text-gray-500">Processing Orders</p>
                     </div>
 
                     <p className="text-3xl font-semibold text-[#2563EB] mt-1">
@@ -1267,10 +1268,24 @@ export default function VendorOrdersPage() {
                       {money(stats.totalRevenue)}
                     </p>
                   </div>
-                  <div className="bg-white rounded-2xl border border-violet-100 p-4">
+                  {/* <div className="bg-white rounded-2xl border border-violet-100 p-4">
                     <p className="text-xs text-gray-500">Average order</p>
                     <p className="text-4xl font-semibold text-violet-600 mt-1">
                       {money(stats.averageOrder)}
+                    </p>
+                  </div> */}
+                  <div className="bg-white rounded-2xl border border-emerald-100 p-4">
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={totalOrdersIcon.src}
+                        alt="total orders"
+                        className="w-8 h-8"
+                      />
+                      <p className="text-xs text-gray-500">Total Orders</p>
+                    </div>
+
+                    <p className="text-3xl font-semibold text-[#10B981] mt-2">
+                      {normalizedOrders.length}
                     </p>
                   </div>
                   {/* <div className="bg-white rounded-2xl border border-orange-100 p-4">
