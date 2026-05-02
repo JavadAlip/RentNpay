@@ -20,6 +20,7 @@ import {
   Star,
   Camera,
   Calendar,
+  Truck,
 } from 'lucide-react';
 import {
   apiExtendMyOrderTenure,
@@ -41,6 +42,7 @@ import {
 } from '@/lib/orderRentalUtils';
 import PickupScheduledModal from '@/components/PickupScheduledModal';
 import rentalSaveIcon from '@/assets/icons/rental-save.png';
+import graphHighIcon from '@/assets/icons/grpah-high.png';
 
 function flattenRentals(orders) {
   const rows = [];
@@ -815,25 +817,67 @@ export default function RentalCommandCenter() {
                     const dur = Math.max(1, Number(order.rentalDuration || 1));
                     const isDay = tenureUnit === 'day';
 
-                    const unitRent = rate * qty;
-                    const lineTotalRent = unitRent * dur;
+                    // const unitRent = rate * qty;
+                    // const lineTotalRent = unitRent * dur;
 
+                    // // rate is the TOTAL price for full tenure, divide by duration to get per-unit
+                    // const perUnitRent =
+                    //   dur > 0 ? Math.round(unitRent / dur) : unitRent;
+                    const totalPrice = Number(line.pricePerDay || 0) * qty;
+                    const perUnitRent = Math.round(totalPrice / dur);
+                    const unitRent = totalPrice;
+                    const lineTotalRent = totalPrice;
+
+                    // const rentPrimaryLabel = isDay
+                    //   ? `₹${formatMoney(perUnitRent)}/day`
+                    //   : `₹${formatMoney(perUnitRent)}/mo`;
                     const rentPrimaryLabel = isDay
-                      ? `₹${formatMoney(unitRent)}/day`
-                      : `₹${formatMoney(unitRent)}/mo`;
-                    const rentCardTitle = isDay ? 'Daily rate' : 'Monthly rent';
-                    const rentSubline = isDay
-                      ? `${dur} day${dur === 1 ? '' : 's'} tenure · ₹${formatMoney(lineTotalRent)} total`
-                      : `${dur} month${dur === 1 ? '' : 's'} tenure · ₹${formatMoney(lineTotalRent)} total`;
+                      ? `₹${formatMoney(unitRent)}/3day`
+                      : `₹${formatMoney(unitRent)}/3mo`;
+                    const rentCardTitle = isDay ? 'Daily rent' : 'Monthly rent';
+                    // const rentSubline = isDay
+                    //   ? `${dur} day${dur === 1 ? '' : 's'} tenure · ₹${formatMoney(lineTotalRent)} total`
+                    //   : `${dur} month${dur === 1 ? '' : 's'} tenure · ₹${formatMoney(lineTotalRent)} total`;
 
                     const deposit = lineDeposit(line, product);
                     const nextPay = computeNextPaymentLabel(start, end);
-                    const discounted = isDay
-                      ? Math.max(1, Math.round(unitRent * 0.92))
-                      : Math.max(
-                          1,
-                          unitRent - Math.max(50, Math.round(unitRent * 0.08)),
-                        );
+                    // const discounted = isDay
+                    //   ? Math.max(1, Math.round(unitRent * 0.92))
+                    //   : Math.max(
+                    //       1,
+                    //       unitRent - Math.max(50, Math.round(unitRent * 0.08)),
+                    //     );
+
+                    // Get the longest duration plan and its per-unit price
+                    const extensionPlansForCard = normalizeExtensionPlans(
+                      product,
+                      tenureUnit,
+                    );
+                    const longestPlan = extensionPlansForCard.length
+                      ? extensionPlansForCard[extensionPlansForCard.length - 1]
+                      : null;
+
+                    // Per-unit price of longest plan (divide total by duration)
+                    const longestPlanPerUnit = longestPlan
+                      ? Math.round(longestPlan.unitRent / longestPlan.duration)
+                      : 0;
+
+                    // Apply offer discount if exists
+                    const cardOffer =
+                      offersByProduct[String(product?._id || '')];
+                    const cardOfferDiscount = Number(
+                      cardOffer?.discountPercent || 0,
+                    );
+                    const discountedPerUnit =
+                      longestPlanPerUnit > 0 && cardOfferDiscount > 0
+                        ? Math.max(
+                            1,
+                            Math.round(
+                              longestPlanPerUnit -
+                                (longestPlanPerUnit * cardOfferDiscount) / 100,
+                            ),
+                          )
+                        : longestPlanPerUnit;
 
                     const totalMs = end.getTime() - start.getTime();
                     const elapsedMs = Math.min(
@@ -966,24 +1010,31 @@ export default function RentalCommandCenter() {
                               </div>
 
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-                                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
-                                  <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
+                                <div className="rounded-lg border-2 border-[#BEDBFF] bg-[#EFF6FF] p-4">
+                                  {/* <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
                                     <BarChart3 className="w-4 h-4 text-blue-600" />
+                                    {rentCardTitle}
+                                  </div> */}
+                                  <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
+                                    <img
+                                      src={graphHighIcon.src}
+                                      alt="Graph"
+                                      className="w-4 h-4 shrink-0"
+                                    />
                                     {rentCardTitle}
                                   </div>
                                   <p className="text-lg font-bold text-gray-900">
                                     {rentPrimaryLabel}
                                   </p>
-                                  <p className="text-xs text-gray-600 mt-1">
+                                  {/* <p className="text-xs text-gray-600 mt-1">
                                     {rentSubline}
+                                  </p> */}
+
+                                  <p className="text-xs text-emerald-600 mt-1 font-medium">
+                                    Auto-pay active
                                   </p>
-                                  {!isDay ? (
-                                    <p className="text-xs text-emerald-600 mt-1 font-medium">
-                                      Auto-pay active
-                                    </p>
-                                  ) : null}
                                 </div>
-                                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                                <div className="rounded-lg border-2 border-[#B9F8CF] bg-[#F0FDF4] p-4">
                                   <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
                                     <Shield className="w-4 h-4 text-emerald-600" />
                                     Security deposit
@@ -995,7 +1046,7 @@ export default function RentalCommandCenter() {
                                     Refundable
                                   </p>
                                 </div>
-                                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                                {/* <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
                                   <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
                                     <Calendar className="w-4 h-4 text-violet-600" />
                                     Next payment
@@ -1003,9 +1054,27 @@ export default function RentalCommandCenter() {
                                   <p className="text-lg font-bold text-gray-900">
                                     {nextPay}
                                   </p>
+                                </div> */}
+                                <div className="rounded-lg border-2 border-[#E9D4FF] bg-gray-[#FAF5FF] p-4">
+                                  <div className="flex items-center gap-2 text-gray-500 text-xs font-medium mb-2">
+                                    <Calendar className="w-4 h-4 text-violet-600" />
+                                    Next payment
+                                  </div>
+                                  <p className="text-lg font-bold text-gray-900">
+                                    {end.toLocaleString('en-IN', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })}
+                                  </p>
+                                  {/* <p className="text-xs text-gray-500 mt-1">
+                                    {isEnded
+                                      ? 'Tenure completed'
+                                      : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+                                  </p> */}
                                 </div>
                               </div>
-
+                              {/* 
                               {!isEnded ? (
                                 <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-4">
                                   <p className="text-sm text-gray-700">
@@ -1018,6 +1087,50 @@ export default function RentalCommandCenter() {
                                     </span>{' '}
                                     <span className="text-blue-600">
                                       (Discounted!)
+                                    </span>
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExtendState({
+                                        open: true,
+                                        row: {
+                                          order,
+                                          line,
+                                          product,
+                                          start,
+                                          end,
+                                          tenureUnit,
+                                        },
+                                        selectedPlanId: '',
+                                      })
+                                    }
+                                    className="inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                                  >
+                                    <Clock className="w-4 h-4" />
+                                    Extend tenure
+                                  </button>
+                                </div>
+                              ) : null} */}
+
+                              {!isEnded && longestPlan ? (
+                                <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-4">
+                                  <p className="text-sm text-gray-700">
+                                    <span className="block font-bold text-black text-lg">
+                                      Want to keep it longer?
+                                    </span>
+
+                                    <span className="block">
+                                      Extend up to{' '}
+                                      <span className="font-semibold text-blue-700">
+                                        ₹{formatMoney(discountedPerUnit)}
+                                        {isDay ? '/day' : '/mo'}
+                                      </span>{' '}
+                                      {cardOfferDiscount > 0 && (
+                                        <span className="text-blue-600">
+                                          (Discounted!)
+                                        </span>
+                                      )}
                                     </span>
                                   </p>
                                   <button
@@ -1082,7 +1195,7 @@ export default function RentalCommandCenter() {
                                   }
                                   className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-50"
                                 >
-                                  <Package className="w-4 h-4" />
+                                  <Truck className="w-4 h-4" />
                                   Request return / Pickup
                                 </button>
                                 <button
