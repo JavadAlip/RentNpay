@@ -6,6 +6,10 @@ import { getAllVendors } from '../../../redux/slices/adminSlice';
 import Link from 'next/link';
 import { apiCreateVendorProfile } from '@/service/api';
 import { toast } from 'react-toastify';
+import vendorShopIcon from '@/assets/icons/vendor-shop.png';
+import { Search } from 'lucide-react';
+import redAlertIcon from '@/assets/icons/red-alert.png';
+import vendorProfileIcon from '@/assets/icons/vendor-profile.png';
 
 function StorefrontHeaderIcon() {
   return (
@@ -65,7 +69,9 @@ function VerifiedOrangeTick() {
 
 const AllVendors = () => {
   const dispatch = useDispatch();
-  const { vendors, vendorsLoading, error } = useSelector((state) => state.admin);
+  const { vendors, vendorsLoading, error } = useSelector(
+    (state) => state.admin,
+  );
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -139,7 +145,8 @@ const AllVendors = () => {
     const list = vendors || [];
     return {
       totalVendors: list.length,
-      pendingVerification: list.filter((v) => v.kycStatus !== 'approved').length,
+      pendingVerification: list.filter((v) => v.kycStatus !== 'approved')
+        .length,
       activeStores: list.filter((v) => Number(v.productsCount || 0) > 0).length,
     };
   }, [vendors]);
@@ -192,7 +199,9 @@ const AllVendors = () => {
       setForm({ fullName: '', emailAddress: '', password: '' });
       setCreateOpen(false);
     } catch (err) {
-      setCreateError(err.response?.data?.message || 'Failed to create vendor profile.');
+      setCreateError(
+        err.response?.data?.message || 'Failed to create vendor profile.',
+      );
     } finally {
       setCreating(false);
     }
@@ -202,13 +211,31 @@ const AllVendors = () => {
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <StorefrontHeaderIcon />
             <div className="min-w-0 text-left">
               <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
                 All Partners & Vendors
               </h1>
               <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                Manage vendor profiles, verification status, and inventory
+              </p>
+            </div>
+          </div> */}
+          <div className="flex items-center gap-2  min-w-0">
+            <span className="inline-flex items-center justify-center">
+              <img
+                src={vendorShopIcon.src}
+                alt="Vendors"
+                className="w-16 h-16 shrink-0  mt-2"
+              />
+            </span>
+
+            <div className="min-w-0 text-left">
+              <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                All Partners & Vendors
+              </h1>
+              <p className=" text-sm  text-gray-500">
                 Manage vendor profiles, verification status, and inventory
               </p>
             </div>
@@ -223,20 +250,41 @@ const AllVendors = () => {
         </div>
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-            <p className="text-[11px] text-gray-500">TOTAL VENDORS</p>
+          <div className="rounded-xl border border-[#BEDBFF] bg-[#EEF2FF] px-4 py-3">
+            <p className="text-xs font-semibold text-gray-500">TOTAL VENDORS</p>
             <p className="text-3xl font-semibold text-gray-900 mt-1">
               {stats.totalVendors.toLocaleString('en-IN')}
             </p>
           </div>
-          <div className="rounded-xl border border-rose-100 bg-rose-50/50 px-4 py-3">
-            <p className="text-[11px] text-gray-500">PENDING VERIFICATION</p>
+          {/* <div className="rounded-xl border border-[#FFC9C9] bg-[#FFF1F2] px-4 py-3">
+            <p className="text-xs font-semibold text-gray-500">
+              PENDING VERIFICATION
+            </p>
+            <p className="text-3xl font-semibold text-rose-600 mt-1">
+              {stats.pendingVerification.toLocaleString('en-IN')}
+            </p>
+          </div> */}
+          <div className="rounded-xl border border-[#FFC9C9] bg-[#FFF1F2] px-4 py-3">
+            {/* Top row */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500">
+                PENDING VERIFICATION
+              </p>
+
+              <img
+                src={redAlertIcon.src}
+                alt="Alert"
+                className="w-4 h-4 shrink-0"
+              />
+            </div>
+
+            {/* Count */}
             <p className="text-3xl font-semibold text-rose-600 mt-1">
               {stats.pendingVerification.toLocaleString('en-IN')}
             </p>
           </div>
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
-            <p className="text-[11px] text-gray-500">ACTIVE STORES</p>
+          <div className="rounded-xl border border-[#B9F8CF] bg-[#ECFDF5] px-4 py-3">
+            <p className="text-xs font-semibold text-gray-500">ACTIVE STORES</p>
             <p className="text-3xl font-semibold text-emerald-600 mt-1">
               {stats.activeStores.toLocaleString('en-IN')}
             </p>
@@ -244,12 +292,18 @@ const AllVendors = () => {
         </div>
 
         <div className="mt-4 flex flex-col lg:flex-row gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by Name, Shop Name, or ID..."
-            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl text-sm"
-          />
+          <div className="relative flex-1">
+            {/* Icon */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+
+            {/* Input */}
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by Name, Shop Name, or ID..."
+              className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => setActiveFilter('kyc')}
@@ -290,9 +344,13 @@ const AllVendors = () => {
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr className="text-gray-500">
-                <th className="px-4 py-3 text-left font-medium">Vendor Profile</th>
+                <th className="px-4 py-3 text-left font-medium">
+                  Vendor Profile
+                </th>
                 <th className="px-4 py-3 text-left font-medium">Products</th>
-                <th className="px-4 py-3 text-left font-medium">Domain / Vertical</th>
+                <th className="px-4 py-3 text-left font-medium">
+                  Domain / Vertical
+                </th>
                 <th className="px-4 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-center font-medium">Actions</th>
               </tr>
@@ -306,16 +364,30 @@ const AllVendors = () => {
                   .slice(0, 2)
                   .toUpperCase();
                 return (
-                  <tr key={v._id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr
+                    key={v._id}
+                    className="border-t border-gray-100 hover:bg-gray-50"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
+                        {/* <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
                           {initials}
+                        </div> */}
+                        <div className="w-10 h-10 rounded-xl overflow-hidden">
+                          <img
+                            src={vendorProfileIcon.src}
+                            alt="Vendor"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="font-semibold text-gray-900">{v.fullName}</p>
-                            {v.kycStatus === 'approved' ? <VerifiedOrangeTick /> : null}
+                            <p className="font-semibold text-gray-900">
+                              {v.fullName}
+                            </p>
+                            {v.kycStatus === 'approved' ? (
+                              <VerifiedOrangeTick />
+                            ) : null}
                           </div>
                           <p className="text-xs text-gray-500">
                             #VEN-{String(v._id).slice(-3).toUpperCase()}
@@ -327,10 +399,14 @@ const AllVendors = () => {
                       {(v.productsCount || 0).toLocaleString('en-IN')} Products
                     </td>
                     <td className="px-4 py-3 text-gray-700">
-                      {(v.productsCount || 0) > 0 ? 'Electronics' : 'Uncategorized'}
+                      {(v.productsCount || 0) > 0
+                        ? 'Electronics'
+                        : 'Uncategorized'}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-gray-900">{v.fullName}</p>
+                      <p className="font-semibold text-gray-900">
+                        {v.fullName}
+                      </p>
                     </td>
                     <td className="px-4 py-3 align-middle">
                       <div className="flex justify-center items-center">
@@ -361,21 +437,21 @@ const AllVendors = () => {
                               <circle cx="12" cy="18" r="1.5" />
                             </svg>
                           </button>
-                        {actionMenuId === String(v._id) ? (
-                          <div
-                            role="menu"
-                            className="absolute left-1/2 top-full z-20 mt-1 min-w-[9rem] -translate-x-1/2 rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                          >
-                            <Link
-                              role="menuitem"
-                              href={`/all-vendors/${v._id}`}
-                              onClick={() => setActionMenuId(null)}
-                              className="block px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                          {actionMenuId === String(v._id) ? (
+                            <div
+                              role="menu"
+                              className="absolute left-1/2 top-full z-20 mt-1 min-w-[9rem] -translate-x-1/2 rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
                             >
-                              Details
-                            </Link>
-                          </div>
-                        ) : null}
+                              <Link
+                                role="menuitem"
+                                href={`/all-vendors/${v._id}`}
+                                onClick={() => setActionMenuId(null)}
+                                className="block px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                              >
+                                Details
+                              </Link>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -384,7 +460,10 @@ const AllVendors = () => {
               })}
               {pagedVendors.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="px-4 py-10 text-center text-gray-500"
+                  >
                     No vendors found.
                   </td>
                 </tr>
@@ -395,7 +474,8 @@ const AllVendors = () => {
 
         <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between text-sm">
           <p className="text-gray-500">
-            Showing {(currentPage - 1) * pageSize + (pagedVendors.length ? 1 : 0)}-
+            Showing{' '}
+            {(currentPage - 1) * pageSize + (pagedVendors.length ? 1 : 0)}-
             {(currentPage - 1) * pageSize + pagedVendors.length} of{' '}
             {filteredVendors.length.toLocaleString('en-IN')}
           </p>
@@ -407,7 +487,9 @@ const AllVendors = () => {
             >
               Prev
             </button>
-            <span className="px-3 py-1.5 rounded-lg bg-blue-600 text-white">{currentPage}</span>
+            <span className="px-3 py-1.5 rounded-lg bg-blue-600 text-white">
+              {currentPage}
+            </span>
             <button
               disabled={currentPage === totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -423,7 +505,9 @@ const AllVendors = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-2xl">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Create Vendor Profile</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Create Vendor Profile
+              </h3>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
