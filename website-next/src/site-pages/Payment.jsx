@@ -4,8 +4,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../store/slices/cartSlice';
-import { apiCreateOrder } from '@/lib/api';
-import { Building2, CheckCircle2, CreditCard, Landmark, Smartphone } from 'lucide-react';
+import { apiCreateOrder, apiExtendMyOrderTenure } from '@/lib/api';
+import { toast } from 'react-toastify';
+import {
+  Building2,
+  CheckCircle2,
+  CreditCard,
+  Landmark,
+  Smartphone,
+} from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 function safeParse(json) {
   try {
@@ -16,6 +24,9 @@ function safeParse(json) {
 }
 
 export default function Payment() {
+  const searchParams = useSearchParams();
+  const isExtensionMode = searchParams.get('mode') === 'extension';
+  const [pendingExtension, setPendingExtension] = useState(null);
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -29,7 +40,8 @@ export default function Payment() {
   // (for both day-wise and month-wise rentals).
   const rentalBaseCost = useMemo(() => {
     return items.reduce((sum, i) => {
-      if (!isRentalItem(i)) return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
+      if (!isRentalItem(i))
+        return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
       return sum + Number(i.pricePerDay || 0) * Number(i.quantity || 0);
     }, 0);
   }, [items]);
@@ -43,15 +55,52 @@ export default function Payment() {
   }, [items]);
 
   const deliveryFee = useMemo(() => (items.length ? 99 : 0), [items.length]);
-  const gst = useMemo(() => Math.round(rentalBaseCost * 0.06), [rentalBaseCost]);
+  const gst = useMemo(
+    () => Math.round(rentalBaseCost * 0.06),
+    [rentalBaseCost],
+  );
   const careProtection = useMemo(() => (items.length ? 30 : 0), [items.length]);
 
-  const total = useMemo(() => {
-    return (
-      rentalBaseCost + refundableDepositTotal + deliveryFee + gst + careProtection
-    );
-  }, [rentalBaseCost, refundableDepositTotal, deliveryFee, gst, careProtection]);
+  const extensionTotal = useMemo(() => {
+    if (!isExtensionMode || !pendingExtension) return 0;
+    return Number(pendingExtension.newUnitRent || 0);
+  }, [isExtensionMode, pendingExtension]);
 
+  // const total = useMemo(() => {
+  //   return (
+  //     rentalBaseCost +
+  //     refundableDepositTotal +
+  //     deliveryFee +
+  //     gst +
+  //     careProtection
+  //   );
+  // }, [
+  //   rentalBaseCost,
+  //   refundableDepositTotal,
+  //   deliveryFee,
+  //   gst,
+  //   careProtection,
+  // ]);
+
+  // Replace the final `total` useMemo with:
+  const total = useMemo(() => {
+    if (isExtensionMode) return extensionTotal;
+    return (
+      rentalBaseCost +
+      refundableDepositTotal +
+      deliveryFee +
+      gst +
+      careProtection
+    );
+  }, [
+    isExtensionMode,
+    extensionTotal,
+    rentalBaseCost,
+    refundableDepositTotal,
+    deliveryFee,
+    gst,
+    careProtection,
+  ]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [instructions, setInstructions] = useState('');
 
@@ -66,10 +115,37 @@ export default function Payment() {
   const [cvv, setCvv] = useState('');
   const [nameOnCard, setNameOnCard] = useState('');
 
+  // useEffect(() => {
+  //   // Prevent redirect-to-cart while we are clearing cart as part of a
+  //   // successful "Pay now" flow (we still navigate to payment-successful).
+  //   if (items.length === 0 && !isPaymentSuccessFlowRef.current) {
+  //     router.replace('/cart');
+  //     return;
+  //   }
+
+  //   const addr = safeParse(
+  //     localStorage.getItem('rentpay_checkout_selectedAddress'),
+  //   );
+  //   setSelectedAddress(addr || null);
+
+  //   const ins = safeParse(
+  //     localStorage.getItem('rentpay_checkout_instructions'),
+  //   );
+
+  //   if (isExtensionMode) {
+  //     const raw = localStorage.getItem('rentpay_pending_extension');
+  //     const ext = raw ? safeParse(raw) : null;
+  //     setPendingExtension(ext || null);
+  //   }
+  //   setInstructions(typeof ins === 'string' ? ins : '');
+  // }, [items.length, router]);
+
   useEffect(() => {
-    // Prevent redirect-to-cart while we are clearing cart as part of a
-    // successful "Pay now" flow (we still navigate to payment-successful).
-    if (items.length === 0 && !isPaymentSuccessFlowRef.current) {
+    if (
+      items.length === 0 &&
+      !isPaymentSuccessFlowRef.current &&
+      !isExtensionMode
+    ) {
       router.replace('/cart');
       return;
     }
@@ -83,16 +159,89 @@ export default function Payment() {
       localStorage.getItem('rentpay_checkout_instructions'),
     );
     setInstructions(typeof ins === 'string' ? ins : '');
-  }, [items.length, router]);
+
+    if (isExtensionMode) {
+      const raw = localStorage.getItem('rentpay_pending_extension');
+      const ext = raw ? safeParse(raw) : null;
+      setPendingExtension(ext || null);
+    }
+  }, [items.length, router, isExtensionMode]);
 
   const handlePay = async () => {
+    // At the TOP of the try block inside handlePay, before the existing rental logic:
+    // if (isExtensionMode && pendingExtension) {
+    //   const {
+    //     orderId,
+    //     productId,
+    //     extensionUnit,
+    //     extensionDuration,
+    //     newUnitRent,
+    //   } = pendingExtension;
+    //   const res = await apiExtendMyOrderTenure(orderId, {
+    //     extensionUnit,
+    //     extensionDuration,
+    //     newUnitRent,
+    //     productId,
+    //   });
+    //   const updated = res.data;
+    //   // Patch the order in Redux/local state isn't available here — we re-fetch on /my-rentals
+    //   localStorage.removeItem('rentpay_pending_extension');
+    //   isPaymentSuccessFlowRef.current = true;
+    //   router.push(
+    //     `/my-rentals?extensionSuccess=1&orderId=${encodeURIComponent(orderId)}`,
+    //   );
+    //   return;
+    // }
+
+    if (isExtensionMode && pendingExtension) {
+      const {
+        orderId,
+        productId,
+        extensionUnit,
+        extensionDuration,
+        newUnitRent,
+      } = pendingExtension;
+
+      await apiExtendMyOrderTenure(orderId, {
+        extensionUnit,
+        extensionDuration,
+        newUnitRent,
+        productId,
+      });
+
+      localStorage.removeItem('rentpay_pending_extension');
+
+      //  SHOW TOAST HERE
+      toast.success('Product tenure extended successfully!', {
+        position: 'top-right',
+        autoClose: 2000,
+        theme: 'light',
+      });
+
+      isPaymentSuccessFlowRef.current = true;
+
+      //  Delay redirect so toast is visible
+      setTimeout(() => {
+        router.push(
+          `/my-rentals?extensionSuccess=1&orderId=${encodeURIComponent(orderId)}`,
+        );
+      }, 2000);
+
+      return;
+    }
+    // ... existing rental order code continues below unchanged
     setError('');
     if (!selectedAddress) {
       setError('Missing delivery address. Go back to checkout.');
       return;
     }
     if (method === 'card') {
-      if (!cardNumber.trim() || !expiry.trim() || !cvv.trim() || !nameOnCard.trim()) {
+      if (
+        !cardNumber.trim() ||
+        !expiry.trim() ||
+        !cvv.trim() ||
+        !nameOnCard.trim()
+      ) {
         setError('Please fill card details.');
         return;
       }
@@ -156,7 +305,9 @@ export default function Payment() {
         </p>
 
         <div className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Select Payment Mode</h2>
+          <h2 className="text-sm font-semibold text-gray-700">
+            Select Payment Mode
+          </h2>
 
           <div className="mt-4 space-y-3">
             <label
@@ -206,7 +357,9 @@ export default function Payment() {
                 />
                 <CreditCard className="mt-0.5 h-4 w-4 text-gray-500" />
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900">Credit / Debit Card</div>
+                  <div className="font-medium text-gray-900">
+                    Credit / Debit Card
+                  </div>
                   <p className="mt-0.5 text-[11px] text-gray-500">
                     Visa, Mastercard, RuPay
                   </p>
@@ -281,7 +434,8 @@ export default function Payment() {
                         Save this card securely for monthly rent payments
                       </p>
                       <p className="mt-1 text-[10px] text-gray-500">
-                        We can use this card for scheduled debits in future rental renewals.
+                        We can use this card for scheduled debits in future
+                        rental renewals.
                       </p>
                     </div>
                   </label>
@@ -308,7 +462,9 @@ export default function Payment() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="font-medium text-gray-900">Net Banking</div>
+                      <div className="font-medium text-gray-900">
+                        Net Banking
+                      </div>
                       <p className="mt-0.5 text-[11px] text-gray-500">
                         All major banks supported
                       </p>
@@ -322,7 +478,10 @@ export default function Payment() {
 
           {selectedAddress ? (
             <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
-              Delivering to <span className="font-medium text-gray-700">{selectedAddress.fullName}</span>
+              Delivering to{' '}
+              <span className="font-medium text-gray-700">
+                {selectedAddress.fullName}
+              </span>
               {addressLine ? `, ${addressLine}` : ''}.
               {instructions ? ` Instructions: ${instructions}` : ''}
             </div>
@@ -352,4 +511,3 @@ export default function Payment() {
     </div>
   );
 }
-

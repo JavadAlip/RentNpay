@@ -7,7 +7,6 @@ import {
   Sofa,
   BarChart3,
   Shield,
-  Calendar,
   Clock,
   Package,
   Wrench,
@@ -20,12 +19,14 @@ import {
   IndianRupee,
   Star,
   Camera,
+  Calendar,
 } from 'lucide-react';
 import {
   apiExtendMyOrderTenure,
   apiGetMyOrders,
   apiSubmitMyIssueReport,
   apiSubmitMyReturnRequest,
+  apiGetPublicActiveOffers,
 } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import {
@@ -39,6 +40,7 @@ import {
   lineEligibleForRentalHub,
 } from '@/lib/orderRentalUtils';
 import PickupScheduledModal from '@/components/PickupScheduledModal';
+import rentalSaveIcon from '@/assets/icons/rental-save.png';
 
 function flattenRentals(orders) {
   const rows = [];
@@ -124,6 +126,32 @@ function daysBetween(startDate, endDate) {
   return Math.floor(ms / 86400000);
 }
 
+// function normalizeExtensionPlans(product, tenureUnit) {
+//   const cfgs = Array.isArray(product?.rentalConfigurations)
+//     ? product.rentalConfigurations
+//     : [];
+//   const out = cfgs
+//     .map((cfg, idx) => {
+//       const unit =
+//         String(cfg?.periodUnit || '').toLowerCase() === 'day' ? 'day' : 'month';
+//       if (unit !== tenureUnit) return null;
+//       const months = Math.max(0, Number(cfg?.months || 0));
+//       const days = Math.max(0, Number(cfg?.days || 0));
+//       const duration = unit === 'day' ? days : months;
+//       if (duration <= 0) return null;
+//       const unitRent = Number(cfg?.customerRent || cfg?.pricePerDay || 0);
+//       if (!Number.isFinite(unitRent) || unitRent <= 0) return null;
+//       return {
+//         id: `${unit}-${duration}-${idx}`,
+//         unit,
+//         duration,
+//         unitRent,
+//       };
+//     })
+//     .filter(Boolean)
+//     .sort((a, b) => a.duration - b.duration);
+//   return out;
+// }
 function normalizeExtensionPlans(product, tenureUnit) {
   const cfgs = Array.isArray(product?.rentalConfigurations)
     ? product.rentalConfigurations
@@ -143,7 +171,7 @@ function normalizeExtensionPlans(product, tenureUnit) {
         id: `${unit}-${duration}-${idx}`,
         unit,
         duration,
-        unitRent,
+        unitRent, // base price before offer
       };
     })
     .filter(Boolean)
@@ -158,6 +186,7 @@ export default function RentalCommandCenter() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [offersByProduct, setOffersByProduct] = useState({});
   const [extendState, setExtendState] = useState({
     open: false,
     row: null,
@@ -269,6 +298,13 @@ export default function RentalCommandCenter() {
     router,
   ]);
 
+  // const extensionPlans = useMemo(() => {
+  //   if (!extendState.row) return [];
+  //   return normalizeExtensionPlans(
+  //     extendState.row.product,
+  //     extendState.row.tenureUnit,
+  //   );
+  // }, [extendState.row]);
   const extensionPlans = useMemo(() => {
     if (!extendState.row) return [];
     return normalizeExtensionPlans(
@@ -447,7 +483,10 @@ export default function RentalCommandCenter() {
             : o,
         ),
       );
-      pushToast('Issue reported successfully. Our team will review it shortly.', 'success');
+      pushToast(
+        'Issue reported successfully. Our team will review it shortly.',
+        'success',
+      );
       closeIssueModal();
     } catch (err) {
       pushToast(
@@ -570,6 +609,25 @@ export default function RentalCommandCenter() {
     );
   }, [returnState.open, returnState.row]);
 
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    Promise.all([apiGetMyOrders(), apiGetPublicActiveOffers()])
+      .then(([ordRes, offRes]) => {
+        setOrders(ordRes.data || []);
+        const map = {};
+        (offRes.data?.offers || []).forEach((o) => {
+          map[String(o.productId)] = o;
+        });
+        setOffersByProduct(map);
+      })
+      .catch((err) => {
+        setOrders([]);
+        setError(err.response?.data?.message || 'Failed to load rentals.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   const returnCalc = useMemo(() => {
     if (!returnState.row || !returnState.pickupDateIso) return null;
     const selected = new Date(returnState.pickupDateIso);
@@ -616,6 +674,61 @@ export default function RentalCommandCenter() {
     };
   }, [returnState]);
 
+  // const handleConfirmExtension = async () => {
+  //   if (!extendState.row || !selectedExtensionPlan) return;
+  //   const orderId = String(extendState.row.order?._id || '');
+  //   if (!orderId) return;
+
+  //   // const increment = Number(selectedExtensionPlan.duration || 0);
+  //   // if (!Number.isFinite(increment) || increment <= 0) return;
+
+  //   // const productId = String(extendState.row.product?._id || '');
+  //   // In RentalCommandCenter — replace the try block inside handleConfirmExtension
+  //   const increment = Number(selectedExtensionPlan.duration || 0);
+  //   if (!Number.isFinite(increment) || increment <= 0) return;
+  //   const productId = String(extendState.row.product?._id || '');
+
+  //   // Store extension intent for the payment page to pick up
+  //   localStorage.setItem(
+  //     'rentpay_pending_extension',
+  //     JSON.stringify({
+  //       orderId,
+  //       productId,
+  //       extensionUnit: selectedExtensionPlan.unit,
+  //       extensionDuration: increment,
+  //       newUnitRent: selectedExtensionPlan.unitRent,
+  //       label: `${selectedExtensionPlan.duration} ${selectedExtensionPlan.unit === 'day' ? 'day' : 'month'} extension`,
+  //     }),
+  //   );
+
+  //   closeExtendModal();
+  //   router.push('/payment?mode=extension');
+
+  //   try {
+  //     setConfirmingExtend(true);
+  //     const res = await apiExtendMyOrderTenure(orderId, {
+  //       extensionUnit: selectedExtensionPlan.unit,
+  //       extensionDuration: increment,
+  //       newUnitRent: selectedExtensionPlan.unitRent,
+  //       productId,
+  //     });
+  //     const updated = res.data;
+  //     setOrders((prev) =>
+  //       prev.map((o) => (String(o?._id || '') === orderId ? updated : o)),
+  //     );
+  //     pushToast('Tenure extension saved successfully.', 'success');
+  //     closeExtendModal();
+  //   } catch (err) {
+  //     pushToast(
+  //       err?.response?.data?.message ||
+  //         'Failed to extend tenure. Please try again.',
+  //       'error',
+  //     );
+  //   } finally {
+  //     setConfirmingExtend(false);
+  //   }
+  // };
+
   const handleConfirmExtension = async () => {
     if (!extendState.row || !selectedExtensionPlan) return;
     const orderId = String(extendState.row.order?._id || '');
@@ -626,31 +739,22 @@ export default function RentalCommandCenter() {
 
     const productId = String(extendState.row.product?._id || '');
 
-    try {
-      setConfirmingExtend(true);
-      const res = await apiExtendMyOrderTenure(orderId, {
+    // Store extension intent for payment page
+    localStorage.setItem(
+      'rentpay_pending_extension',
+      JSON.stringify({
+        orderId,
+        productId,
         extensionUnit: selectedExtensionPlan.unit,
         extensionDuration: increment,
         newUnitRent: selectedExtensionPlan.unitRent,
-        productId,
-      });
-      const updated = res.data;
-      setOrders((prev) =>
-        prev.map((o) => (String(o?._id || '') === orderId ? updated : o)),
-      );
-      pushToast('Tenure extension saved successfully.', 'success');
-      closeExtendModal();
-    } catch (err) {
-      pushToast(
-        err?.response?.data?.message ||
-          'Failed to extend tenure. Please try again.',
-        'error',
-      );
-    } finally {
-      setConfirmingExtend(false);
-    }
-  };
+        label: `${selectedExtensionPlan.duration} ${selectedExtensionPlan.unit === 'day' ? 'day' : 'month'} extension`,
+      }),
+    );
 
+    closeExtendModal();
+    router.push('/payment?mode=extension');
+  };
   return (
     <div className="min-h-screen bg-[#F4F6FB] pb-12">
       <div className="max-w-6xl mx-auto px-4 py-8 lg:py-10">
@@ -985,9 +1089,12 @@ export default function RentalCommandCenter() {
                                   type="button"
                                   onClick={() =>
                                     setIssueState((prev) => {
-                                      (prev.photoPreviews || []).forEach((item) => {
-                                        if (item?.url) URL.revokeObjectURL(item.url);
-                                      });
+                                      (prev.photoPreviews || []).forEach(
+                                        (item) => {
+                                          if (item?.url)
+                                            URL.revokeObjectURL(item.url);
+                                        },
+                                      );
                                       return {
                                         open: true,
                                         row: {
@@ -1054,12 +1161,18 @@ export default function RentalCommandCenter() {
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl rounded-tr-2xl rounded-br-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex items-start justify-between p-5 border-b border-gray-100">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-black">
                   Extend your Rental
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
+                {/* <p className="text-sm text-gray-600 mt-1">
                   For{' '}
                   {extendState.row.product?.productName || 'this rental item'}
+                </p> */}
+                <p className="text-sm text-[#64748B] mt-1">
+                  For{' '}
+                  <span className="font-bold text-black">
+                    {extendState.row.product?.productName || 'this rental item'}
+                  </span>
                 </p>
               </div>
               <button
@@ -1073,21 +1186,51 @@ export default function RentalCommandCenter() {
             </div>
 
             <div className="p-5 space-y-6">
-              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              {/* <div className="rounded-lg border font-bold border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
                 Current tenure ends:{' '}
-                <span className="font-semibold">
+                <span className="font-normal">
                   {formatShortDate(extendState.row.end)}
+                </span>
+              </div> */}
+              <div className="rounded-lg border font-bold border-[#BEDBFF] bg-[#EFF6FF] px-3 py-2 text-sm text-[#1C398E] flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-[#1C398E]" />
+                <span>
+                  Current tenure ends:{' '}
+                  <span className="font-normal">
+                    {formatShortDate(extendState.row.end)}
+                  </span>
                 </span>
               </div>
 
               <div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-1xl font-semibold text-gray-900 mb-3">
                   Choose Extension Duration
                 </h3>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {extensionPlans.map((plan) => {
                     const active = selectedExtensionPlan?.id === plan.id;
                     const unitLabel = plan.unit === 'day' ? 'day' : 'mo';
+
+                    // Get offer for this product (same as RentPrdctMain)
+                    const productOffer =
+                      offersByProduct[
+                        String(extendState.row?.product?._id || '')
+                      ];
+                    const offerDiscount = Number(
+                      productOffer?.discountPercent || 0,
+                    );
+                    const hasOffer = offerDiscount > 0;
+                    const displayPrice = hasOffer
+                      ? Math.max(
+                          0,
+                          Math.round(
+                            plan.unitRent -
+                              (plan.unitRent * offerDiscount) / 100,
+                          ),
+                        )
+                      : plan.unitRent;
+
                     return (
                       <button
                         key={plan.id}
@@ -1098,19 +1241,39 @@ export default function RentalCommandCenter() {
                             selectedPlanId: plan.id,
                           }))
                         }
-                        className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                        className={`relative rounded-xl border px-4 py-3 text-left transition-colors ${
                           active
-                            ? 'border-orange-400 bg-orange-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-300'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
-                        <p className="font-semibold text-gray-900">
+                        {hasOffer && (
+                          <span className="absolute -top-2.5 right-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            -{offerDiscount}%
+                          </span>
+                        )}
+
+                        <p className="font-semibold text-base text-center text-black mt-1">
                           +{plan.duration}{' '}
                           {plan.unit === 'day' ? 'Days' : 'Months'}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          ₹{formatMoney(plan.unitRent)}/{unitLabel}
-                        </p>
+
+                        {/* Discounted price */}
+                        {/* <p className="text-sm text-gray-700 mt-0.5">
+                          ₹{formatMoney(displayPrice)}
+                          {hasOffer && (
+                            <span className="text-gray-400 line-through ml-1.5 text-xs">
+                              ₹{formatMoney(plan.unitRent)}
+                            </span>
+                          )}
+                        </p> */}
+
+                        {/* Save amount in green */}
+                        {hasOffer && (
+                          <p className="text-xs text-center text-emerald-600 font-semibold mt-1">
+                            Save ₹{formatMoney(plan.unitRent - displayPrice)}
+                          </p>
+                        )}
                       </button>
                     );
                   })}
@@ -1119,7 +1282,7 @@ export default function RentalCommandCenter() {
 
               {selectedExtensionPlan ? (
                 <>
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  {/* <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <div className="grid grid-cols-3 items-center gap-2">
                       <div>
                         <p className="text-sm text-gray-600">Current rate</p>
@@ -1142,78 +1305,299 @@ export default function RentalCommandCenter() {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
 
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <h4 className="text-2xl font-semibold text-gray-900 mb-3">
-                      Updated Timeline
-                    </h4>
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <div>
-                        <p className="font-medium">Current End</p>
-                        <p className="text-gray-900 font-semibold">
-                          {formatShortDate(extendState.row.end)}
-                        </p>
-                      </div>
-                      <span className="text-amber-600 font-semibold">
-                        +{selectedExtensionPlan.duration}{' '}
-                        {selectedExtensionPlan.unit === 'day'
-                          ? 'days'
-                          : 'months'}
-                      </span>
-                      <div className="text-right">
-                        <p className="font-medium">New End</p>
-                        <p className="text-amber-700 font-semibold">
-                          {formatShortDate(
-                            selectedExtensionPlan.unit === 'day'
-                              ? new Date(
-                                  extendState.row.end.getFullYear(),
-                                  extendState.row.end.getMonth(),
-                                  extendState.row.end.getDate() +
-                                    selectedExtensionPlan.duration,
-                                )
-                              : new Date(
-                                  extendState.row.end.getFullYear(),
-                                  extendState.row.end.getMonth() +
-                                    selectedExtensionPlan.duration,
-                                  extendState.row.end.getDate(),
-                                ),
+                  {(() => {
+                    const productOffer =
+                      offersByProduct[
+                        String(extendState.row?.product?._id || '')
+                      ];
+                    const offerDiscount = Number(
+                      productOffer?.discountPercent || 0,
+                    );
+                    const hasOffer = offerDiscount > 0;
+                    const dur = selectedExtensionPlan.duration;
+                    const unitLabel =
+                      selectedExtensionPlan.unit === 'day' ? 'day' : 'mo';
+                    const durationLabel =
+                      selectedExtensionPlan.unit === 'day'
+                        ? `${dur} day${dur > 1 ? 's' : ''}`
+                        : `${dur} month${dur > 1 ? 's' : ''}`;
+
+                    // unitRent is the TOTAL price for the full duration (e.g. ₹1000 for 3days)
+                    // Divide by duration to get per-day/mo display price
+                    const currentTotalPrice = selectedExtensionPlan.unitRent; // e.g. 1000 for 3days
+                    const newTotalPrice = hasOffer
+                      ? Math.max(
+                          0,
+                          Math.round(
+                            currentTotalPrice -
+                              (currentTotalPrice * offerDiscount) / 100,
+                          ),
+                        )
+                      : currentTotalPrice; // e.g. 850 for 3days after 15% off
+
+                    // Per-unit display (divide total by duration)
+                    const currentPerUnit = Math.round(currentTotalPrice / dur); // 1000/3 = 333
+                    const newPerUnit = Math.round(newTotalPrice / dur); // 850/3 = 283
+
+                    // Savings = difference in total prices
+                    const totalSaved = currentTotalPrice - newTotalPrice; // 1000 - 850 = 150
+
+                    return (
+                      <>
+                        {/* Rate comparison */}
+                        <div className="rounded-xl border border-[#B9F8CF] bg-[#ECFDF5] p-4">
+                          {/* <div className="grid grid-cols-3 items-center gap-2">
+                            <div>
+                              <p className="text-sm text-[#64748B]">
+                                Current rate
+                              </p>
+                              <p className="text-3xl font-bold text-[#64748B] line-through decoration-1">
+                                ₹{formatMoney(currentPerUnit)}/{unitLabel}
+                              </p>
+                            </div>
+                            <div className="flex  justify-center text-[#16A34A]">
+                              <ArrowRight className="w-8 font-bold h-8" />
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">New rate</p>
+                              <p className="text-3xl font-bold text-[#16A34A]">
+                                ₹{formatMoney(newPerUnit)}/{unitLabel}
+                              </p>
+                         
+                            </div>
+                          </div> */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-3 text-center sm:text-left">
+                            {/* Current Rate */}
+                            <div>
+                              <p className="text-sm text-[#64748B]">
+                                Current rate
+                              </p>
+                              <p className="text-2xl sm:text-3xl font-bold text-[#64748B] line-through decoration-1">
+                                ₹{formatMoney(currentPerUnit)}/{unitLabel}
+                              </p>
+                            </div>
+
+                            {/* Arrow */}
+                            <div className="flex justify-center text-[#16A34A]">
+                              <ArrowRight className="w-6 h-6 sm:w-8 sm:h-8" />
+                            </div>
+
+                            {/* New Rate */}
+                            <div className="sm:text-right">
+                              <p className="text-sm text-gray-600">New rate</p>
+                              <p className="text-2xl sm:text-3xl font-bold text-[#16A34A]">
+                                ₹{formatMoney(newPerUnit)}/{unitLabel}
+                              </p>
+                            </div>
+                          </div>
+                          {/* Save banner */}
+                          {totalSaved > 0 && (
+                            <div className="w-full mt-4 rounded-full bg-[#00C950] text-white py-3 text-lg font-semibold flex items-center justify-center gap-2">
+                              <img
+                                src={rentalSaveIcon.src}
+                                alt="Save"
+                                className="w-4 h-4 shrink-0"
+                              />
+                              <span>
+                                Save ₹{formatMoney(totalSaved)} total!
+                              </span>
+                            </div>
                           )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                        </div>
 
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <h4 className="text-2xl font-semibold text-gray-900 mb-3">
-                      Payment Summary
-                    </h4>
-                    <div className="flex items-center justify-between text-sm py-1">
-                      <span className="text-gray-600">
-                        Extension fee (difference)
-                      </span>
-                      <span className="font-semibold text-emerald-600">₹0</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm py-1 border-t border-gray-100 mt-1 pt-2">
-                      <span className="text-gray-600">
-                        Best rental cost (next cycle)
-                      </span>
-                      <span className="font-semibold text-gray-900">
-                        ₹{formatMoney(selectedExtensionPlan.unitRent)}/
-                        {selectedExtensionPlan.unit === 'day' ? 'day' : 'mo'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-3 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-blue-600" />
-                      Your deposit remains active and refundable at tenure end.
-                    </p>
-                  </div>
+                        {/* Updated Timeline */}
+                        {/* <div className="rounded-xl border border-gray-200 p-4">
+                          <h4 className="text-1xl font-semibold text-gray-900 mb-3">
+                            Updated Timeline
+                          </h4>
+                          <div className="flex items-center justify-between text-sm text-gray-600">
+                            <div>
+                              <p className="font-medium">Current End</p>
+                              <p className="text-gray-900 font-semibold">
+                                {formatShortDate(extendState.row.end)}
+                              </p>
+                            </div>
+                            <span className="text-amber-600 font-semibold">
+                              +{selectedExtensionPlan.duration}{' '}
+                              {selectedExtensionPlan.unit === 'day'
+                                ? 'days'
+                                : 'months'}
+                            </span>
+                            <div className="text-right">
+                              <p className="font-medium">New End</p>
+                              <p className="text-amber-700 font-semibold">
+                                {formatShortDate(
+                                  selectedExtensionPlan.unit === 'day'
+                                    ? new Date(
+                                        extendState.row.end.getFullYear(),
+                                        extendState.row.end.getMonth(),
+                                        extendState.row.end.getDate() +
+                                          selectedExtensionPlan.duration,
+                                      )
+                                    : new Date(
+                                        extendState.row.end.getFullYear(),
+                                        extendState.row.end.getMonth() +
+                                          selectedExtensionPlan.duration,
+                                        extendState.row.end.getDate(),
+                                      ),
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div> */}
+                        {/* Updated Timeline */}
+                        <div className="space-y-2">
+                          <h4 className="text-1xl font-bold text-black ">
+                            Updated Timeline
+                          </h4>
+                          <div
+                            className="rounded-xl p-5"
+                            style={{
+                              background: '#F9FAFB',
+                              border: '1px solid #E5E7EB',
+                            }}
+                          >
+                            {(() => {
+                              const newEnd =
+                                selectedExtensionPlan.unit === 'day'
+                                  ? new Date(
+                                      extendState.row.end.getFullYear(),
+                                      extendState.row.end.getMonth(),
+                                      extendState.row.end.getDate() +
+                                        selectedExtensionPlan.duration,
+                                    )
+                                  : new Date(
+                                      extendState.row.end.getFullYear(),
+                                      extendState.row.end.getMonth() +
+                                        selectedExtensionPlan.duration,
+                                      extendState.row.end.getDate(),
+                                    );
 
-                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                              const durationLabel = `+${selectedExtensionPlan.duration} ${selectedExtensionPlan.unit === 'day' ? 'months' : 'months'}`;
+
+                              return (
+                                <div className="relative">
+                                  {/* Timeline track */}
+                                  <div className="flex items-center gap-0">
+                                    {/* Current End dot */}
+                                    <div className="flex flex-col items-center shrink-0">
+                                      <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                    </div>
+
+                                    {/* Orange line with duration label */}
+                                    <div className="flex-1 relative mx-1">
+                                      <div className="h-0.5 bg-[#F97316] w-full" />
+                                      {/* Arrow head */}
+                                      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1">
+                                        <svg
+                                          width="8"
+                                          height="12"
+                                          viewBox="0 0 8 12"
+                                          fill="none"
+                                        >
+                                          <path
+                                            d="M0 0L8 6L0 12"
+                                            fill="#FB923C"
+                                          />
+                                        </svg>
+                                      </div>
+                                      {/* Duration badge in middle */}
+                                      <div className="absolute left-1/2 -translate-x-1/2 top-3">
+                                        <span className="bg-orange-100 text-[#F97316] text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-orange-200 whitespace-nowrap">
+                                          +{selectedExtensionPlan.duration}{' '}
+                                          {selectedExtensionPlan.unit === 'day'
+                                            ? 'days'
+                                            : 'months'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* New End dot */}
+                                    <div className="flex flex-col items-center shrink-0">
+                                      <div className="w-3 h-3 rounded-full bg-[#F97316]" />
+                                    </div>
+                                  </div>
+
+                                  {/* Labels below */}
+                                  <div className="flex items-start justify-between mt-3">
+                                    <div>
+                                      <p className="text-xs text-gray-500 font-medium">
+                                        Current End
+                                      </p>
+                                      <p className="text-sm font-bold text-gray-800 mt-0.5">
+                                        {formatShortDate(extendState.row.end)}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-xs text-[#F97316] font-medium">
+                                        New End
+                                      </p>
+                                      <p className="text-sm font-bold text-[#F97316] mt-0.5">
+                                        {formatShortDate(newEnd)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Payment Summary */}
+                        <div className="space-y-2">
+                          <h4 className="text-1xl font-bold text-black ">
+                            Payment Summary
+                          </h4>
+                          <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                            <div className="flex items-center justify-between text-sm py-1">
+                              <span className="text-[#64748B]">
+                                Extension fee (difference)
+                              </span>
+                              <span className="font-semibold text-emerald-600">
+                                ₹0
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm py-1 border-t border-gray-100 mt-1 pt-2">
+                              <span className="text-[#64748B]">
+                                Total rental cost ({durationLabel})
+                              </span>
+                              {/* newTotalPrice IS already the total for the full duration — no multiplication */}
+                              <span className="font-semibold text-black">
+                                ₹{formatMoney(newTotalPrice)}
+                              </span>
+                            </div>
+                            {/* <p className="text-sm text-[#64748B] mt-3 flex items-center gap-2">
+                              <Shield className="w-4 h-4 text-blue-600" />
+                              Your deposit remains active and refundable at
+                              tenure end.
+                            </p> */}
+                            <p className="text-sm text-[#64748B] mt-3 flex items-center gap-2">
+                              <Shield className="w-4 h-4 text-blue-600" />
+                              <span>
+                                Your deposit of{' '}
+                                <span className="font-semibold text-black">
+                                  ₹
+                                  {Number(
+                                    extendState?.row?.product
+                                      ?.refundableDeposit || 0,
+                                  ).toLocaleString('en-IN')}
+                                </span>{' '}
+                                remains active and refundable at tenure end.
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
+                  <div className="rounded-xl border border-[#BEDBFF] bg-[#EFF6FF] p-4">
+                    <h4 className="text-1xl font-bold text-black mb-2">
                       Why extend your rental?
                     </h4>
-                    <ul className="space-y-1 text-sm text-gray-700">
+                    <ul className="space-y-1 text-sm text-[#64748B]">
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         Lower rental rates with longer commitments
@@ -2035,9 +2419,7 @@ export default function RentalCommandCenter() {
       ) : null}
 
       {issueState.open && issueState.row ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4"
-        >
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
           <div
             className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             onClick={(e) => e.stopPropagation()}
@@ -2054,7 +2436,10 @@ export default function RentalCommandCenter() {
                   </span>{' '}
                   (Asset ID{' '}
                   <span className="font-semibold text-gray-800">
-                    #{String(issueState.row.order?._id || '').slice(-4).toUpperCase()}
+                    #
+                    {String(issueState.row.order?._id || '')
+                      .slice(-4)
+                      .toUpperCase()}
                   </span>
                   )
                 </p>
@@ -2072,7 +2457,8 @@ export default function RentalCommandCenter() {
             <div className="p-5">
               <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-700 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
-                We are here to help. Please provide details so we can resolve this quickly.
+                We are here to help. Please provide details so we can resolve
+                this quickly.
               </div>
 
               <div className="mt-4">
@@ -2108,7 +2494,10 @@ export default function RentalCommandCenter() {
                         key={opt.id}
                         type="button"
                         onClick={() =>
-                          setIssueState((prev) => ({ ...prev, issueType: opt.id }))
+                          setIssueState((prev) => ({
+                            ...prev,
+                            issueType: opt.id,
+                          }))
                         }
                         className={`rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
                           active
@@ -2226,8 +2615,11 @@ export default function RentalCommandCenter() {
                 />
                 <div className="mt-1 flex justify-between text-[11px] text-gray-500">
                   <span>
-                    {Math.max(0, 10 - String(issueState.description || '').trim().length)} more
-                    characters needed
+                    {Math.max(
+                      0,
+                      10 - String(issueState.description || '').trim().length,
+                    )}{' '}
+                    more characters needed
                   </span>
                   <span>{(issueState.description || '').length}/500</span>
                 </div>
