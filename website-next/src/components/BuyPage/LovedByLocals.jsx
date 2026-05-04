@@ -52,18 +52,40 @@ const LovedByLocals = () => {
               key={idx}
               className="bg-[#f7f7f7] rounded-2xl sm:rounded-3xl px-4 sm:px-6 py-6 sm:py-8 flex flex-col h-full min-w-0"
             >
-              <div className="text-orange-500 text-2xl sm:text-3xl mb-3 sm:mb-4">“</div>
+              {/* <div className="text-orange-500 text-4xl sm:text-3xl mb-3 sm:mb-4">
+                “
+              </div> */}
+              <div className="items-center mb-3 sm:mb-4">
+                {/* Avatar */}
+                <img
+                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${item.name}`}
+                  alt={item.name}
+                  className="w-10 h-10 rounded-full bg-gray-200 mb-2"
+                />
+
+                {/* Quote Icon */}
+                <div className="text-orange-500 text-3xl sm:text-4xl leading-none">
+                  “
+                </div>
+              </div>
 
               <p className="text-xs sm:text-sm md:text-[15px] text-gray-800 leading-relaxed flex-1">
                 {item.text}
               </p>
 
-              <div className="mt-4 sm:mt-6">
-                <div className="h-0.5 w-8 sm:w-10 bg-orange-500 mb-2 sm:mb-3" />
-                <p className="text-xs sm:text-sm font-semibold text-gray-900">
-                  {item.name}
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-500">{item.role}</p>
+              <div className="mt-4 sm:mt-6 flex items-start gap-3">
+                {/* Vertical Line */}
+                <div className="w-1 h-10 bg-orange-500 rounded-full"></div>
+
+                {/* Text */}
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900">
+                    {item.name}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-gray-500">
+                    {item.role}
+                  </p>
+                </div>
               </div>
             </article>
           ))}
