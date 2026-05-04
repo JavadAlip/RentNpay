@@ -866,7 +866,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
         </div>
         <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Link
-            href="/my-payments"
+            href="/my-rentals"
             className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-3 rounded-lg text-white text-sm font-semibold ${ORANGE}`}
           >
             Pay rent

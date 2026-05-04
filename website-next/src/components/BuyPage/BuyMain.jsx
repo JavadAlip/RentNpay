@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { apiGetStorefrontSellStats } from '@/lib/api';
+import buyMainImg from '@/assets/images/buyMain.png';
 
 const buybanner =
   'https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1600&q=80';
@@ -39,9 +40,9 @@ const BuyBannerSection = () => {
     <section className="w-full bg-white py-6 sm:py-10 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto">
         {/* Top banner image */}
-        <div className="rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden shadow-sm border border-gray-200">
+        <div className=" overflow-hidden ">
           <img
-            src={buybanner}
+            src={buyMainImg.src}
             alt="Summer sale banner"
             className="w-full h-48 sm:h-56 md:h-72 lg:h-80 xl:h-[320px] object-cover"
           />
