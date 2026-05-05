@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Info,
   CheckCircle2,
+  CheckCircle,
 } from 'lucide-react';
 import { apiGetMyOrderById, apiCancelMyOrder } from '@/lib/api';
 import {
@@ -106,7 +107,9 @@ function downloadInvoiceStub(order, displayRef, grandTotal) {
     String(order.address || '').trim(),
     `Phone: ${order.phone || ''}`,
   ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([lines.join('\n')], {
+    type: 'text/plain;charset=utf-8',
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -125,11 +128,7 @@ function ShipmentStepper({ order }) {
 
   const stepComplete = [true, packedDone, transitDone, deliveredDone];
   const activeStep =
-    st === 'pending'
-      ? 1
-      : st === 'confirmed' || st === 'shipped'
-        ? 2
-        : -1;
+    st === 'pending' ? 1 : st === 'confirmed' || st === 'shipped' ? 2 : -1;
 
   const lineAfter = (i) => {
     if (i === 0) return true;
@@ -142,7 +141,9 @@ function ShipmentStepper({ order }) {
 
   function StepIcon({ i, done, active }) {
     if (done) {
-      return <Check className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />;
+      return (
+        <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+      );
     }
     if (active && i === 2) {
       return <Truck className="w-5 h-5 sm:w-6 sm:h-6" />;
@@ -248,9 +249,7 @@ export default function OrderTrackPage() {
     policy && !['delivered', 'completed', 'cancelled'].includes(st);
 
   const feeAmount =
-    policy && grandTotal > 0
-      ? Math.round((grandTotal * policy.pct) / 100)
-      : 0;
+    policy && grandTotal > 0 ? Math.round((grandTotal * policy.pct) / 100) : 0;
   const refundAmount = Math.max(0, grandTotal - feeAmount);
 
   const handleCancel = () => {
@@ -286,10 +285,12 @@ export default function OrderTrackPage() {
     return (
       <div className="min-h-[50vh] bg-[#F4F6FB] py-12 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-red-600 font-medium">{error || 'Order not found'}</p>
+          <p className="text-red-600 font-medium">
+            {error || 'Order not found'}
+          </p>
           <Link
             href="/orders"
-            className={`inline-flex items-center gap-2 mt-6 text-sm font-semibold ${ORANGE_TEXT}`}
+            className={`inline-flex items-center gap-2 mt-6 text-sm font-bold ${ORANGE_TEXT}`}
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Orders
@@ -314,7 +315,9 @@ export default function OrderTrackPage() {
             <p className="text-lg font-bold text-gray-900">
               Order #{displayRef}
             </p>
-            <p className="text-sm text-gray-500 mt-2">This order was cancelled.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              This order was cancelled.
+            </p>
           </div>
         </div>
       </div>
@@ -327,7 +330,7 @@ export default function OrderTrackPage() {
   return (
     <div className="min-h-screen bg-[#F4F6FB] py-8 px-4 sm:px-6 pb-16">
       <div className="max-w-3xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        {/* <div className="flex flex-col sm:flex-row bg-white rounded-xl sm:items-start sm:justify-between gap-4">
           <div>
             <Link
               href="/orders"
@@ -352,6 +355,37 @@ export default function OrderTrackPage() {
             <Download className="w-4 h-4" />
             Download Invoice
           </button>
+        </div> */}
+        <div className="flex flex-col sm:flex-row bg-white rounded-xl p-4 sm:p-6 items-start sm:items-start justify-between gap-4 shadow-sm border border-gray-100">
+          <div>
+            <Link
+              href="/orders"
+              className={`inline-flex items-center gap-2 text-sm font-medium ${BLUE_LINK}`}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Orders
+            </Link>
+
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mt-4">
+              Order #{displayRef}
+            </h1>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Placed on {formatOrderDate(order.createdAt)} · Total:
+              <span className="font-bold text-gray-900">
+                ₹{formatMoney(grandTotal)}
+              </span>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className={`${BLUE_BTN} shrink-0 self-start  mt-6 sm:self-auto`}
+            onClick={() => downloadInvoiceStub(order, displayRef, grandTotal)}
+          >
+            <Download className="w-4 h-4" />
+            Download Invoice
+          </button>
         </div>
 
         <div className="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
@@ -360,16 +394,16 @@ export default function OrderTrackPage() {
             <ShipmentStepper order={order} />
           </div>
           {blurb ? (
-            <div className="mt-6 flex gap-3 rounded-lg bg-sky-50 border border-sky-100 px-4 py-3 text-sm text-sky-900">
-              <Package className="w-5 h-5 shrink-0 text-sky-600 mt-0.5" />
-              <p>{blurb}</p>
+            <div className="mt-6 flex gap-2 rounded-lg bg-[#EFF6FF] border-2 border-[#BEDBFF] px-4 py-3 text-sm text-black">
+              <Package className="w-4 h-4 shrink-0 text-black mt-0.5" />
+              <p className="text-sm font-semibold">{blurb}</p>
             </div>
           ) : null}
         </div>
 
         <div className="mt-5 bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
           <h2 className="text-base font-bold text-gray-900">Order Contents</h2>
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <MapPin className="w-4 h-4 text-sky-600" />
@@ -385,7 +419,9 @@ export default function OrderTrackPage() {
                   .join(', ') || order.address}
               </p>
               {order.phone ? (
-                <p className="text-sm text-gray-500 mt-2">Phone: {order.phone}</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Phone: {order.phone}
+                </p>
               ) : null}
             </div>
             <div>
@@ -399,9 +435,53 @@ export default function OrderTrackPage() {
                 Payment successful
               </p>
             </div>
+          </div> */}
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Shipping Address */}
+            <div className="bg-white shadow-md rounded-xl p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <div className="bg-[#EFF6FF] p-1.5 rounded-lg">
+                  <MapPin className="w-4 h-4 text-[#2563EB]" />
+                </div>
+                Shipping Address
+              </div>
+
+              <p className="mt-3 text-sm text-gray-700 leading-relaxed">
+                {order.name}
+                <br />
+                {String(order.address || '')
+                  .split(/[\n,]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .join(', ') || order.address}
+              </p>
+
+              {order.phone ? (
+                <p className="text-sm text-gray-500 mt-2">
+                  Phone: {order.phone}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Payment Method */}
+            <div className="bg-white shadow-md rounded-xl p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <div className="bg-[#F0FDF4] p-1.5 rounded-lg">
+                  <CreditCard className="w-4 h-4 text-[#10B981]" />
+                </div>
+                Payment Method
+              </div>
+
+              <p className="mt-3 text-sm text-gray-700">Paid online</p>
+
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold bg-[#F0FDF4] text-[#10B981] px-2 py-1 rounded-md">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Payment successful
+              </p>
+            </div>
           </div>
 
-          {product ? (
+          {/* {product ? (
             <div className="mt-6 pt-6 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
                 Items
@@ -409,13 +489,9 @@ export default function OrderTrackPage() {
               <ul className="space-y-3">
                 {(order.products || []).map((line, idx) => {
                   const p = line.product;
-                  const pop =
-                    p && typeof p === 'object'
-                      ? p
-                      : null;
+                  const pop = p && typeof p === 'object' ? p : null;
                   const img = productImageUrl(pop?.image || '');
-                  const title =
-                    pop?.productName || pop?.title || 'Rental item';
+                  const title = pop?.productName || pop?.title || 'Rental item';
                   return (
                     <li
                       key={pop?._id || idx}
@@ -448,13 +524,13 @@ export default function OrderTrackPage() {
                 })}
               </ul>
             </div>
-          ) : null}
+          ) : null} */}
         </div>
 
         {showCancel ? (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50/80 p-5 sm:p-6">
             <div className="flex gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-600 shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
               <div>
                 <h2 className="text-base font-bold text-gray-900">
                   Want to cancel?
@@ -466,18 +542,20 @@ export default function OrderTrackPage() {
             </div>
 
             <div className="mt-5 bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                 Order status: {orderStatusLabel(order.status)}
               </p>
-              <div className="mt-3 flex gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-sm text-amber-900">
+              <div className="mt-3 flex gap-2 rounded-lg bg-[#FFFBEB] border border-[#FEE685] px-3 py-2.5 text-xs text-[#973C00]">
                 <Info className="w-4 h-4 shrink-0 mt-0.5" />
                 {policy.message}
               </div>
             </div>
 
             <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm font-bold text-gray-900">Refund breakdown</p>
+              <p className="text-sm font-bold text-gray-900">
+                Refund breakdown
+              </p>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Original amount</span>
@@ -490,7 +568,7 @@ export default function OrderTrackPage() {
                     <span className="text-gray-600">
                       Cancellation fee ({policy.pct}%)
                     </span>
-                    <span className="font-medium text-red-600">
+                    <span className="font-medium text-[#EF4444]">
                       − ₹{formatMoney(feeAmount)}
                     </span>
                   </div>
@@ -501,7 +579,7 @@ export default function OrderTrackPage() {
                 <span className="text-sm font-semibold text-gray-800">
                   Refund amount
                 </span>
-                <span className="text-lg font-bold text-red-600">
+                <span className="text-lg font-bold text-[#EF4444]">
                   ₹{formatMoney(refundAmount)}
                 </span>
               </div>
@@ -511,7 +589,7 @@ export default function OrderTrackPage() {
               type="button"
               disabled={cancelling}
               onClick={handleCancel}
-              className="mt-5 w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold uppercase tracking-wide transition-colors"
+              className="mt-5 w-full py-3.5 rounded-xl bg-[#EF4444] hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold  tracking-wide transition-colors"
             >
               {cancelling
                 ? 'Processing…'
@@ -520,8 +598,7 @@ export default function OrderTrackPage() {
                   : 'Cancel order'}
             </button>
             <p className="text-xs text-gray-500 text-center mt-3">
-              By continuing, you agree to the cancellation fee and refund terms
-              where applicable.
+              By clicking, you agree to the cancellation fee and refund terms
             </p>
           </div>
         ) : null}

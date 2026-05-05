@@ -642,8 +642,8 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             <p className="font-bold text-gray-900">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-            <XCircle className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#FEE2E2] text-[#DC2626] ">
+            <XCircle className="w-3.5 h-3.5 text-[#DC2626]" />
             Cancelled
           </span>
         </div>
@@ -814,8 +814,8 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             <p className="font-bold text-gray-900">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#DCFCE7] text-[#16A34A] ">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />
             Active rental
           </span>
         </div>
@@ -958,8 +958,8 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             <p className="font-bold text-gray-900">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
-            <Truck className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#DBEAFE] text-[#2563EB] ">
+            <Truck className="w-3.5 h-3.5 text-[#2563EB]" />
             Shipped
           </span>
         </div>
