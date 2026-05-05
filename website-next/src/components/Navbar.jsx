@@ -817,7 +817,7 @@ const Navbar = () => {
                 href="/"
                 className="flex shrink-0 items-center justify-self-start"
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
                   R
                 </div>
               </Link>
@@ -871,7 +871,7 @@ const Navbar = () => {
           ) : (
             <div className="flex items-center gap-3 sm:gap-5">
               <Link href="/" className="flex items-center shrink-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl">
                   R
                 </div>
               </Link>
@@ -910,10 +910,17 @@ const Navbar = () => {
                       href="/cart"
                       className="relative flex items-center gap-1 hover:text-black p-1"
                     >
-                      <ShoppingCart size={18} className="w-5 h-5" />
+                      {/* <ShoppingCart size={18} className="w-5 h-5" />
                       {cartCount > 0 && (
-                        <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-500 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
+                        <span className="absolute -top-0.5 -right-1 sm:-top-2 sm:-right-3 bg-red-600 text-white text-[10px] sm:text-xs w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
                           {cartCount}
+                        </span>
+                      )} */}
+                      <ShoppingCart className="w-5 h-5" />
+
+                      {cartCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
+                          {cartCount > 9 ? '9+' : cartCount}
                         </span>
                       )}
                     </Link>
@@ -1031,7 +1038,7 @@ const Navbar = () => {
                       onClick={() => setShowProfileDropdown((prev) => !prev)}
                       className="flex items-center gap-2 hover:text-black p-1"
                     >
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
                         {firstLetter}
                       </div>
                       <span className="hidden md:inline text-sm font-medium">
@@ -1194,7 +1201,7 @@ const Navbar = () => {
             {isAuthenticated && user && (
               <div className="border border-gray-100 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50">
-                  <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
                     {firstLetter}
                   </div>
                   <div className="min-w-0">
