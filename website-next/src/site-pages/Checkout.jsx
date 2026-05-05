@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
-import { MapPin, Store, Star, Navigation } from 'lucide-react';
+import {
+  MapPin,
+  Store,
+  Star,
+  Navigation,
+  Phone,
+  Pencil,
+  Trash2,
+  ShieldCheck,
+  ArrowBigRight,
+  ArrowUpRight,
+  ChevronRight,
+} from 'lucide-react';
 import { syncCart } from '../store/slices/cartSlice';
 import {
   apiGetMyAddresses,
@@ -12,7 +24,10 @@ import {
   apiUpdateAddress,
   apiDeleteAddress,
 } from '@/lib/api';
-import { useAuthModal, AUTH_REDIRECT_SESSION_KEY } from '@/contexts/AuthModalContext';
+import {
+  useAuthModal,
+  AUTH_REDIRECT_SESSION_KEY,
+} from '@/contexts/AuthModalContext';
 
 function getUserId(user) {
   return user?.id || user?._id || null;
@@ -102,7 +117,8 @@ export default function Checkout() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const saved = sessionStorage.getItem('rentpay_checkout_focus_product_id') || '';
+    const saved =
+      sessionStorage.getItem('rentpay_checkout_focus_product_id') || '';
     setCheckoutFocusProductId(saved);
   }, []);
 
@@ -110,7 +126,8 @@ export default function Checkout() {
     if (typeof window === 'undefined') return;
     if (!checkoutFocusProductId) return;
     const existsInCart = items.some(
-      (item) => String(item?.productId || '') === String(checkoutFocusProductId),
+      (item) =>
+        String(item?.productId || '') === String(checkoutFocusProductId),
     );
     if (existsInCart) return;
     sessionStorage.removeItem('rentpay_checkout_focus_product_id');
@@ -120,12 +137,17 @@ export default function Checkout() {
   const primaryPickupStore = useMemo(() => {
     if (!pickupStores.length) return null;
     const primaryProductId = String(
-      checkoutFocusProductId || items?.[items.length - 1]?.productId || items?.[0]?.productId || '',
+      checkoutFocusProductId ||
+        items?.[items.length - 1]?.productId ||
+        items?.[0]?.productId ||
+        '',
     );
     if (!primaryProductId) return pickupStores[0] || null;
     const matched = pickupStores.find((s) =>
       Array.isArray(s?.products)
-        ? s.products.some((p) => String(p?.productId || '') === primaryProductId)
+        ? s.products.some(
+            (p) => String(p?.productId || '') === primaryProductId,
+          )
         : false,
     );
     return matched || pickupStores[0] || null;
@@ -185,7 +207,9 @@ export default function Checkout() {
       })
       .catch((err) => {
         setPickupStores([]);
-        setPickupError(err.response?.data?.message || 'Could not load pickup store details.');
+        setPickupError(
+          err.response?.data?.message || 'Could not load pickup store details.',
+        );
       })
       .finally(() => setPickupLoading(false));
   }, [userId, items]);
@@ -223,7 +247,11 @@ export default function Checkout() {
   };
 
   const handleSaveAddress = () => {
-    if (!form.fullName.trim() || !form.phone.trim() || !form.addressLine.trim()) {
+    if (
+      !form.fullName.trim() ||
+      !form.phone.trim() ||
+      !form.addressLine.trim()
+    ) {
       setError('Please fill name, phone and address line.');
       return;
     }
@@ -287,7 +315,9 @@ export default function Checkout() {
     const first = rentalMonthsValues[0];
     const allSame = rentalMonthsValues.every((v) => v === first);
     if (!allSame) {
-      setError('Please keep the same rental duration for all items in your cart.');
+      setError(
+        'Please keep the same rental duration for all items in your cart.',
+      );
       return;
     }
 
@@ -328,14 +358,16 @@ export default function Checkout() {
   return (
     <div className="bg-[#eff2f8] min-h-screen">
       <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
-        <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+        <h1 className="text-3xl font-bold text-black">Checkout</h1>
         <p className="text-sm text-gray-500 mt-1">
           Review your delivery details and complete your order
         </p>
 
         <div className="mt-6 space-y-4">
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-gray-900">Select Delivery Address</h2>
+            <h2 className="text-lg font-semibold text-black">
+              Select Delivery Address
+            </h2>
 
             <div className="mt-4 space-y-2.5">
               {addresses.length === 0 && (
@@ -366,25 +398,33 @@ export default function Checkout() {
                     }`}
                     onClick={() => setSelectedId(addr._id)}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    {/* <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${active ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`}>
-                            {active ? <span className="w-2 h-2 bg-white rounded-full" /> : null}
+                          <span
+                            className={`inline-flex items-center justify-center w-4 h-4 rounded-full border-2 ${active ? 'bg-[#FFF7ED] border-[#F97316]' : 'bg-white border-gray-300'}`}
+                          >
+                            {active ? (
+                              <span className="w-2 h-2 border-4 border-[#F97316] bg-white rounded-full" />
+                            ) : null}
                           </span>
                           <div className="min-w-0 flex items-center gap-2">
-                            <p className="font-semibold text-gray-900 truncate">
+                            <p className="font-bold text-base text-black truncate">
                               {addr.fullName}
                             </p>
-                            <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                            <span className="inline-flex items-center rounded-md  bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-[#364153]">
                               {addr.label || 'Home'}
                             </span>
                           </div>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
+
+                        <p className="text-xs sm:text-sm text-[#64748B] mt-1 flex items-center gap-1  ml-6">
+                          <MapPin className="w-3 h-3" />
                           {addressLine}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+
+                        <p className="text-xs text-[#64748B] mt-1 flex items-center gap-1  ml-6">
+                          <Phone className="w-3 h-3" />
                           {addr.phone}
                         </p>
                       </div>
@@ -411,6 +451,91 @@ export default function Checkout() {
                           Delete
                         </button>
                       </div>
+                    </div> */}
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 w-full">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center justify-center w-4 h-4 rounded-full border-2 ${
+                              active
+                                ? 'bg-[#FFF7ED] border-2 border-[#F97316]'
+                                : 'bg-white border-2 border-[#E5E7EB]'
+                            }`}
+                          >
+                            {active ? (
+                              <span className="w-2 h-2 border-4 border-[#F97316] bg-white rounded-full" />
+                            ) : null}
+                          </span>
+
+                          <div className="min-w-0 flex items-center gap-2">
+                            <p className="font-bold text-base text-black truncate">
+                              {addr.fullName}
+                            </p>
+                            <span className="inline-flex items-center rounded-md bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-[#364153]">
+                              {addr.label || 'Home'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Address */}
+                        <p className="text-xs sm:text-sm text-[#64748B] mt-2 flex items-center gap-1 ml-6">
+                          <MapPin className="w-3 h-3" />
+                          {addressLine}
+                        </p>
+
+                        {/* Phone */}
+                        <p className="text-xs text-[#64748B] mt-2 flex items-center gap-1 ml-6">
+                          <Phone className="w-3 h-3" />
+                          {addr.phone}
+                        </p>
+
+                        {/* Buttons (FIXED POSITION BELOW PHONE) */}
+                        <div className="flex gap-3 mt-2 ml-6">
+                          {/* <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(addr);
+                            }}
+                            className="text-xs text-gray-700 hover:text-orange-500"
+                          >
+                            Edit
+                          </button> */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(addr);
+                            }}
+                            className="text-xs text-[#155DFC] hover:underline inline-flex items-center gap-1"
+                          >
+                            <Pencil className="w-3 h-3 text-[#155DFC]" />
+                            Edit
+                          </button>
+
+                          {/* <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAddress(addr._id);
+                            }}
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button> */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAddress(addr._id);
+                            }}
+                            className="text-xs text-[#E7000B] hover:underline inline-flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3 h-3 text-[#E7000B]" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -421,7 +546,7 @@ export default function Checkout() {
               <button
                 type="button"
                 onClick={openAddModal}
-                className="w-full px-4 py-2.5 text-sm rounded-xl bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
+                className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#F9FAFB] border-2 border-[#D1D5DC] hover:bg-gray-50 text-[#64748B]"
               >
                 + Add New Address
               </button>
@@ -429,47 +554,101 @@ export default function Checkout() {
           </section>
 
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-gray-900">Pick-up Store</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Pick-up Store
+            </h2>
             {pickupLoading ? (
-              <p className="mt-3 text-sm text-gray-500">Loading pickup details...</p>
+              <p className="mt-3 text-sm text-gray-500">
+                Loading pickup details...
+              </p>
             ) : pickupError ? (
               <p className="mt-3 text-sm text-red-600">{pickupError}</p>
             ) : !primaryPickupStore ? (
-              <p className="mt-3 text-sm text-gray-500">Pickup details unavailable.</p>
+              <p className="mt-3 text-sm text-gray-500">
+                Pickup details unavailable.
+              </p>
             ) : (
               <div className="mt-3 space-y-3">
-                <div className="rounded-xl border border-gray-200 px-3 py-2.5">
-                  <p className="text-sm font-medium text-gray-900 inline-flex items-center gap-2">
-                    <Store className="w-4 h-4 text-emerald-600" />
+                {/* <div className="rounded-xl border border-gray-200 px-3 py-2.5">
+                  <p className="text-sm font-bold text-black inline-flex items-center gap-2">
+                    <span className="w-10 h-10 flex items-center justify-center rounded-full bg-[#DCFCE7]">
+                      <Store className="w-6 h-6 text-[#10B981]" />
+                    </span>
                     Pick up from Partner Store
                   </p>
-                  <p className="mt-1 text-xs flex items-center gap-1 text-amber-600">
-                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    {primaryPickupStore.rating || 4.9} <span className="text-gray-500">(Store Rating)</span>
+
+                  <p className="mt-1 text-xs flex ml-10 items-center gap-2 text-amber-600">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FFFBEB] border border-[#FEE685]">
+                      <Star className="w-3.5 h-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+                      {primaryPickupStore.rating || 4.9 / 5}
+                    </span>
+                    <span className="text-gray-500">(Store Rating)</span>
                   </p>
+                </div> */}
+                <div className="rounded-xl border border-gray-200 px-3 py-2.5">
+                  <div className="flex items-start gap-3">
+                    {/* Icon (shifted up) */}
+                    <span className="w-10 h-10 flex items-center justify-center rounded-full bg-[#DCFCE7]">
+                      <Store className="w-5 h-5 text-[#10B981]" />
+                    </span>
+
+                    {/* Content */}
+                    <div>
+                      <p className="text-sm font-bold text-black">
+                        Pick up from Partner Store
+                      </p>
+
+                      <p className="mt-1 text-xs flex items-center gap-2 text-amber-600">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FFFBEB] border border-[#FEE685]">
+                          <Star className="w-3.5 h-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+                          {primaryPickupStore.rating || 4.9 / 5}
+                        </span>
+                        <span className="text-gray-500">(Store Rating)</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-3">
-                  <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                <div className="rounded-xl border border-[#B9F8CF] bg-[#ECFDF5] px-3 py-3">
+                  <p className="text-xs text-[#64748B]  font-semibold inline-flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                     Pickup Location
                   </p>
-                  <p className="mt-1 text-base font-semibold text-gray-900">
-                    {primaryPickupStore.mapAddress || primaryPickupStore.storeName}
+                  <p className="mt-1 ml-5 text-base font-bold text-black">
+                    {primaryPickupStore.mapAddress ||
+                      primaryPickupStore.storeName}
                   </p>
                   {pickupDistanceText ? (
-                    <p className="text-xs text-emerald-700 mt-0.5">{pickupDistanceText}</p>
+                    <p className="text-xs ml-5 font-bold text-[#10B981] mt-0.5">
+                      {pickupDistanceText}
+                    </p>
                   ) : null}
-                  <div className="mt-2 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[11px] text-gray-500 inline-flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Exact address shared after payment</span>
+                  {/* <div className="mt-2 ml-5 rounded-md border border-[#7BF1A8] bg-white px-2 py-1.5 text-[11px] text-gray-500 inline-flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#7BF1A8]" />
+                    <span className="text-[#64748B]">
+                      Exact address shared after payment
+                    </span>
+                  </div> */}
+                  <div className="mt-2 ml-5 w-1/2 inline-flex items-center gap-1.5 px-2 py-1.5 text-[11px] border border-[#7BF1A8] bg-white rounded-md">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#00A63E]" />
+                    <span className="text-[#64748B] font-semibold text-xs">
+                      Exact address shared after payment
+                    </span>
                   </div>
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() => setMapPreviewOpen(true)}
                     className="mt-2 w-full rounded-lg border border-emerald-400 text-emerald-700 text-sm font-medium py-2 hover:bg-emerald-50 inline-flex items-center justify-center gap-1.5"
                   >
                     <Navigation className="w-4 h-4" />
                     View on Map
+                  </button> */}
+                  <button
+                    type="button"
+                    onClick={() => setMapPreviewOpen(true)}
+                    className="mt-2 ml-5 w-1/2 rounded-lg border border-[#10B981] text-[#10B981] text-sm font-medium py-2 hover:bg-emerald-50 inline-flex items-center justify-center gap-1.5"
+                  >
+                    View on Map
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -477,7 +656,9 @@ export default function Checkout() {
           </section>
 
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-gray-900">Billing Address</h2>
+            <h2 className="text-lg font-semibold text-black">
+              Billing Address
+            </h2>
             <label className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
@@ -488,25 +669,29 @@ export default function Checkout() {
               My Billing address is the same as Delivery address
             </label>
             <div className="mt-3">
-              <label className="text-xs text-gray-500">Use GSTIN for Business Invoice</label>
-              <input
+              <label className="text-xs ml-5 text-gray-500">
+                Use GSTIN for Business Invoice
+              </label>
+              {/* <input
                 type="text"
                 value={billingGstin}
                 onChange={(e) => setBillingGstin(e.target.value.toUpperCase())}
                 placeholder="Optional GSTIN"
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-100"
-              />
+              /> */}
             </div>
           </section>
 
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5">
-            <h3 className="font-semibold text-gray-900">Delivery Instructions</h3>
-            <p className="text-xs text-gray-500 mt-1">Delivery instructions (Optional)</p>
+            <h3 className="font-semibold text-black">Delivery Instructions</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Delivery instructions (Optional)
+            </p>
             <textarea
               value={deliveryInstructions}
               onChange={(e) => setDeliveryInstructions(e.target.value)}
               rows={3}
-              className="mt-3 w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="mt-3 text-sm w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="e.g., Leave at security gate. Call before arriving"
             />
           </section>
@@ -535,7 +720,7 @@ export default function Checkout() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-3 border-b flex items-center justify-between">
-              <p className="font-semibold text-gray-900">Store Location Preview</p>
+              <p className="font-semibold text-black">Store Location Preview</p>
               <button
                 type="button"
                 className="text-gray-500 hover:text-gray-700 text-xl"
@@ -554,7 +739,9 @@ export default function Checkout() {
                         `${primaryPickupStore.mapLat},${primaryPickupStore.mapLng}`,
                       )}&z=15&output=embed`
                     : `https://www.google.com/maps?q=${encodeURIComponent(
-                        primaryPickupStore?.mapAddress || primaryPickupStore?.storeName || '',
+                        primaryPickupStore?.mapAddress ||
+                          primaryPickupStore?.storeName ||
+                          '',
                       )}&z=15&output=embed`
                 }
                 className="h-full w-full border-0"
@@ -579,7 +766,7 @@ export default function Checkout() {
           >
             <div className="p-5 border-b flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-black">
                   {modalMode === 'edit' ? 'Edit Address' : 'Add New Address'}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
@@ -602,7 +789,9 @@ export default function Checkout() {
                   <input
                     type="text"
                     value={form.label}
-                    onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, label: e.target.value }))
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                   />
                 </label>
@@ -611,7 +800,9 @@ export default function Checkout() {
                   <input
                     type="tel"
                     value={form.phone}
-                    onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, phone: e.target.value }))
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                     placeholder="e.g., 9876543210"
                   />
@@ -623,7 +814,9 @@ export default function Checkout() {
                 <input
                   type="text"
                   value={form.fullName}
-                  onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, fullName: e.target.value }))
+                  }
                   className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                 />
               </label>
@@ -633,7 +826,9 @@ export default function Checkout() {
                 <input
                   type="text"
                   value={form.addressLine}
-                  onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, addressLine: e.target.value }))
+                  }
                   className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                   placeholder="House no., street name"
                 />
@@ -645,7 +840,9 @@ export default function Checkout() {
                   <input
                     type="text"
                     value={form.area}
-                    onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, area: e.target.value }))
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                     placeholder="Area / locality"
                   />
@@ -655,7 +852,9 @@ export default function Checkout() {
                   <input
                     type="text"
                     value={form.pincode}
-                    onChange={(e) => setForm((p) => ({ ...p, pincode: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, pincode: e.target.value }))
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                     placeholder="411057"
                   />
@@ -667,7 +866,9 @@ export default function Checkout() {
                 <input
                   type="text"
                   value={form.city}
-                  onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, city: e.target.value }))
+                  }
                   className="mt-1 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100"
                   placeholder="Pune"
                 />
