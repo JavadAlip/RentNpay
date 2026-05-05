@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   CreditCard,
   Landmark,
+  Lock,
   Smartphone,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -310,7 +311,7 @@ export default function Payment() {
           </h2>
 
           <div className="mt-4 space-y-3">
-            <label
+            {/* <label
               className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
                 method === 'upi'
                   ? 'border-orange-300 bg-orange-50'
@@ -338,6 +339,55 @@ export default function Payment() {
                   </p>
                 </div>
               </div>
+            </label> */}
+            <label
+              className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
+                method === 'upi'
+                  ? 'border-orange-300 bg-orange-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start gap-3 px-4 py-4">
+                {/* <input
+                  type="radio"
+                  name="paymode"
+                  checked={method === 'upi'}
+                  onChange={() => setMethod('upi')}
+                  className="mt-1"
+                /> */}
+                <input
+                  type="radio"
+                  name="paymode"
+                  checked={method === 'upi'}
+                  onChange={() => setMethod('upi')}
+                  className="mt-3 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:border-[#F97316] checked:bg-[#F97316] relative"
+                  style={{
+                    backgroundImage:
+                      method === 'upi'
+                        ? 'radial-gradient(white 40%, transparent 41%)'
+                        : 'none',
+                  }}
+                />
+
+                {/* Icon (aligned with content) */}
+                <span className="w-8 h-8 flex items-center justify-center mt-0.5">
+                  <Smartphone className="w-4 h-4 text-gray-600" />
+                </span>
+
+                {/* Content */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">UPI</span>
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      Fastest
+                    </span>
+                  </div>
+
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Google Pay, PhonePe, Paytm & more
+                  </p>
+                </div>
+              </div>
             </label>
 
             <div
@@ -347,15 +397,50 @@ export default function Payment() {
                   : 'border-gray-200 bg-white'
               }`}
             >
+              {/* <label className="flex cursor-pointer items-start gap-3 px-4 py-4">
+                <input
+                  type="radio"
+                  name="paymode"
+                  checked={method === 'card'}
+                  onChange={() => setMethod('card')}
+                  className="mt-1 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:border-[#F97316] checked:bg-[#F97316] relative"
+                  style={{
+                    backgroundImage:
+                      method === 'card'
+                        ? 'radial-gradient(white 40%, transparent 41%)'
+                        : 'none',
+                  }}
+                />
+                <CreditCard className="mt-0.5 h-4 w-4 text-gray-500" />
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900">
+                    Credit / Debit Card
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Visa, Mastercard, RuPay
+                  </p>
+                </div>
+              </label> */}
               <label className="flex cursor-pointer items-start gap-3 px-4 py-4">
                 <input
                   type="radio"
                   name="paymode"
                   checked={method === 'card'}
                   onChange={() => setMethod('card')}
-                  className="mt-1"
+                  className="mt-3 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:border-[#F97316] checked:bg-[#F97316] relative"
+                  style={{
+                    backgroundImage:
+                      method === 'card'
+                        ? 'radial-gradient(white 40%, transparent 41%)'
+                        : 'none',
+                  }}
                 />
-                <CreditCard className="mt-0.5 h-4 w-4 text-gray-500" />
+
+                {/* Centered Icon */}
+                <span className="w-8 h-8 flex items-center justify-center mt-0.5">
+                  <CreditCard className="w-4 h-4 text-gray-600" />
+                </span>
+
                 <div className="min-w-0">
                   <div className="font-medium text-gray-900">
                     Credit / Debit Card
@@ -423,17 +508,33 @@ export default function Payment() {
                   </div>
 
                   <label className="mt-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-[#f5f9ff] px-3 py-3">
-                    <input
+                    {/* <input
                       type="checkbox"
                       checked={saveCardForRentals}
                       onChange={(e) => setSaveCardForRentals(e.target.checked)}
                       className="mt-1"
+                    /> */}
+                    <input
+                      type="checkbox"
+                      checked={saveCardForRentals}
+                      onChange={(e) => setSaveCardForRentals(e.target.checked)}
+                      className="mt-1 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:bg-[#F97316] checked:border-[#F97316] relative"
+                      style={{
+                        backgroundImage: saveCardForRentals
+                          ? 'radial-gradient(white 40%, transparent 41%)'
+                          : 'none',
+                      }}
                     />
                     <div>
-                      <p className="text-xs font-medium text-gray-800">
+                      <p className="text-xs font-semibold text-black">
                         Save this card securely for monthly rent payments
                       </p>
-                      <p className="mt-1 text-[10px] text-gray-500">
+                      {/* <p className="mt-1 text-[10px] text-gray-500">
+                        We can use this card for scheduled debits in future
+                        rental renewals.
+                      </p> */}
+                      <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5 text-gray-500" />
                         We can use this card for scheduled debits in future
                         rental renewals.
                       </p>
@@ -443,7 +544,7 @@ export default function Payment() {
               ) : null}
             </div>
 
-            <label
+            {/* <label
               className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
                 method === 'netbanking'
                   ? 'border-orange-300 bg-orange-50'
@@ -456,7 +557,13 @@ export default function Payment() {
                   name="paymode"
                   checked={method === 'netbanking'}
                   onChange={() => setMethod('netbanking')}
-                  className="mt-1"
+                  className="mt-1 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:border-[#F97316] checked:bg-[#F97316] relative"
+                  style={{
+                    backgroundImage:
+                      method === 'netbanking'
+                        ? 'radial-gradient(white 40%, transparent 41%)'
+                        : 'none',
+                  }}
                 />
                 <Landmark className="mt-0.5 h-4 w-4 text-gray-500" />
                 <div className="min-w-0 flex-1">
@@ -473,19 +580,49 @@ export default function Payment() {
                   </div>
                 </div>
               </div>
+            </label> */}
+            <label
+              className={`block overflow-hidden rounded-2xl border cursor-pointer transition ${
+                method === 'netbanking'
+                  ? 'border-orange-300 bg-orange-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start gap-3 px-4 py-4">
+                <input
+                  type="radio"
+                  name="paymode"
+                  checked={method === 'netbanking'}
+                  onChange={() => setMethod('netbanking')}
+                  className="mt-3 w-4 h-4 appearance-none rounded-full border-2 border-gray-300 checked:border-[#F97316] checked:bg-[#F97316] relative"
+                  style={{
+                    backgroundImage:
+                      method === 'netbanking'
+                        ? 'radial-gradient(white 40%, transparent 41%)'
+                        : 'none',
+                  }}
+                />
+
+                {/* Centered Landmark Icon */}
+                <span className="w-8 h-8 flex items-center justify-center mt-0.5">
+                  <Landmark className="w-4 h-4 text-gray-600" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Net Banking
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        All major banks supported
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </label>
           </div>
-
-          {selectedAddress ? (
-            <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
-              Delivering to{' '}
-              <span className="font-medium text-gray-700">
-                {selectedAddress.fullName}
-              </span>
-              {addressLine ? `, ${addressLine}` : ''}.
-              {instructions ? ` Instructions: ${instructions}` : ''}
-            </div>
-          ) : null}
 
           <div className="mt-6 flex items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm border border-gray-200">
             <div>
@@ -500,7 +637,7 @@ export default function Payment() {
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
             >
-              <CheckCircle2 className="h-4 w-4" />
+              {/* <CheckCircle2 className="h-4 w-4" /> */}
               {loading ? 'Processing payment…' : 'Pay Now'}
             </button>
           </div>
