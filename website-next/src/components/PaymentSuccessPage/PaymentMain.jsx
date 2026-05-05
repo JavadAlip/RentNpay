@@ -17,14 +17,19 @@ import {
   CheckCircle,
   Camera,
   Info,
+  ShieldAlert,
+  Package,
+  PartyPopper,
+  Shield,
 } from 'lucide-react';
 import { apiGetMyUserKyc, apiSubmitMyUserKyc } from '@/lib/api';
 import customerKycIcon from '../../../../admin-next/src/assets/icons/customer-kyc.png';
 import customerAdhaarIcon from '../../../../admin-next/src/assets/icons/customer-adhaar.png';
 import customerPanIcon from '../../../../admin-next/src/assets/icons/customer-pan.png';
+import placedIcon from '@/assets/icons/placed.png';
 
 function staticImageSrc(mod) {
-  return typeof mod === 'string' ? mod : mod?.src ?? '';
+  return typeof mod === 'string' ? mod : (mod?.src ?? '');
 }
 
 function KycHeaderIcon({ className }) {
@@ -324,14 +329,23 @@ const PaymentMain = () => {
     <>
       <div className="min-h-screen bg-white flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-3xl">
-          <div className="flex justify-center mb-6">
+          {/* <div className="flex justify-center mb-6">
             <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8 text-orange-500" />
             </div>
-          </div>
+          </div> */}
 
+          <div className="flex justify-center mb-6">
+            <div className="h-14 w-14 rounded-full bg-[#FFF7ED] flex items-center justify-center">
+              <img
+                src={placedIcon.src}
+                alt="Placed"
+                className="w-8 h-8 object-contain"
+              />
+            </div>
+          </div>
           <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-black">
               Order Placed !
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-gray-500">
@@ -341,27 +355,47 @@ const PaymentMain = () => {
 
             <div className="mt-4 h-px bg-gray-200 max-w-sm mx-auto" />
 
-            <p className="mt-3 text-xs sm:text-sm text-gray-700">
+            {/* <p className="mt-3 text-xs sm:text-sm text-gray-700">
+              Thank you for choosing Rentnpay!
+            </p> */}
+            <p className="mt-3 text-xs sm:text-sm text-[#64748B] flex items-center justify-center gap-2">
+              <PartyPopper size={16} color="#F97316" />
               Thank you for choosing Rentnpay!
             </p>
           </div>
-
-          <div className="mt-8 sm:mt-10 bg-white border border-orange-200 rounded-3xl px-5 sm:px-8 py-6 sm:py-8 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 text-center mb-2">
+          <div className="mt-8 sm:mt-10 bg-white border-2 border-orange-200 rounded-3xl px-5 sm:px-8 py-6 sm:py-8 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-bold text-black text-center mb-2">
               One Last Thing !
             </h2>
-            <p className="text-xs sm:text-sm text-gray-600 text-center max-w-xl mx-auto">
-              To ensure safety and dispatch your item, we need a quick KYC
-              verification. Takes only 2 minutes.
+            <p className="text-xs sm:text-sm text-black text-center max-w-xl mx-auto">
+              To ensure safety and dispatch your item, we need a{' '}
+              <span className="text-[#F97316] font-medium">
+                quick KYC verification.
+              </span>
+              Takes only 2 minutes.
             </p>
 
+            {/* <div className="mt-6 flex justify-center">
+              <button
+                onClick={openKyc}
+                className="inline-flex items-center gap-3 px-8 sm:px-10 py-3 rounded-2xl bg-[#F97316] hover:bg-orange-600 text-white text-sm sm:text-base font-medium shadow-[0_10px_22px_rgba(249,115,22,0.45)]"
+              >
+                <span className="inline-flex items-center text-sm font-semibold gap-2">
+                  <ShieldAlert className="w-4 h-4" />
+                  Start KYC Now
+                </span>
+                <span className="text-xs sm:text-sm bg-white/10 px-3 py-1 rounded-full border border-white/30">
+                  2 min
+                </span>
+              </button>
+            </div> */}
             <div className="mt-6 flex justify-center">
               <button
                 onClick={openKyc}
-                className="inline-flex items-center gap-3 px-8 sm:px-10 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium shadow-[0_10px_22px_rgba(249,115,22,0.45)]"
+                className="w-1/2 inline-flex items-center justify-center gap-3 px-8 sm:px-10 py-3 rounded-2xl bg-[#F97316] hover:bg-orange-600 text-white text-sm sm:text-base font-medium shadow-[0_10px_22px_rgba(249,115,22,0.45)]"
               >
-                <span className="inline-flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
+                <span className="inline-flex items-center text-sm font-semibold gap-2">
+                  <ShieldAlert className="w-4 h-4" />
                   Start KYC Now
                 </span>
                 <span className="text-xs sm:text-sm bg-white/10 px-3 py-1 rounded-full border border-white/30">
@@ -370,21 +404,26 @@ const PaymentMain = () => {
               </button>
             </div>
           </div>
-
           <div className="mt-6 flex justify-center">
-            <button
+            {/* <button
               onClick={() => router.push('/orders')}
               className="w-full max-w-xs sm:max-w-sm border border-gray-300 rounded-full py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-gray-800 bg-white hover:bg-gray-50"
             >
               Go to My Orders
+            </button> */}
+            <button
+              onClick={() => router.push('/orders')}
+              className="w-full max-w-xs sm:max-w-sm border border-[#D1D5DC] rounded-xl py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-black bg-white hover:bg-gray-50 inline-flex items-center justify-center gap-2"
+            >
+              <Package className="w-4 h-4" />
+              Go to My Orders
             </button>
           </div>
-
-          <div className="mt-4 text-center text-[11px] sm:text-xs text-gray-400">
+          <div className="mt-4 text-center font-semibold  text-sm sm:text-xs text-[#64748B]">
             Need help? Contact{' '}
             <a
               href="mailto:support@rentnpay.com"
-              className="text-orange-500 hover:underline"
+              className="text-[#3B82F6] hover:underline"
             >
               support@rentnpay.com
             </a>
@@ -398,14 +437,33 @@ const PaymentMain = () => {
           style={{ scrollbarWidth: 'none' }}
         >
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden my-auto">
-            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-sky-50/90 to-slate-50 rounded-t-2xl">
+            <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-[#F0FDF4] to-[#EFF6FF] rounded-t-2xl">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex gap-3 min-w-0">
+                {/* <div className="flex gap-3 min-w-0">
                   <KycHeaderIcon className="h-11 w-11 object-contain shrink-0" />
                   <div className="min-w-0">
-                    <h2 className="text-sm font-semibold text-gray-900 leading-snug">
+                    <h2 className="text-lg font-semibold text-black leading-snug">
                       Identity Verification Required
                     </h2>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                      To rent items, we need to verify your ID. This takes{' '}
+                      <span className="font-semibold text-gray-700">
+                        2 minutes
+                      </span>
+                      .
+                    </p>
+                  </div>
+                </div> */}
+                <div className="flex gap-3 min-w-0">
+                  <div className="flex items-center">
+                    <KycHeaderIcon className="h-16 w-16  object-contain shrink-0" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-black leading-snug">
+                      Identity Verification Required
+                    </h2>
+
                     <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                       To rent items, we need to verify your ID. This takes{' '}
                       <span className="font-semibold text-gray-700">
@@ -452,7 +510,7 @@ const PaymentMain = () => {
                         dateOfBirth: e.target.value,
                       }))
                     }
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-black"
                   />
                 </label>
                 <label className="block text-xs font-medium text-gray-700">
@@ -467,7 +525,7 @@ const PaymentMain = () => {
                     }
                     rows={3}
                     placeholder="House no., street, city, state, PIN"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 resize-y min-h-[72px]"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-black resize-y min-h-[72px]"
                   />
                 </label>
                 <label className="block text-xs font-medium text-gray-700">
@@ -484,7 +542,7 @@ const PaymentMain = () => {
                       }))
                     }
                     placeholder="10-digit mobile number"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-black"
                   />
                 </label>
               </div>
@@ -494,7 +552,7 @@ const PaymentMain = () => {
                   <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#F37021] text-white text-xs font-semibold shrink-0">
                     2
                   </span>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-black">
                     Upload Aadhaar & PAN
                   </p>
                 </div>
@@ -541,7 +599,7 @@ const PaymentMain = () => {
                         type="button"
                         key={doc.key}
                         onClick={() => doc.inputRef.current?.click()}
-                        className="border border-gray-200 rounded-xl p-4 text-center bg-white hover:bg-gray-50/80 cursor-pointer transition-colors"
+                        className="border border-[#CBD5E1] rounded-xl p-4 text-center bg-[#F8FAFC] cursor-pointer transition-colors"
                       >
                         <input
                           ref={doc.inputRef}
@@ -567,19 +625,25 @@ const PaymentMain = () => {
                         >
                           {actionLabel}
                         </p>
+                        {hasDoc && (
+                          <p className="text-[10px] text-green-600 mt-1 font-medium truncate max-w-full">
+                            {doc.file?.name || doc.existing?.split('/').pop()}
+                          </p>
+                        )}
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-3 flex gap-2 bg-sky-50 border border-sky-200 text-sky-900 text-xs rounded-lg p-3">
+                <div className="mt-3 flex gap-2 bg-[#EFF6FF] border border-[#BEDBFF] text-[#1C398E] text-xs rounded-lg p-3">
                   <Info
-                    className="w-4 h-4 text-sky-600 shrink-0 mt-0.5"
+                    className="w-4 h-4 text-[#1C398E] shrink-0 mt-0.5"
                     aria-hidden
                   />
                   <p>
-                    Tips: Ensure documents are clear, unblurred, and all corners
-                    are visible. Accepted formats: JPG, PNG, PDF (Max 5MB).
+                    <span className="font-semibold">Tips:</span> Ensure
+                    documents are clear, unblurred, and all corners are visible.
+                    Accepted formats: JPG, PNG, PDF (Max 5MB).
                   </p>
                 </div>
               </div>
@@ -589,7 +653,7 @@ const PaymentMain = () => {
                   <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#F37021] text-white text-xs font-semibold shrink-0">
                     3
                   </span>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-black">
                     Live Photo Check
                   </p>
                 </div>
@@ -597,7 +661,7 @@ const PaymentMain = () => {
                 <div className="rounded-xl border border-gray-200 bg-slate-50/60 min-h-[260px] flex flex-col overflow-hidden">
                   {selfiePhase === 'idle' ? (
                     <div className="flex flex-col items-center justify-center flex-1 px-4 py-10 gap-3">
-                      <div className="w-20 h-20 rounded-full bg-gray-200/90 flex items-center justify-center">
+                      <div className="w-24 h-24 rounded-full border border-[#CBD5E1] bg-white flex items-center justify-center">
                         <Camera className="w-9 h-9 text-gray-400" aria-hidden />
                       </div>
                       <p className="text-xs text-gray-500 text-center max-w-[220px]">
@@ -693,8 +757,8 @@ const PaymentMain = () => {
               </button>
 
               <div className="flex items-start gap-2 text-xs text-gray-500 leading-relaxed">
-                <ShieldCheck
-                  className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"
+                <Shield
+                  className="w-4 h-4 text-[#00A63E] shrink-0 mt-0.5"
                   aria-hidden
                 />
                 <p>
@@ -725,11 +789,11 @@ const PaymentMain = () => {
               <div className="text-center">
                 <button
                   onClick={closeKyc}
-                  className="text-xs text-gray-500 hover:underline"
+                  className="text-sm text-[#64748B] font-semibold hover:underline"
                 >
                   I&apos;ll do this later
                 </button>
-                <p className="text-[10px] text-gray-400 mt-1">
+                <p className="text-xs text-[#64748B] mt-1">
                   (Delivery will be blocked until verification is complete)
                 </p>
               </div>
