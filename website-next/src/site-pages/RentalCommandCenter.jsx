@@ -21,6 +21,10 @@ import {
   Camera,
   Calendar,
   Truck,
+  CheckCircle,
+  CircleCheck,
+  TrendingUp,
+  Upload,
 } from 'lucide-react';
 import {
   apiExtendMyOrderTenure,
@@ -195,6 +199,8 @@ export default function RentalCommandCenter() {
     selectedPlanId: '',
   });
   const [confirmingExtend, setConfirmingExtend] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [pickupAnchorDate, setPickupAnchorDate] = useState(null); // null = today
   const [returnState, setReturnState] = useState({
     open: false,
     row: null,
@@ -339,7 +345,30 @@ export default function RentalCommandCenter() {
   const closeExtendModal = () =>
     setExtendState({ open: false, row: null, selectedPlanId: '' });
 
-  const closeReturnModal = () =>
+  // const closeReturnModal = () =>
+  //   setReturnState((prev) => {
+  //     (prev.mediaPreviews || []).forEach((item) => {
+  //       if (item?.url) URL.revokeObjectURL(item.url);
+  //     });
+  //     return {
+  //       open: false,
+  //       row: null,
+  //       pickupDateIso: '',
+  //       step: 1,
+  //       refundMethod: '',
+  //       bankAccountName: '',
+  //       bankAccountNumber: '',
+  //       bankIfsc: '',
+  //       upiId: '',
+  //       reviewRating: 0,
+  //       reviewText: '',
+  //       mediaNames: [],
+  //       mediaPreviews: [],
+  //       mediaFiles: [],
+  //     };
+  //   });
+
+  const closeReturnModal = () => {
     setReturnState((prev) => {
       (prev.mediaPreviews || []).forEach((item) => {
         if (item?.url) URL.revokeObjectURL(item.url);
@@ -361,7 +390,9 @@ export default function RentalCommandCenter() {
         mediaFiles: [],
       };
     });
-
+    setPickupAnchorDate(null);
+    setCalendarOpen(false);
+  };
   const closeIssueModal = () =>
     setIssueState((prev) => {
       (prev.photoPreviews || []).forEach((item) => {
@@ -591,15 +622,24 @@ export default function RentalCommandCenter() {
     setReturnState((prev) => ({ ...prev, step: 3 }));
   };
 
+  // const returnDateOptions = useMemo(() => {
+  //   if (!returnState.row) return [];
+  //   const base = toLocalDateOnly(new Date());
+  //   return Array.from({ length: 7 }).map((_, i) => {
+  //     const dt = new Date(base);
+  //     dt.setDate(base.getDate() + i);
+  //     return dt;
+  //   });
+  // }, [returnState.row]);
   const returnDateOptions = useMemo(() => {
     if (!returnState.row) return [];
-    const base = toLocalDateOnly(new Date());
+    const base = toLocalDateOnly(pickupAnchorDate || new Date());
     return Array.from({ length: 7 }).map((_, i) => {
       const dt = new Date(base);
       dt.setDate(base.getDate() + i);
       return dt;
     });
-  }, [returnState.row]);
+  }, [returnState.row, pickupAnchorDate]);
 
   useEffect(() => {
     if (!returnState.open || !returnState.row) return;
@@ -643,24 +683,31 @@ export default function RentalCommandCenter() {
     const fineRatePerDay = 50;
     const refundableDeposit = lineDeposit(line, returnState.row.product);
 
-    const hasExtension =
-      Number(returnState.row.order?.extendedDurationTotal || 0) > 0;
+    // const hasExtension =
+    //   Number(returnState.row.order?.extendedDurationTotal || 0) > 0;
 
-    // Extension fine must come from extended tenure itself (not pickup-date changes).
-    const extendedDurationRaw = Math.max(
-      0,
-      Number(returnState.row.order?.extendedDurationTotal || 0),
-    );
-    const extensionUnit =
-      String(returnState.row.order?.tenureUnit || '').toLowerCase() === 'day'
-        ? 'day'
-        : 'month';
-    const extendedDays =
-      extensionUnit === 'day'
-        ? extendedDurationRaw
-        : Math.round(extendedDurationRaw * 30);
+    // // Extension fine must come from extended tenure itself (not pickup-date changes).
+    // const extendedDurationRaw = Math.max(
+    //   0,
+    //   Number(returnState.row.order?.extendedDurationTotal || 0),
+    // );
+    // const extensionUnit =
+    //   String(returnState.row.order?.tenureUnit || '').toLowerCase() === 'day'
+    //     ? 'day'
+    //     : 'month';
+    // const extendedDays =
+    //   extensionUnit === 'day'
+    //     ? extendedDurationRaw
+    //     : Math.round(extendedDurationRaw * 30);
 
-    const extensionFine = hasExtension ? extendedDays * fineRatePerDay : 0;
+    // const extensionFine = hasExtension ? extendedDays * fineRatePerDay : 0;
+    // const netBalance = refundableDeposit - extensionFine;
+
+    const extendedDays = Math.max(0, daysBetween(endDate, pickupDate));
+    const gracePeriodDays = 2;
+    const chargeableDays = Math.max(0, extendedDays - gracePeriodDays);
+    const hasExtension = extendedDays > 0;
+    const extensionFine = chargeableDays * fineRatePerDay;
     const netBalance = refundableDeposit - extensionFine;
 
     return {
@@ -764,7 +811,7 @@ export default function RentalCommandCenter() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Sofa className="w-7 h-7 text-blue-600 shrink-0" aria-hidden />
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl lg:text-3xl font-bold text-black">
                 Rental Command Center
               </h1>
             </div>
@@ -948,7 +995,7 @@ export default function RentalCommandCenter() {
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div>
-                                  <h2 className="text-lg font-bold text-gray-900">
+                                  <h2 className="text-lg font-bold text-black">
                                     {title}
                                   </h2>
                                   <p className="text-sm text-gray-500 mt-0.5">
@@ -1023,7 +1070,7 @@ export default function RentalCommandCenter() {
                                     />
                                     {rentCardTitle}
                                   </div>
-                                  <p className="text-lg font-bold text-gray-900">
+                                  <p className="text-lg font-bold text-black">
                                     {rentPrimaryLabel}
                                   </p>
                                   {/* <p className="text-xs text-gray-600 mt-1">
@@ -1039,7 +1086,7 @@ export default function RentalCommandCenter() {
                                     <Shield className="w-4 h-4 text-emerald-600" />
                                     Security deposit
                                   </div>
-                                  <p className="text-lg font-bold text-gray-900">
+                                  <p className="text-lg font-bold text-black">
                                     ₹{formatMoney(deposit)}
                                   </p>
                                   <p className="text-xs text-gray-500 mt-1">
@@ -1051,7 +1098,7 @@ export default function RentalCommandCenter() {
                                     <Calendar className="w-4 h-4 text-violet-600" />
                                     Next payment
                                   </div>
-                                  <p className="text-lg font-bold text-gray-900">
+                                  <p className="text-lg font-bold text-black">
                                     {nextPay}
                                   </p>
                                 </div> */}
@@ -1060,7 +1107,7 @@ export default function RentalCommandCenter() {
                                     <Calendar className="w-4 h-4 text-violet-600" />
                                     Next payment
                                   </div>
-                                  <p className="text-lg font-bold text-gray-900">
+                                  <p className="text-lg font-bold text-black">
                                     {end.toLocaleString('en-IN', {
                                       day: 'numeric',
                                       month: 'short',
@@ -1236,7 +1283,7 @@ export default function RentalCommandCenter() {
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-gray-100">
-                            <h3 className="text-sm font-bold text-gray-900 mb-4">
+                            <h3 className="text-sm font-bold text-black mb-4">
                               Recent activity
                             </h3>
                             <ul className="space-y-3">
@@ -1316,7 +1363,7 @@ export default function RentalCommandCenter() {
               </div>
 
               <div>
-                <h3 className="text-1xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-1xl font-semibold text-black mb-3">
                   Choose Extension Duration
                 </h3>
 
@@ -1522,13 +1569,13 @@ export default function RentalCommandCenter() {
 
                         {/* Updated Timeline */}
                         {/* <div className="rounded-xl border border-gray-200 p-4">
-                          <h4 className="text-1xl font-semibold text-gray-900 mb-3">
+                          <h4 className="text-1xl font-semibold text-black mb-3">
                             Updated Timeline
                           </h4>
                           <div className="flex items-center justify-between text-sm text-gray-600">
                             <div>
                               <p className="font-medium">Current End</p>
-                              <p className="text-gray-900 font-semibold">
+                              <p className="text-black font-semibold">
                                 {formatShortDate(extendState.row.end)}
                               </p>
                             </div>
@@ -1756,7 +1803,7 @@ export default function RentalCommandCenter() {
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="p-5 border-b border-gray-100 flex items-start justify-between">
               <div>
-                <h2 className="text-[18px] leading-[1.2] font-bold text-gray-900">
+                <h2 className="text-[18px] leading-[1.2] font-bold text-black">
                   Return Request
                 </h2>
                 <div className="mt-4 flex items-center gap-2 sm:gap-3">
@@ -1770,7 +1817,7 @@ export default function RentalCommandCenter() {
                     }
                     className="inline-flex items-center gap-2"
                   >
-                    <span
+                    {/* <span
                       className={`w-6 h-6 rounded-full text-[11px] font-semibold flex items-center justify-center ${
                         returnState.step >= 1
                           ? 'bg-orange-500 text-white'
@@ -1778,11 +1825,20 @@ export default function RentalCommandCenter() {
                       }`}
                     >
                       1
+                    </span> */}
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        returnState.step >= 1
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <CircleCheck className="w-4 h-4" />
                     </span>
                     <span
                       className={`text-sm font-medium ${
                         returnState.step === 1
-                          ? 'text-gray-900'
+                          ? 'text-black'
                           : returnState.step > 1
                             ? 'text-orange-600'
                             : 'text-gray-500'
@@ -1796,7 +1852,7 @@ export default function RentalCommandCenter() {
                       returnState.step >= 2 ? 'bg-orange-500' : 'bg-gray-300'
                     }`}
                   />
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() =>
                       setReturnState((prev) => ({
@@ -1818,7 +1874,43 @@ export default function RentalCommandCenter() {
                     <span
                       className={`text-sm font-medium ${
                         returnState.step === 2
-                          ? 'text-gray-900'
+                          ? 'text-black'
+                          : returnState.step > 2
+                            ? 'text-orange-600'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      Refund
+                    </span>
+                  </button> */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({
+                        ...prev,
+                        step: 2,
+                      }))
+                    }
+                    className="inline-flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        returnState.step >= 2
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {returnState.step >= 2 ? (
+                        <CircleCheck className="w-4 h-4" />
+                      ) : (
+                        <span className="text-[11px] font-semibold">2</span>
+                      )}
+                    </span>
+
+                    <span
+                      className={`text-sm font-medium ${
+                        returnState.step === 2
+                          ? 'text-black'
                           : returnState.step > 2
                             ? 'text-orange-600'
                             : 'text-gray-500'
@@ -1832,7 +1924,7 @@ export default function RentalCommandCenter() {
                       returnState.step >= 3 ? 'bg-orange-500' : 'bg-gray-300'
                     }`}
                   />
-                  <button
+                  {/* <button
                     type="button"
                     onClick={proceedToReviewStep}
                     className="inline-flex items-center gap-2"
@@ -1849,8 +1941,35 @@ export default function RentalCommandCenter() {
                     <span
                       className={`text-sm font-medium ${
                         returnState.step === 3
-                          ? 'text-gray-900'
+                          ? 'text-black'
                           : 'text-gray-500'
+                      }`}
+                    >
+                      Review
+                    </span>
+                  </button> */}
+                  <button
+                    type="button"
+                    onClick={proceedToReviewStep}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        returnState.step >= 3
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {returnState.step >= 3 ? (
+                        <CircleCheck className="w-4 h-4" />
+                      ) : (
+                        <span className="text-[11px] font-semibold">3</span>
+                      )}
+                    </span>
+
+                    <span
+                      className={`text-sm font-medium ${
+                        returnState.step === 3 ? 'text-black' : 'text-gray-500'
                       }`}
                     >
                       Review
@@ -1871,20 +1990,51 @@ export default function RentalCommandCenter() {
             <div className="p-5 space-y-5">
               {returnState.step === 1 ? (
                 <>
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                  {/* <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                     <div className="rounded-xl border border-blue-200 bg-[#eef4ff] p-4 flex items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center shrink-0">
                         <Package className="w-7 h-7 text-white" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xl font-bold text-gray-900 truncate">
+                        <p className="text-xl font-bold text-black truncate">
                           {returnState.row.product?.productName ||
                             'Rental item'}
                         </p>
                         <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           Original End Date:{' '}
-                          <span className="font-semibold text-gray-900">
+                          <span className="font-semibold text-black">
+                            {formatShortDate(returnCalc.endDate)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div> */}
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    {/* Heading */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <h2 className="text-2xl font-bold text-black">
+                        Schedule Return Pickup
+                      </h2>
+                    </div>
+
+                    {/* Content */}
+                    <div className="rounded-xl border border-blue-200 bg-[#eef4ff] p-4 flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center shrink-0">
+                        <Package className="w-7 h-7 text-white" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-black truncate">
+                          {returnState.row.product?.productName ||
+                            'Rental item'}
+                        </p>
+
+                        <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Original End Date:{' '}
+                          <span className="font-semibold text-black">
                             {formatShortDate(returnCalc.endDate)}
                           </span>
                         </p>
@@ -1893,9 +2043,9 @@ export default function RentalCommandCenter() {
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    {/* <p className="text-xs font-semibold text-black mb-2 flex items-center gap-2">
                       Select Pickup Date
-                      <Calendar className="w-4 h-4 text-amber-600" />
+                      <Calendar className="w-4 h-4 text-[#F97316]" />
                     </p>
                     <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                       {returnDateOptions.map((d, idx) => {
@@ -1904,8 +2054,14 @@ export default function RentalCommandCenter() {
                         const isEndDate =
                           toLocalDateOnly(d).getTime() ===
                           toLocalDateOnly(returnCalc.endDate).getTime();
-                        const optionCharge =
-                          idx === 0 ? 0 : returnCalc.fineRatePerDay;
+                        // const optionCharge =
+                        //   idx === 0 ? 0 : returnCalc.fineRatePerDay;
+                        const pickupIsAfterEnd =
+                          toLocalDateOnly(d).getTime() >
+                          toLocalDateOnly(returnCalc.endDate).getTime();
+                        const optionCharge = pickupIsAfterEnd
+                          ? returnCalc.fineRatePerDay
+                          : 0;
                         return (
                           <button
                             key={iso}
@@ -1933,7 +2089,7 @@ export default function RentalCommandCenter() {
                             </p>
                             <p
                               className={`text-sm font-semibold ${
-                                active ? 'text-white' : 'text-gray-900'
+                                active ? 'text-white' : 'text-black'
                               }`}
                             >
                               {d.getDate()}
@@ -1955,10 +2111,137 @@ export default function RentalCommandCenter() {
                           </button>
                         );
                       })}
+                    </div> */}
+                    {/* Heading - clickable to open calendar */}
+                    <p
+                      className="text-xs font-semibold text-black mb-2 flex items-center gap-2 cursor-pointer hover:text-blue-600 select-none"
+                      onClick={() => setCalendarOpen(true)}
+                    >
+                      Select Pickup Date
+                      <Calendar className="w-4 h-4 text-[#F97316]" />
+                      {/* <span className="text-[10px] font-normal text-blue-500 underline">
+                        Choose start date
+                      </span> */}
+                    </p>
+
+                    {/* Calendar Modal */}
+                    {calendarOpen && (
+                      <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-bold text-black">
+                              Pick a start date
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setCalendarOpen(false)}
+                              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <input
+                            type="date"
+                            min={
+                              toLocalDateOnly(new Date())
+                                .toISOString()
+                                .split('T')[0]
+                            }
+                            defaultValue={
+                              pickupAnchorDate
+                                ? toLocalDateOnly(pickupAnchorDate)
+                                    .toISOString()
+                                    .split('T')[0]
+                                : toLocalDateOnly(new Date())
+                                    .toISOString()
+                                    .split('T')[0]
+                            }
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400"
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              const picked = new Date(
+                                e.target.value + 'T00:00:00',
+                              );
+                              setPickupAnchorDate(picked);
+                              // Also auto-select the first date of the new window
+                              setReturnState((prev) => ({
+                                ...prev,
+                                pickupDateIso:
+                                  toLocalDateOnly(picked).toISOString(),
+                              }));
+                              setCalendarOpen(false);
+                            }}
+                          />
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            7 pickup dates will be shown starting from the date
+                            you pick
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 7 date buttons - now dynamic */}
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                      {returnDateOptions.map((d, idx) => {
+                        const iso = d.toISOString();
+                        const active = returnState.pickupDateIso === iso;
+                        const isEndDate =
+                          toLocalDateOnly(d).getTime() ===
+                          toLocalDateOnly(returnCalc.endDate).getTime();
+                        const pickupIsAfterEnd =
+                          toLocalDateOnly(d).getTime() >
+                          toLocalDateOnly(returnCalc.endDate).getTime();
+                        const optionCharge = pickupIsAfterEnd
+                          ? returnCalc.fineRatePerDay
+                          : 0;
+
+                        return (
+                          <button
+                            key={iso}
+                            type="button"
+                            onClick={() =>
+                              setReturnState((prev) => ({
+                                ...prev,
+                                pickupDateIso: iso,
+                              }))
+                            }
+                            className={`rounded-xl border px-2 py-2 text-center transition-colors ${
+                              active
+                                ? 'border-orange-500 bg-orange-500 text-white'
+                                : isEndDate
+                                  ? 'border-[#E7000B] ring-1 ring-red-200 bg-white'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <p
+                              className={`text-[9px] ${active ? 'text-orange-100' : 'text-gray-500'}`}
+                            >
+                              {formatShortWeekday(d)}
+                            </p>
+                            <p
+                              className={`text-sm font-semibold ${active ? 'text-white' : 'text-black'}`}
+                            >
+                              {d.getDate()}
+                            </p>
+                            <p
+                              className={`text-[9px] ${active ? 'text-orange-100' : 'text-gray-500'}`}
+                            >
+                              {d.toLocaleString('en-IN', { month: 'short' })}
+                            </p>
+                            <p
+                              className={`text-[10px] mt-1 font-medium ${active ? 'text-white' : optionCharge > 0 ? 'text-red-500' : 'text-gray-700'}`}
+                            >
+                              {optionCharge > 0
+                                ? `₹${formatMoney(optionCharge)}`
+                                : '₹0'}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-gray-800 text-center font-medium">
+                  <div className="rounded-xl border border-[#FFB900] bg-[#FFFBEB] px-4 py-3 text-xs text-gray-800 text-center font-medium">
                     You will be charged ₹
                     {formatMoney(returnCalc.fineRatePerDay)} per day, if you
                     exceed End Date ({formatShortDate(returnCalc.endDate)})
@@ -1966,7 +2249,7 @@ export default function RentalCommandCenter() {
 
                   {returnCalc.hasExtension ? (
                     <div className="rounded-[24px] border border-red-300 bg-white p-4 sm:p-5 shadow-[0_8px_20px_rgba(239,68,68,0.12)]">
-                      <h4 className="text-[22px] leading-tight font-bold text-gray-900 flex items-center gap-3">
+                      <h4 className="text-[22px] leading-tight font-bold text-black flex items-center gap-3">
                         <span className="w-9 h-9 rounded-xl bg-[#ff4d2d] flex items-center justify-center shrink-0">
                           <AlertTriangle className="w-5 h-5 text-white" />
                         </span>
@@ -2010,10 +2293,10 @@ export default function RentalCommandCenter() {
 
                         <div className="rounded-xl border border-amber-200 bg-white p-3 sm:p-4 space-y-3">
                           <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                            <span className="text-gray-700 font-medium">
+                            <span className="text-black font-semibold">
                               Total Delay:
                             </span>
-                            <span className="text-gray-900 font-semibold">
+                            <span className="text-black font-semibold">
                               {returnCalc.extendedDays} Days
                             </span>
                           </div>
@@ -2035,7 +2318,7 @@ export default function RentalCommandCenter() {
                             </span>
                           </div>
                           <div className="flex items-center justify-between pt-1">
-                            <span className="text-[18px] leading-none font-bold text-gray-900">
+                            <span className="text-[18px] leading-none font-bold text-black">
                               Total Fine:
                             </span>
                             <span className="text-[28px] leading-none font-extrabold text-red-600">
@@ -2045,14 +2328,24 @@ export default function RentalCommandCenter() {
                         </div>
                       </div>
 
-                      <div className="mt-4 rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-3 text-xs text-gray-800 text-center font-medium">
+                      <div className="mt-4 rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-3 text-xs text-[#7B3306] text-center font-semibold">
                         This amount will be deducted from your Security Deposit.
                       </div>
                     </div>
                   ) : null}
 
                   <div className="rounded-[24px] border border-gray-200 bg-white p-4 sm:p-5 shadow-[0_8px_20px_rgba(15,23,42,0.10)]">
-                    <h4 className="text-[22px] leading-tight font-bold text-gray-900">
+                    {/* <h4 className="text-[22px] leading-tight font-bold text-black">
+                      {returnCalc.netBalance >= 0
+                        ? 'Estimated Refund'
+                        : 'Pending Amount'}
+                    </h4> */}
+
+                    <h4 className="text-[22px] leading-tight font-bold text-black flex items-center gap-2">
+                      {returnCalc.netBalance >= 0 && (
+                        <TrendingUp className="w-5 h-5 text-[#64748B]" />
+                      )}
+
                       {returnCalc.netBalance >= 0
                         ? 'Estimated Refund'
                         : 'Pending Amount'}
@@ -2060,16 +2353,16 @@ export default function RentalCommandCenter() {
 
                     <div className="mt-4 space-y-0">
                       <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                        <span className="text-[15px] font-medium text-gray-600">
+                        <span className="text-[15px] font-semibold text-[#64748B]">
                           Security Deposit Held:
                         </span>
-                        <span className="text-[24px] font-bold text-gray-900">
+                        <span className="text-[24px] font-bold text-black">
                           ₹ {formatMoney(returnCalc.refundableDeposit)}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                        <span className="text-[15px] font-medium text-red-500">
+                        <span className="text-[15px] font-semibold text-red-500">
                           Less: Extension Fine
                         </span>
                         <span className="text-[24px] font-bold text-red-500">
@@ -2086,7 +2379,7 @@ export default function RentalCommandCenter() {
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-[16px] font-bold text-gray-900">
+                        <span className="text-[16px] font-bold text-black">
                           {returnCalc.netBalance >= 0
                             ? 'Net Refund:'
                             : 'Amount to Pay:'}
@@ -2104,8 +2397,8 @@ export default function RentalCommandCenter() {
                       <p
                         className={`mt-2 text-[12px] ${
                           returnCalc.netBalance >= 0
-                            ? 'text-gray-600'
-                            : 'text-red-600'
+                            ? 'text-gray-600 font-semibold'
+                            : 'text-red-600 font-semibold'
                         }`}
                       >
                         {returnCalc.netBalance >= 0
@@ -2115,7 +2408,7 @@ export default function RentalCommandCenter() {
                     </div>
                   </div>
 
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() =>
                       setReturnState((prev) => ({ ...prev, step: 2 }))
@@ -2123,12 +2416,34 @@ export default function RentalCommandCenter() {
                     className="w-full rounded-xl bg-blue-600 text-white py-3 text-base font-semibold hover:bg-blue-700"
                   >
                     Confirm Pickup for {formatShortDate(returnCalc.pickupDate)}
+                  </button> */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnState((prev) => ({ ...prev, step: 2 }))
+                    }
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-white py-3 text-base font-semibold hover:bg-blue-700"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Confirm Pickup for {formatShortDate(returnCalc.pickupDate)}
                   </button>
+
+                  {/* Info text */}
+                  <p className=" text-center font-semibold text-xs text-[#64748B]">
+                    Pickup agent will call before arriving
+                  </p>
+
+                  <p className=" text-center text-xs font-semibold text-[#64748B]">
+                    Need help?{' '}
+                    <span className="text-[#2563EB] font-semibold cursor-pointer">
+                      Contact Support
+                    </span>
+                  </p>
                 </>
               ) : returnState.step === 2 ? (
                 <>
                   <div className="space-y-1">
-                    <h3 className="text-[24px] font-bold text-gray-900">
+                    <h3 className="text-[24px] font-bold text-black">
                       Security Deposit Refund
                     </h3>
                     <p className="text-sm text-gray-500">
@@ -2159,7 +2474,7 @@ export default function RentalCommandCenter() {
                         : 'border-gray-200 bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                    <div className="flex items-center gap-2 text-black font-semibold">
                       <CreditCard className="w-4 h-4 text-slate-500" />
                       Original Payment Source
                       <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
@@ -2169,8 +2484,10 @@ export default function RentalCommandCenter() {
                     <p className="text-sm text-gray-600 mt-1">
                       HDFC Credit Card ending 1234
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Fastest refund method · 3-5 business days
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      Fastest refund method
+                      <span className="w-1 h-1 bg-gray-400 rounded-full inline-block" />
+                      3-5 business days
                     </p>
                   </button>
 
@@ -2188,10 +2505,11 @@ export default function RentalCommandCenter() {
                         : 'border-gray-200 bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                    <div className="flex items-center gap-2 text-black font-semibold">
                       <IndianRupee className="w-4 h-4 text-violet-500" />
                       UPI ID
                     </div>
+
                     {returnState.refundMethod === 'upi' ? (
                       <input
                         type="text"
@@ -2225,7 +2543,7 @@ export default function RentalCommandCenter() {
                       }
                       className="w-full text-left"
                     >
-                      <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                      <div className="flex items-center gap-2 text-black font-semibold">
                         <Landmark className="w-4 h-4 text-slate-500" />
                         Bank Transfer
                       </div>
@@ -2294,7 +2612,7 @@ export default function RentalCommandCenter() {
               ) : (
                 <>
                   <div className="space-y-1">
-                    <h3 className="text-[24px] font-bold text-gray-900">
+                    <h3 className="text-[24px] font-bold text-black">
                       Review & Confirm
                     </h3>
                     <p className="text-sm text-gray-500">
@@ -2303,34 +2621,35 @@ export default function RentalCommandCenter() {
                   </div>
 
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
-                    <div className="rounded-xl border border-gray-200 p-3">
-                      <p className="font-semibold text-gray-900">
+                    <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                      <p className="font-semibold text-black flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#F97316]" />
                         Pickup Details
                       </p>
                       <div className="mt-2 text-sm text-gray-600 space-y-1">
                         <p className="flex justify-between">
                           <span>Date:</span>
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-black">
                             {formatShortDate(returnCalc.pickupDate)}
                           </span>
                         </p>
                         <p className="flex justify-between">
                           <span>Time:</span>
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-black">
                             1 PM - 4 PM
                           </span>
                         </p>
                         <p className="flex justify-between">
                           <span>Location:</span>
-                          <span className="font-medium text-gray-900">
-                            Home
-                          </span>
+                          <span className="font-medium text-black">Home</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-gray-200 p-3">
-                      <p className="font-semibold text-gray-900">
+                    <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                      {/* <p className="font-semibold text-black">Refund Details</p> */}
+                      <p className="font-semibold text-black flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-[#F97316]" />
                         Refund Details
                       </p>
                       <div className="mt-2 text-sm text-gray-600 space-y-1">
@@ -2342,7 +2661,7 @@ export default function RentalCommandCenter() {
                         </p>
                         <p className="flex justify-between">
                           <span>Destination:</span>
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-black">
                             {returnState.refundMethod === 'bank'
                               ? 'Bank Transfer'
                               : returnState.refundMethod === 'upi'
@@ -2355,9 +2674,7 @@ export default function RentalCommandCenter() {
                   </div>
 
                   <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                    <p className="font-semibold text-gray-900">
-                      Overall Rating
-                    </p>
+                    <p className="font-semibold text-black">Overall Rating</p>
                     <div className="mt-3 flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button
@@ -2382,9 +2699,7 @@ export default function RentalCommandCenter() {
                       ))}
                     </div>
 
-                    <p className="mt-4 font-semibold text-gray-900">
-                      Your Review
-                    </p>
+                    <p className="mt-4 font-semibold text-black">Your Review</p>
                     <textarea
                       value={returnState.reviewText}
                       onChange={(e) =>
@@ -2403,7 +2718,7 @@ export default function RentalCommandCenter() {
                       <span>{(returnState.reviewText || '').length}/1000</span>
                     </div>
 
-                    <p className="mt-4 font-semibold text-gray-900">
+                    <p className="mt-4 font-semibold text-black">
                       Add Photos or Videos (Optional)
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
@@ -2418,13 +2733,17 @@ export default function RentalCommandCenter() {
                       }}
                     >
                       <Camera className="w-8 h-8 text-gray-400 mx-auto" />
-                      <p className="mt-2 text-sm text-gray-700">
+                      <p className="mt-2 text-sm font-semibold text-black">
                         Drag and drop photos or videos here
                       </p>
                       <p className="text-xs text-gray-500">
                         or click to browse your files
                       </p>
-                      <span className="inline-block mt-3 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-sm">
+                      {/* <span className="inline-block mt-3 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-sm">
+                        Choose Files
+                      </span> */}
+                      <span className="inline-flex items-center gap-2 mt-3 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-sm">
+                        <Upload className="w-4 h-4" />
                         Choose Files
                       </span>
                       <input
@@ -2539,7 +2858,7 @@ export default function RentalCommandCenter() {
           >
             <div className="p-5 border-b border-gray-100 flex items-start justify-between">
               <div>
-                <h2 className="text-[24px] leading-[1.2] font-bold text-gray-900">
+                <h2 className="text-[24px] leading-[1.2] font-bold text-black">
                   Report an Issue
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
@@ -2575,7 +2894,7 @@ export default function RentalCommandCenter() {
               </div>
 
               <div className="mt-4">
-                <p className="text-[18px] font-semibold text-gray-900">
+                <p className="text-[18px] font-semibold text-black">
                   What seems to be the problem?
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -2627,7 +2946,7 @@ export default function RentalCommandCenter() {
                             }`}
                           />
                           <span className="min-w-0">
-                            <p className="text-[15px] font-semibold text-gray-900 leading-tight">
+                            <p className="text-[15px] font-semibold text-black leading-tight">
                               {opt.title}
                             </p>
                             <p className="text-[11px] text-gray-500 mt-1">
@@ -2642,7 +2961,7 @@ export default function RentalCommandCenter() {
               </div>
 
               <div className="mt-4">
-                <p className="text-[18px] font-semibold text-gray-900">
+                <p className="text-[18px] font-semibold text-black">
                   Upload Photos of the Issue
                 </p>
                 <p className="mt-1 text-[11px] text-gray-500">
@@ -2656,7 +2975,16 @@ export default function RentalCommandCenter() {
                     applyIssuePhotos(e.dataTransfer.files);
                   }}
                 >
-                  <Camera className="w-9 h-9 text-gray-400 mx-auto" />
+                  {/* <Camera className="w-9 h-9 text-gray-400 mx-auto" /> */}
+                  <div
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #D1D5DC',
+                    }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                  >
+                    <Camera className="w-8 h-8 text-gray-400" />
+                  </div>
                   <p className="mt-2.5 text-[16px] font-semibold text-gray-800">
                     Click to Upload or Drag & Drop
                   </p>
@@ -2709,7 +3037,7 @@ export default function RentalCommandCenter() {
               </div>
 
               <div className="mt-4">
-                <p className="text-[18px] font-semibold text-gray-900">
+                <p className="text-[18px] font-semibold text-black">
                   Describe the issue briefly
                 </p>
                 <p className="text-[11px] text-gray-500 mt-1">
