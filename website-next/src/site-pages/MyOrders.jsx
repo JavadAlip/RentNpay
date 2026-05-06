@@ -315,7 +315,7 @@ export default function MyOrders() {
   return (
     <div className="min-h-screen bg-[#F4F6FB] py-8 px-4 sm:px-6 pb-16">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold text-black tracking-tight">
           My Orders
         </h1>
 
@@ -417,7 +417,7 @@ export default function MyOrders() {
                   type="button"
                   disabled={safePage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:pointer-events-none"
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-black disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Previous
                 </button>
@@ -443,7 +443,7 @@ export default function MyOrders() {
                   type="button"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:pointer-events-none"
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-black disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Next
                 </button>
@@ -465,7 +465,7 @@ export default function MyOrders() {
             >
               <div className="flex items-start justify-between gap-3" />
 
-              <div className="mt-4 rounded-xl border border-gray-200 bg-[#F7F8FB] p-4">
+              <div className="mt-4 rounded-xl   p-4">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 overflow-hidden rounded-lg bg-gray-100">
                     {returnPrompt.image ? (
@@ -478,11 +478,11 @@ export default function MyOrders() {
                     ) : null}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-black">
                       {returnPrompt.title}
                     </p>
                     <div className="mt-0.5 inline-flex items-center gap-2">
-                      <p className="text-xs text-emerald-700 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5">
+                      <p className="text-xs text-[#008236] font-semibold inline-flex items-center gap-1 rounded-full b bg-[#DCFCE7] px-2 py-0.5">
                         Active Rental
                       </p>
                       <span className="text-xs text-gray-500">
@@ -492,7 +492,7 @@ export default function MyOrders() {
                   </div>
                 </div>
 
-                <div className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-700 space-y-1.5">
+                {/* <div className="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-700 space-y-1.5">
                   <p className="flex justify-between gap-3">
                     <span>Monthly Rent:</span>
                     <span className="font-medium">
@@ -518,6 +518,36 @@ export default function MyOrders() {
                       {returnPrompt.cycleEnds}
                     </span>
                   </p>
+                </div> */}
+                <div className="mt-3 border border-gray-200 bg-[#F9FAFB] rounded-lg p-3 text-sm text-gray-700 space-y-1.5">
+                  <p className="flex justify-between gap-3">
+                    <span>Monthly Rent:</span>
+                    <span className="font-medium">
+                      ₹{formatMoney(returnPrompt.cycleRent)}/
+                      {returnPrompt.cycleUnit === 'day' ? 'day' : 'month'}
+                    </span>
+                  </p>
+
+                  <p className="flex justify-between gap-3">
+                    <span>Started:</span>
+                    <span className="font-medium">
+                      {returnPrompt.startedOn}
+                    </span>
+                  </p>
+
+                  <p className="flex justify-between gap-3">
+                    <span>{returnPrompt.totalTenureLabel}:</span>
+                    <span className="font-medium">
+                      {returnPrompt.totalTenure}
+                    </span>
+                  </p>
+
+                  <p className="flex justify-between gap-3">
+                    <span>Cycle Ends:</span>
+                    <span className="font-semibold text-[#F97316]">
+                      {returnPrompt.cycleEnds}
+                    </span>
+                  </p>
                 </div>
               </div>
 
@@ -532,10 +562,23 @@ export default function MyOrders() {
               >
                 End Tenancy / Return Item
               </button>
-              <p className="mt-2 text-center text-xs text-gray-500">
+              {/* <p className="mt-2 text-center text-xs text-gray-500">
                 Rent cycle ends on{' '}
-                <span className="font-semibold">{returnPrompt.cycleEnds}</span>.
-                Schedule your return pickup now.
+                <span className="font-semibold text-black">
+                  {returnPrompt.cycleEnds}
+                </span>
+                . Schedule your return pickup now.
+              </p> */}
+              <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-[#64748B] text-center">
+                <Calendar className="w-3.5 h-3.5 text-[#64748B]" />
+
+                <span>
+                  Rent cycle ends on{' '}
+                  <span className="font-semibold text-black">
+                    {returnPrompt.cycleEnds}
+                  </span>
+                  . Schedule your return pickup now.
+                </span>
               </p>
             </div>
           </div>
@@ -569,7 +612,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">{headerDateLabel}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -589,7 +632,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
               ₹{formatMoney(purchaseTotal)}
             </p>
@@ -608,7 +651,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
         <div className="px-4 pb-4 pt-0 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <button
             type="button"
-            className="flex-1 min-h-[44px] rounded-xl border-2 border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 inline-flex items-center justify-center gap-2"
+            className="flex-1 min-h-[44px] rounded-xl border-2 border-gray-300 bg-white text-black text-sm font-semibold hover:bg-gray-50 inline-flex items-center justify-center gap-2"
           >
             <Star className="w-4 h-4 text-gray-700" />
             Rate &amp; Review
@@ -639,7 +682,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#FEE2E2] text-[#DC2626] ">
@@ -659,7 +702,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p
               className={`text-sm mt-2 flex items-center gap-1.5 text-emerald-600 font-medium`}
             >
@@ -677,7 +720,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
           {hasReturnTracking ? (
             <Link
               href={`/orders/return-status?orderId=${encodeURIComponent(order._id)}`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-black"
             >
               View Refund Details
               <ExternalLink className="w-3.5 h-3.5" />
@@ -697,7 +740,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
     if (!product) {
       return (
         <li className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <p className="font-bold text-gray-900">Order #{oid}</p>
+          <p className="font-bold text-black">Order #{oid}</p>
           <p className="text-sm text-gray-500 mt-1">Rental completed</p>
           <Link
             href="/my-rentals"
@@ -712,7 +755,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">
               Completed on:{' '}
               {formatOrderDate(order.updatedAt || order.createdAt)}
@@ -735,7 +778,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
               ₹
               {formatMoney(
@@ -773,7 +816,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-amber-100 bg-amber-50/50">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
@@ -811,7 +854,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#DCFCE7] text-[#16A34A] ">
@@ -831,7 +874,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
               ₹{formatMoney(total)}
             </p>
@@ -892,7 +935,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
                 cycleEnds: formatOrderDate(meta.leaseEnd),
               });
             }}
-            className="inline-flex items-center justify-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 text-center sm:text-right"
+            className="inline-flex items-center justify-center gap-1 text-sm font-medium text-gray-600 hover:text-black text-center sm:text-right"
           >
             Request Pickup / Close Rental
             <ArrowRight className="h-4 w-4" />
@@ -907,7 +950,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
@@ -927,7 +970,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p className="text-sm text-gray-600 mt-2">
               Your rental period has ended. Please arrange return of the item;
               we&apos;ll mark this order complete once it&apos;s received.
@@ -955,7 +998,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
       <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
           <div>
-            <p className="font-bold text-gray-900">Order #{oid}</p>
+            <p className="font-bold text-black">Order #{oid}</p>
             <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#DBEAFE] text-[#2563EB] ">
@@ -975,7 +1018,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900">{title}</p>
+            <p className="font-semibold text-black">{title}</p>
             <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
               ₹{formatMoney(total)}
             </p>
@@ -1008,7 +1051,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
     <li className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
         <div>
-          <p className="font-bold text-gray-900">Order #{oid}</p>
+          <p className="font-bold text-black">Order #{oid}</p>
           <p className="text-sm text-gray-500 mt-0.5">Placed on: {placed}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
@@ -1028,7 +1071,7 @@ function OrderCard({ order, onOpenReturnPrompt }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-gray-900">{title}</p>
+          <p className="font-semibold text-black">{title}</p>
           <p className={`text-base font-bold ${ORANGE_TEXT} mt-1`}>
             ₹{formatMoney(total)}
           </p>
