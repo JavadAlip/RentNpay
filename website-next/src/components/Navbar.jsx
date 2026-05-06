@@ -945,7 +945,7 @@ const Navbar = () => {
                       />
                     ) : null}
                     <div className="relative" ref={notifPanelRef}>
-                      <button
+                      {/* <button
                         type="button"
                         onClick={toggleNotifPanel}
                         aria-expanded={showNotifPanel}
@@ -959,6 +959,23 @@ const Navbar = () => {
                             {notifBadge > 9 ? '9+' : notifBadge}
                           </span>
                         ) : null}
+                      </button> */}
+                      <button
+                        type="button"
+                        onClick={toggleNotifPanel}
+                        aria-expanded={showNotifPanel}
+                        aria-haspopup="dialog"
+                        className="relative w-9 h-9 flex items-center justify-center text-gray-600 hover:text-black"
+                      >
+                        <span className="sr-only">Notifications</span>
+
+                        <Bell className="w-5 h-5" strokeWidth={1.8} />
+
+                        {notifBadge > 0 && (
+                          <span className="absolute top-0.5 right-0 min-h-[1.125rem] min-w-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm">
+                            {notifBadge > 9 ? '9+' : notifBadge}
+                          </span>
+                        )}
                       </button>
 
                       {showNotifPanel ? (
@@ -1030,7 +1047,7 @@ const Navbar = () => {
                   </>
                 ) : null}
 
-                {/* ✅ Profile with dropdown — only when logged in */}
+                {/*  Profile with dropdown — only when logged in */}
                 {isAuthenticated && user ? (
                   <div className="relative" ref={dropdownRef}>
                     <button
