@@ -11,6 +11,7 @@ import {
   AUTH_REDIRECT_SESSION_KEY,
   useAuthModal,
 } from '@/contexts/AuthModalContext';
+import authImage from '@/assets/images/auth.png';
 
 // ── OTP Input component ───────────────────────────────────────────────────────
 function OtpInputs({ value, onChange, disabled }) {
@@ -211,7 +212,7 @@ export default function AuthModal() {
     >
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[min(90vh,720px)]">
         {/* Left image panel */}
-        <div className="hidden md:flex md:w-1/2 bg-primary-50 items-center justify-center">
+        {/* <div className="hidden md:flex md:w-1/2 bg-primary-50 items-center justify-center">
           <div className="p-8 text-center">
             <div className="text-6xl mb-4">🛋️</div>
             <h3 className="text-xl font-bold text-gray-800">
@@ -221,17 +222,33 @@ export default function AuthModal() {
               Furniture, electronics & more. Flexible daily rental.
             </p>
           </div>
+        </div> */}
+        {/* Left image panel */}
+        <div className="hidden md:flex md:w-1/2 bg-primary-50 items-center justify-center overflow-hidden">
+          <img
+            src={authImage.src}
+            alt="Auth"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Right form panel */}
         <div className="w-full md:w-1/2 flex flex-col min-h-0 p-6 sm:p-8 relative">
-          <button
+          {/* <button
             type="button"
             onClick={closeAuth}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1"
             aria-label="Close"
           >
-            <X size={22} />
+            <X size={16} />
+          </button> */}
+          <button
+            type="button"
+            onClick={closeAuth}
+            className="absolute top-4 right-4 p-2 bg-[#F3F4F6] rounded-full hover:bg-gray-200 transition"
+            aria-label="Close"
+          >
+            <X size={14} className="text-[#64748B]" />
           </button>
 
           {/* ── SIGNUP FORM ── */}

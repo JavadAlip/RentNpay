@@ -1311,11 +1311,11 @@ const Navbar = () => {
                 Please select a location to view products near you.
               </p>
               <div className="mt-5">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-semibold text-black mb-1.5">
                   Search Location
                 </label>
                 <div className="relative">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <MapPin className="w-4 h-4 text-[#F97316] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={locationQuery}
@@ -1352,12 +1352,12 @@ const Navbar = () => {
                 type="button"
                 onClick={onFetchMyLocation}
                 disabled={locating}
-                className="mt-5 w-full flex items-center justify-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium py-2.5 sm:py-3 shadow-[0_10px_22px_rgba(249,115,22,0.45)] disabled:opacity-60"
+                className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium py-2.5 sm:py-3 shadow-[0_10px_22px_rgba(249,115,22,0.45)] disabled:opacity-60"
               >
                 <LocateFixed className="w-4 h-4" />
                 {locating ? 'Fetching location...' : 'Fetch my location'}
               </button>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => {
                   onSavedAddressClick();
@@ -1368,7 +1368,20 @@ const Navbar = () => {
                 {isAuthenticated
                   ? 'Use saved addresses'
                   : 'Login for saved addresses'}
-              </button>
+              </button> */}
+              {!isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationModal(false);
+                    openAuth('login');
+                  }}
+                  className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl font-semibold border border-gray-300 bg-white text-xs sm:text-sm text-black py-2.5 sm:py-3 hover:bg-gray-50"
+                >
+                  <User className="w-4 h-4 font-semibold text-black" />
+                  Login for saved addresses
+                </button>
+              )}
               {showSavedAddresses ? (
                 <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 max-h-44 overflow-y-auto">
                   {loadingSavedAddresses ? (
