@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Calendar,
   MapPin,
+  FileSearchCorner,
 } from 'lucide-react';
 import { apiGetMyOrderById } from '@/lib/api';
 import { primaryProduct } from '@/lib/orderRentalUtils';
@@ -66,7 +67,9 @@ export default function ReturnStatus() {
       .then((res) => setOrder(res.data))
       .catch((err) => {
         setOrder(null);
-        setError(err.response?.data?.message || 'Failed to load return status.');
+        setError(
+          err.response?.data?.message || 'Failed to load return status.',
+        );
       })
       .finally(() => setLoading(false));
   }, [orderId]);
@@ -82,7 +85,9 @@ export default function ReturnStatus() {
 
   const title = product?.productName || product?.title || 'Rental item';
   const retBadge = order
-    ? `RET-${String(order._id || '').slice(-4).toUpperCase()}`
+    ? `RET-${String(order._id || '')
+        .slice(-4)
+        .toUpperCase()}`
     : '';
 
   if (loading) {
@@ -123,7 +128,7 @@ export default function ReturnStatus() {
       <div className="max-w-2xl mx-auto">
         <Link
           href="/orders"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 mb-6"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#64748B] hover:text-black mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Orders
@@ -131,15 +136,15 @@ export default function ReturnStatus() {
 
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-black">
               Return Status
             </h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-[#64748B]">
               Track your return and refund status for{' '}
-              <span className="font-semibold text-gray-900">{title}</span>
+              <span className="font-semibold text-black">{title}</span>
             </p>
           </div>
-          <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1.5 text-xs font-semibold">
+          <span className="inline-flex items-center rounded-full bg-[#DBEAFE] text-[#1447E6] px-3 py-1.5 text-xs font-semibold">
             #{retBadge}
           </span>
         </div>
@@ -149,17 +154,19 @@ export default function ReturnStatus() {
             <li className="relative pb-8">
               <div className="absolute left-[17px] top-10 bottom-0 w-0.5 bg-emerald-500" />
               <div className="flex gap-4">
-                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-                  <CheckCircle2 className="w-5 h-5" />
+                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00C950] text-white">
+                  <CheckCircle2 className="w-5 h-5 text-semibold" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="font-bold text-gray-900">Request Placed</p>
-                  <p className="text-sm font-medium text-emerald-600">Completed</p>
-                  <p className="mt-2 text-sm text-gray-600 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                  <p className="font-bold text-black">Request Placed</p>
+                  <p className="text-sm font-medium text-[#00C950]">
+                    Completed
+                  </p>
+                  <p className="mt-2 text-sm text-[#64748B] flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#64748B] shrink-0" />
                     {formatDateTime(rr.requestedAt)}
                   </p>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[#64748B]">
                     Your return request has been successfully submitted.
                   </p>
                 </div>
@@ -177,33 +184,35 @@ export default function ReturnStatus() {
                   className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     hasPickupScheduled
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                      : 'bg-gray-200 text-[#64748B]'
                   }`}
                 >
                   <Truck className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className={`font-bold ${hasPickupScheduled ? 'text-gray-900' : 'text-gray-500'}`}>
+                  <p
+                    className={`font-bold ${hasPickupScheduled ? 'text-black' : 'text-[#64748B]'}`}
+                  >
                     Pickup Scheduled
                   </p>
                   <p
                     className={`text-sm font-medium ${
-                      hasPickupScheduled ? 'text-blue-600' : 'text-gray-500'
+                      hasPickupScheduled ? 'text-blue-600' : 'text-[#64748B]'
                     }`}
                   >
                     {hasPickupScheduled ? 'In Progress' : 'Pending'}
                   </p>
                   {hasPickupScheduled ? (
-                    <div className="mt-3 rounded-xl bg-blue-50 border border-blue-100 p-4 text-sm text-gray-800 space-y-2">
+                    <div className="mt-3 rounded-xl bg-[#EFF6FF]  p-4 text-sm text-[#1C398E] space-y-2">
                       <p className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                        <span>
+                        <Calendar className="w-4 h-4 text-[#1C398E] shrink-0 mt-0.5" />
+                        <span className="font-semibold">
                           <span className="font-semibold">Scheduled for: </span>
                           {formatPickupWindow(pickupIso, rr.vendorPickupTime)}
                         </span>
                       </p>
                       <p className="flex items-start gap-2">
-                        <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <MapPin className="w-4 h-4 text-[#1C398E] shrink-0 mt-0.5" />
                         <span>
                           <span className="font-semibold">Pickup from: </span>
                           {rr.vendorPickupAddress ||
@@ -213,7 +222,7 @@ export default function ReturnStatus() {
                       </p>
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-[#64748B]">
                       Vendor will schedule your pickup date and time shortly.
                     </p>
                   )}
@@ -231,29 +240,31 @@ export default function ReturnStatus() {
                 <div
                   className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     hasQcCompleted
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                      ? 'bg-[#00A63E] text-white'
+                      : 'bg-gray-200 text-[#64748B]'
                   }`}
                 >
-                  <FileSearch className="w-5 h-5" />
+                  <FileSearchCorner className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className={`font-bold ${hasQcCompleted ? 'text-gray-900' : 'text-gray-500'}`}>
+                  <p
+                    className={`font-bold ${hasQcCompleted ? 'text-black' : 'text-[#64748B]'}`}
+                  >
                     Quality Check (QC)
                   </p>
                   <p
                     className={`text-sm font-medium ${
-                      hasQcCompleted ? 'text-emerald-600' : 'text-gray-500'
+                      hasQcCompleted ? 'text-[#00A63E]' : 'text-[#64748B]'
                     }`}
                   >
                     {hasQcCompleted ? 'Completed' : 'Pending'}
                   </p>
-                  <p className="mt-2 text-sm text-gray-500">
+                  <p className="mt-2 text-sm text-[#64748B]">
                     Our technician will verify the item condition and assess any
                     damage.
                   </p>
                   {hasQcCompleted ? (
-                    <p className="mt-2 text-xs text-gray-500">
+                    <p className="mt-2 text-xs text-[#00A63E]">
                       Completed on {formatDateTime(rr.qcCompletedAt)}
                     </p>
                   ) : null}
@@ -266,8 +277,8 @@ export default function ReturnStatus() {
                 <div
                   className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     hasRefundInitiated
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                      ? 'bg-[#00A63E] text-white'
+                      : 'bg-gray-200 text-[#64748B]'
                   }`}
                 >
                   <RefreshCw className="w-5 h-5" />
@@ -275,36 +286,43 @@ export default function ReturnStatus() {
                 <div className="min-w-0 flex-1 pt-0.5">
                   <p
                     className={`font-bold ${
-                      hasRefundInitiated ? 'text-gray-900' : 'text-gray-500'
+                      hasRefundInitiated ? 'text-black' : 'text-[#64748B]'
                     }`}
                   >
                     Refund Initiated
                   </p>
                   <p
                     className={`text-sm font-medium ${
-                      hasRefundInitiated ? 'text-emerald-600' : 'text-gray-500'
+                      hasRefundInitiated ? 'text-[#00A63E]' : 'text-[#64748B]'
                     }`}
                   >
                     {hasRefundInitiated ? 'Completed' : 'Pending'}
                   </p>
                   {hasRefundInitiated ? (
                     <>
-                      <p className="mt-2 text-sm text-gray-600">
-                        Final refund amount initiated: {' '}
-                        <span className="font-semibold text-gray-900">
-                          ₹{Number(rr.finalRefundAmount || 0).toLocaleString('en-IN')}
+                      <p className="mt-2 text-sm text-[#64748B]">
+                        Final refund amount initiated:{' '}
+                        <span className="font-semibold text-black">
+                          ₹
+                          {Number(rr.finalRefundAmount || 0).toLocaleString(
+                            'en-IN',
+                          )}
                         </span>
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Damage deduction: ₹{Number(rr.damageDeduction || 0).toLocaleString('en-IN')} •
-                        Cleaning fees: ₹{Number(rr.cleaningFees || 0).toLocaleString('en-IN')}
+                      <p className="mt-1 text-xs text-[#64748B]">
+                        Damage deduction: ₹
+                        {Number(rr.damageDeduction || 0).toLocaleString(
+                          'en-IN',
+                        )}{' '}
+                        • Cleaning fees: ₹
+                        {Number(rr.cleaningFees || 0).toLocaleString('en-IN')}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-[#00A63E]">
                         Initiated on {formatDateTime(rr.refundInitiatedAt)}
                       </p>
                     </>
                   ) : (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-[#64748B]">
                       Deposit will be refunded to your original payment source
                       within 7 days of QC completion.
                     </p>
@@ -315,7 +333,7 @@ export default function ReturnStatus() {
           </ol>
         </div>
 
-        <p className="mt-10 text-center text-sm text-gray-600">
+        <p className="mt-10 text-center text-sm text-[#64748B]">
           Need help with your return?{' '}
           <a
             href="mailto:support@rentnpay.com"
